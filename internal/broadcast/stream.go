@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/baardove/my-echo/server/internal/config"
-	"github.com/baardove/my-echo/server/internal/db"
-	"github.com/baardove/my-echo/server/internal/dj"
-	"github.com/baardove/my-echo/server/internal/party"
+	"github.com/baardove/my-echo-server/internal/config"
+	"github.com/baardove/my-echo-server/internal/db"
+	"github.com/baardove/my-echo-server/internal/dj"
+	"github.com/baardove/my-echo-server/internal/party"
 )
 
 // Hub manages continuous live HTTP/ICY MP3 radio streams for Live DJ Radio (/stream/dj.mp3)

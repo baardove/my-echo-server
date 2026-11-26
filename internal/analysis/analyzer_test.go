@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/baardove/my-echo/server/internal/db"
+	"github.com/baardove/my-echo-server/internal/db"
 )
 
 func TestAnalyzeStereoPCMDetectsBPMAndVocalBoundaries(t *testing.T) {

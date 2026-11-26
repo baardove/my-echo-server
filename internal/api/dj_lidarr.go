@@ -8,9 +8,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/baardove/my-echo/server/internal/config"
-	"github.com/baardove/my-echo/server/internal/dj"
-	"github.com/baardove/my-echo/server/internal/lidarr"
+	"github.com/baardove/my-echo-server/internal/config"
+	"github.com/baardove/my-echo-server/internal/dj"
+	"github.com/baardove/my-echo-server/internal/lidarr"
 )
 
 // --- AI Radio DJ Endpoints ---

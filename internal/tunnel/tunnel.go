@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/baardove/my-echo/server/internal/config"
+	"github.com/baardove/my-echo-server/internal/config"
 )
 
 var tryCFURLRe = regexp.MustCompile(`https://[a-z0-9-]+\.trycloudflare\.com`)

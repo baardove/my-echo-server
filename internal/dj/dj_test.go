@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/baardove/my-echo/server/internal/config"
-	"github.com/baardove/my-echo/server/internal/db"
+	"github.com/baardove/my-echo-server/internal/config"
+	"github.com/baardove/my-echo-server/internal/db"
 )
 
 // Verifies the user's core DJ cadence rule:

@@ -1,28 +1,31 @@
 services:
   my-echo-server:
+    image: ghcr.io/baardove/my-echo-server:latest
     build:
       context: .
       dockerfile: Dockerfile
-    image: ghcr.io/baardove/my-echo-server:latest
     container_name: my-echo-server
     restart: unless-stopped
-    # Use `network_mode: host` on Unraid for automatic LAN IP detection, or keep bridge ports below with ECHO_ADVERTISE_HOST set.
-    ports:
-      - "48721:48721" # Main API, Delta Index Shards & Admin Web UI (/admin)
-      - "53333:53333" # Party Mode Guest Web UI (HTTP)
-      - "53334:53334" # Party Mode Voice Intro Mic Recorder (HTTPS)
+    # Host networking enables DLNA SSDP discovery, LAN DLNA casting, and UPnP/NAT-PMP router port mapping.
+    # If you prefer bridge networking, comment out `network_mode: host`, uncomment `ports:` below,
+    # and set ECHO_ADVERTISE_HOST to your server's LAN IP.
+    network_mode: host
+    # ports:
+    #   - "48721:48721" # Main API, Web Player, AI Radio DJ, DLNA streams & Admin WebUI
+    #   - "53333:53333" # Party Mode Guest Web Jukebox (HTTP)
+    #   - "53334:53334" # Party Mode Voice Intro Mic Recorder (HTTPS)
     environment:
       - PUID=99
       - PGID=100
       - TZ=Europe/Oslo
       - ECHO_SERVER_NAME=Unraid Echo
-      # Set your Unraid LAN or Tailscale IP when running in bridge mode so Party Mode QR codes point to the right address:
-      - ECHO_ADVERTISE_HOST=192.168.1.50
+      # Set your NAS LAN IP if your host has multiple interfaces or runs in bridge mode:
+      # - ECHO_ADVERTISE_HOST=192.168.1.50
       # Optional: fixed 6-digit PIN (auto-generated in /config/config.json if omitted)
       # - ECHO_PIN=123456
-      # Optional: match your Mac SMB mount prefix so server Track IDs match existing Mac playlists 1:1
+      # Optional: match your Mac SMB mount prefix so server Track IDs match My Echo macOS playlists 1:1
       # - ECHO_LEGACY_PATH_PREFIX=/Volumes/Media/MUSIC
       - ECHO_SCAN_INTERVAL=30m
     volumes:
       - /mnt/user/appdata/my-echo-server:/config
-      - /mnt/user/Media/MUSIC:/music:ro
+      - /mnt/user/Media/MUSIC:/music:rw

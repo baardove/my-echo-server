@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommunityApplications>
+  <Profile>
+    Official Unraid Docker templates for My Echo Server — a lightweight, self-hosted Hi-Fi music server with AI Radio DJ (Gemini), collaborative Party Mode Jukebox, DLNA casting &amp; MediaServer, loudness normalization, Lidarr integration, and native companion sync for My Echo on macOS, iOS, and Apple TV.
+  </Profile>
+  <Icon>https://raw.githubusercontent.com/baardove/my-echo-server/main/internal/admin/icon.png</Icon>
+  <WebPage>https://github.com/baardove/my-echo-server</WebPage>
+</CommunityApplications>

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/baardove/my-echo/server/internal/admin"
+	"github.com/baardove/my-echo-server/internal/admin"
 )
 
 type loginAttemptBucket struct {

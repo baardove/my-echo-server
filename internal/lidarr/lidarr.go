@@ -14,9 +14,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/baardove/my-echo/server/internal/config"
-	"github.com/baardove/my-echo/server/internal/editorial"
-	"github.com/baardove/my-echo/server/internal/indexer"
+	"github.com/baardove/my-echo-server/internal/config"
+	"github.com/baardove/my-echo-server/internal/editorial"
+	"github.com/baardove/my-echo-server/internal/indexer"
 )
 
 const webhookDisplayName = "My Echo Server"

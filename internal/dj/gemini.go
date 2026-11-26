@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/baardove/my-echo/server/internal/config"
+	"github.com/baardove/my-echo-server/internal/config"
 )
 
 const geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta/models"

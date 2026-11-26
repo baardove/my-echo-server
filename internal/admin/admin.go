@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/baardove/my-echo/server/internal/config"
-	"github.com/baardove/my-echo/server/internal/db"
-	"github.com/baardove/my-echo/server/internal/indexer"
-	"github.com/baardove/my-echo/server/internal/party"
+	"github.com/baardove/my-echo-server/internal/config"
+	"github.com/baardove/my-echo-server/internal/db"
+	"github.com/baardove/my-echo-server/internal/indexer"
+	"github.com/baardove/my-echo-server/internal/party"
 )
 
 //go:embed icon.png

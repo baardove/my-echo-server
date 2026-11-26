@@ -15,13 +15,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/baardove/my-echo/server/internal/api"
-	"github.com/baardove/my-echo/server/internal/artwork"
-	"github.com/baardove/my-echo/server/internal/config"
-	"github.com/baardove/my-echo/server/internal/db"
-	"github.com/baardove/my-echo/server/internal/indexer"
-	"github.com/baardove/my-echo/server/internal/party"
-	"github.com/baardove/my-echo/server/internal/snapshot"
+	"github.com/baardove/my-echo-server/internal/api"
+	"github.com/baardove/my-echo-server/internal/artwork"
+	"github.com/baardove/my-echo-server/internal/config"
+	"github.com/baardove/my-echo-server/internal/db"
+	"github.com/baardove/my-echo-server/internal/indexer"
+	"github.com/baardove/my-echo-server/internal/party"
+	"github.com/baardove/my-echo-server/internal/snapshot"
 )
 
 func writeMinimalWAV(t *testing.T, path, title, artist, album string) {

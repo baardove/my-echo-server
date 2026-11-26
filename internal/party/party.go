@@ -16,9 +16,9 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/baardove/my-echo/server/internal/artwork"
-	"github.com/baardove/my-echo/server/internal/config"
-	"github.com/baardove/my-echo/server/internal/db"
+	"github.com/baardove/my-echo-server/internal/artwork"
+	"github.com/baardove/my-echo-server/internal/config"
+	"github.com/baardove/my-echo-server/internal/db"
 	"github.com/google/uuid"
 )
 

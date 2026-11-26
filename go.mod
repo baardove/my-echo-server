@@ -1,4 +1,4 @@
-module github.com/baardove/my-echo/server
+module github.com/baardove/my-echo-server
 
 go 1.26.1
 

@@ -1,0 +1,23 @@
+# Binaries & build output
+/echo-server
+*.exe
+*.test
+*.out
+
+# Local runtime config, databases & secrets
+config.json
+*.db
+*.db-wal
+*.db-shm
+*.sqlite*
+.env
+.env.*
+dj-audio/
+thumbs/
+shards/
+
+# OS & editor files
+.DS_Store
+._*
+.idea/
+.vscode/

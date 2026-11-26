@@ -12,7 +12,7 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/baardove/my-echo/server/internal/db"
+	"github.com/baardove/my-echo-server/internal/db"
 	"golang.org/x/text/unicode/norm"
 )
 

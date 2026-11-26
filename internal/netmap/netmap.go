@@ -16,7 +16,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/baardove/my-echo/server/internal/config"
+	"github.com/baardove/my-echo-server/internal/config"
 )
 
 const ssdpAddr = "239.255.255.250:1900"

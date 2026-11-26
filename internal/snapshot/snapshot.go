@@ -12,7 +12,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/baardove/my-echo/server/internal/db"
+	"github.com/baardove/my-echo-server/internal/db"
 )
 
 // ShareBeacon is written to <musicRoot>/.myecho/server.json so macOS & other LAN clients

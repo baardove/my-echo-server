@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>my-echo-server</Name>
+  <Repository>ghcr.io/baardove/my-echo-server:latest</Repository>
+  <Registry>https://ghcr.io/baardove/my-echo-server</Registry>
+  <Network>host</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/baardove/my-echo-server/issues</Support>
+  <Project>https://github.com/baardove/my-echo-server</Project>
+  <Overview>Lightweight self-hosted Hi-Fi music server for Unraid and Docker. Indexes your NAS music library locally into fast SQLite &amp; gzip delta shards, includes a dark-neon Web Player with on-the-fly BPM &amp; loudness normalization, hosts an AI Radio DJ (powered by Google Gemini with live web-grounded music facts and voice intros/outros), runs a zero-install Party Mode Guest Jukebox with mobile DJ Voice Intros, streams live MP3 radio &amp; casts to LAN DLNA speakers/TVs, supports built-in Cloudflare Tunnel &amp; UPnP/NAT-PMP remote access, integrates with Lidarr, and pairs natively with My Echo for macOS, iOS, and Apple TV.</Overview>
+  <Category>MediaServer:Music</Category>
+  <WebUI>http://[IP]:[PORT:48721]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/baardove/my-echo-server/main/templates/my-echo-server.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/baardove/my-echo-server/main/internal/admin/icon.png</Icon>
+  <ExtraParams/>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="API &amp; WebUI Port" Target="48721" Default="48721" Mode="tcp" Description="Main API, Web Player, AI Radio DJ, DLNA streams, and Admin WebUI." Type="Port" Display="always" Required="true" Mask="false">48721</Config>
+  <Config Name="Party Mode HTTP Port" Target="53333" Default="53333" Mode="tcp" Description="Zero-install Party Mode Guest Web Jukebox (QR code URL)." Type="Port" Display="always" Required="true" Mask="false">53333</Config>
+  <Config Name="Party Mode HTTPS Port" Target="53334" Default="53334" Mode="tcp" Description="Companion HTTPS listener for mobile Safari/Chrome DJ Voice Intro microphone recording." Type="Port" Display="always" Required="true" Mask="false">53334</Config>
+  <Config Name="AppData Config" Target="/config" Default="/mnt/user/appdata/my-echo-server" Mode="rw" Description="Stores SQLite database, pre-built compressed index shards, artwork thumbnail cache, DJ audio cache, TLS cert, and config.json." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/my-echo-server</Config>
+  <Config Name="Music Library" Target="/music" Default="/mnt/user/Media/MUSIC" Mode="rw" Description="Primary Unraid music share (rw allows mirroring compressed index shards &amp; auto-discovery beacon into .myecho/; ro is also supported)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/Media/MUSIC</Config>
+  <Config Name="Server Display Name" Target="ECHO_SERVER_NAME" Default="Unraid Echo" Description="Name displayed in the Web UI, DLNA MediaServer, Party Mode, and My Echo clients." Type="Variable" Display="always" Required="false" Mask="false">Unraid Echo</Config>
+  <Config Name="Advertise Host (Unraid LAN/Tailscale IP)" Target="ECHO_ADVERTISE_HOST" Default="" Description="Optional Unraid LAN IP used for DLNA stream URLs and Party Mode QR codes (recommended if your server has multiple NICs or runs in bridge mode)." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="6-Digit Pairing PIN" Target="ECHO_PIN" Default="" Description="Optional fixed 6-digit PIN for remote login and Mac/Apple TV pairing (auto-generated on first boot if blank)." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="Scan Interval" Target="ECHO_SCAN_INTERVAL" Default="30m" Description="Incremental scan interval (e.g. 30m, 2h, 24h, or manual for Lidarr webhook-only disk spin-down friendliness)." Type="Variable" Display="always" Required="false" Mask="false">30m</Config>
+  <Config Name="Legacy Mac SMB Prefix (Optional)" Target="ECHO_LEGACY_PATH_PREFIX" Default="/Volumes/Media/MUSIC" Description="Optional macOS SMB mount prefix so server Track IDs match existing My Echo Mac playlists and ratings 1:1." Type="Variable" Display="advanced" Required="false" Mask="false">/Volumes/Media/MUSIC</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Description="Unraid user ID (nobody=99)." Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Description="Unraid group ID (users=100)." Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+</Container>

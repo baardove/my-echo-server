@@ -15,10 +15,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/baardove/my-echo/server/internal/artwork"
-	"github.com/baardove/my-echo/server/internal/config"
-	"github.com/baardove/my-echo/server/internal/db"
-	"github.com/baardove/my-echo/server/internal/snapshot"
+	"github.com/baardove/my-echo-server/internal/artwork"
+	"github.com/baardove/my-echo-server/internal/config"
+	"github.com/baardove/my-echo-server/internal/db"
+	"github.com/baardove/my-echo-server/internal/snapshot"
 	"golang.org/x/text/unicode/norm"
 )
 

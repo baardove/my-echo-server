@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/baardove/my-echo/server/internal/db"
+	"github.com/baardove/my-echo-server/internal/db"
 	qrcode "github.com/skip2/go-qrcode"
 )
 
