@@ -641,6 +641,110 @@
   }
   .echo-dd-btn .echo-dd-lbl { overflow: hidden; text-overflow: ellipsis; }
   .echo-dd-btn .echo-dd-chev { flex: none; opacity: 0.65; display: inline-flex; }
+
+  /* Clickable Artist Links */
+  .artist-link {
+    color: inherit; text-decoration: none; cursor: pointer;
+    border-bottom: 1px dotted transparent; transition: color 0.12s, border-color 0.12s;
+  }
+  .artist-link:hover {
+    color: var(--cyan); border-bottom-color: var(--cyan);
+  }
+  .album-link {
+    color: inherit; text-decoration: none; cursor: pointer;
+    border-bottom: 1px dotted transparent; transition: color 0.12s, border-color 0.12s;
+  }
+  .album-link:hover {
+    color: var(--mint); border-bottom-color: var(--mint);
+  }
+
+  /* Artist Page */
+  .artist-page-nav {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .artist-hero {
+    background: linear-gradient(135deg, rgba(20, 241, 149, 0.10), rgba(0, 229, 255, 0.06) 48%, var(--surface) 100%);
+    border: 1px solid var(--border-strong); border-radius: 8px;
+    padding: 18px; margin-bottom: 16px;
+    display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;
+  }
+  [data-theme="daylight-studio"] .artist-hero {
+    background: linear-gradient(135deg, rgba(5, 150, 105, 0.08), rgba(2, 132, 199, 0.06) 50%, #FFFFFF 100%);
+  }
+  .artist-hero-img {
+    width: 152px; height: 152px; border-radius: 10px; object-fit: cover; flex-shrink: 0;
+    background: var(--surface-2); border: 1px solid var(--border-strong);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.45);
+  }
+  .artist-hero-main { flex: 1; min-width: 240px; }
+  .artist-hero-name {
+    margin: 2px 0 6px; font-size: 28px; font-weight: 900; letter-spacing: -0.3px; line-height: 1.15;
+  }
+  .artist-bio-box {
+    flex: 0 1 360px; min-width: 240px;
+    background: rgba(9, 10, 16, 0.42); border: 1px solid var(--border);
+    border-radius: 7px; padding: 12px 14px;
+    font-size: 12.5px; line-height: 1.5; color: var(--text-2);
+  }
+  [data-theme="daylight-studio"] .artist-bio-box {
+    background: rgba(242, 245, 250, 0.85);
+  }
+  .artist-section { margin-bottom: 20px; }
+  .artist-section-hdr {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
+  .artist-section-title {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 16px; font-weight: 900; color: var(--text);
+  }
+  .artist-alb-group-hdr {
+    display: flex; align-items: center; gap: 10px; padding: 7px 10px; margin: 12px 0 6px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+  }
+  .artist-alb-group-hdr:first-child { margin-top: 2px; }
+  .artist-alb-group-hdr img { width: 34px; height: 34px; border-radius: 4px; object-fit: cover; flex-shrink: 0; }
+
+  /* Lidarr Search Panel on Artist Page */
+  .lidarr-panel {
+    background: var(--surface); border: 1px solid rgba(0, 229, 255, 0.40); border-radius: 8px;
+    padding: 14px 16px; margin-bottom: 18px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.30);
+  }
+  .lidarr-list { display: flex; flex-direction: column; gap: 7px; max-height: 520px; overflow-y: auto; padding-right: 2px; }
+  .lidarr-row {
+    display: grid; grid-template-columns: 52px minmax(160px, 1fr) auto;
+    align-items: center; gap: 12px; padding: 8px 11px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 6px;
+    transition: border-color 0.12s;
+  }
+  .lidarr-row:hover { border-color: var(--cyan); }
+  .lidarr-row img { width: 52px; height: 52px; border-radius: 5px; object-fit: cover; background: var(--surface-3); }
+
+  /* Track Properties Lightbox */
+  .modal-card.props-wide { max-width: 880px; }
+  .meta-section {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px;
+    padding: 11px 13px; margin-bottom: 10px;
+  }
+  .meta-section-title {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px; font-weight: 900;
+    letter-spacing: 1.1px; text-transform: uppercase; color: var(--cyan); margin-bottom: 8px;
+  }
+  .meta-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 14px;
+  }
+  .meta-kv { min-width: 0; }
+  .meta-k {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9.5px;
+    text-transform: uppercase; letter-spacing: 0.7px; color: var(--text-3); margin-bottom: 2px;
+  }
+  .meta-v {
+    font-size: 12.5px; font-weight: 600; color: var(--text);
+    word-break: break-word; line-height: 1.35;
+  }
+  .meta-v.mono-v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
 </style>
 </head>
 <body>
@@ -688,6 +792,7 @@
   <main class="main-col">
     <!-- TAB 1: LIBRARY BROWSE & PLAY -->
     <section id="tab-library">
+      <div id="libBrowseWrap">
       <div class="toolbar">
         <div class="search-wrap">
           <input id="libSearch" class="search-input" type="search" placeholder="Search tracks, albums, artists... (supports artist:, genre:, tag:, stars:4, -live)" oninput="onLibrarySearchInput()" />
@@ -785,6 +890,10 @@
       <div style="margin-top:12px;text-align:center;">
         <button id="libLoadMore" class="btn btn-dim hidden" onclick="loadMoreLibrary()">Load More</button>
       </div>
+      </div>
+
+      <!-- DEDICATED ARTIST PAGE (linked from any artist name) -->
+      <div id="artistPageView" class="hidden"></div>
     </section>
 
     <!-- TAB 2: AI RADIO DJ MODE -->
@@ -1440,7 +1549,10 @@
     </div>
 
     <div>
-      <div style="font-size:18px;font-weight:900;line-height:1.25;" id="sideTitle">Nothing playing</div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
+        <div style="font-size:18px;font-weight:900;line-height:1.25;min-width:0;flex:1;" id="sideTitle">Nothing playing</div>
+        <button id="sidePropsBtn" class="icon-btn hidden" onclick="if(currentTrackObj)openTrackPropertiesModal(currentTrackObj)" title="Track properties &amp; metadata"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg></button>
+      </div>
       <div style="font-size:13.5px;color:var(--text-2);margin-top:3px;" id="sideArtist">Pick any album, track, or start AI DJ Radio</div>
       <div id="sideStarsWrap" style="margin-top:8px;"></div>
       <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:8px;">
@@ -1556,6 +1668,12 @@ const ICONS = {
   chevDown: `<polyline points="6 9 12 15 18 9"/>`,
   chevUp: `<polyline points="18 15 12 9 6 15"/>`,
   chevRight: `<polyline points="9 18 15 12 9 6"/>`,
+  arrowLeft: `<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>`,
+  info: `<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>`,
+  download: `<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>`,
+  search: `<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>`,
+  disc: `<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>`,
+  music: `<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>`,
   grip: `<circle cx="9" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.3" fill="currentColor" stroke="none"/>`
 };
 function ico(name, extraCls = "") {
@@ -1714,6 +1832,46 @@ window.addEventListener("keydown", primeAudioDecks, { once: true, capture: true 
 function artURL(hash) {
   if (!hash) return "/icon.png";
   return `/api/v1/artwork/${encodeURIComponent(hash)}${PIN ? "?token=" + encodeURIComponent(PIN) : ""}`;
+}
+function artOrigURL(hash) {
+  if (!hash) return "/icon.png";
+  return `/api/v1/artwork/${encodeURIComponent(hash)}?size=orig${PIN ? "&token=" + encodeURIComponent(PIN) : ""}`;
+}
+function fmtBytes(bytes) {
+  const b = Number(bytes || 0);
+  if (!isFinite(b) || b <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let u = 0, v = b;
+  while (v >= 1024 && u < units.length - 1) { v /= 1024; u++; }
+  return `${v >= 100 || u === 0 ? v.toFixed(0) : (v >= 10 ? v.toFixed(1) : v.toFixed(2))} ${units[u]}`;
+}
+function isNavigableArtist(name) {
+  const s = String(name || "").trim().toLowerCase();
+  return !!s && s !== "various artists" && s !== "various" && s !== "unknown artist";
+}
+function renderArtistLinksHTML(rawName) {
+  const raw = String(rawName || "").trim();
+  if (!raw) return "";
+  if (!isNavigableArtist(raw)) return esc(raw);
+  // Split featured/multi-artist credits while keeping band names with "&" intact
+  const re = /(\s+(?:feat\.?|ft\.?|featuring)\s+|;\s+|,\s+)/i;
+  const parts = raw.split(re);
+  if (parts.length <= 1) {
+    const safeArg = esc(raw).replace(/'/g, "\\'");
+    return `<a href="#artist/${encodeURIComponent(raw.toLowerCase())}" class="artist-link" onclick="event.stopPropagation();openArtistPage('${safeArg}');return false;" title="Open artist page: ${esc(raw)}">${esc(raw)}</a>`;
+  }
+  return parts.map((p, idx) => {
+    if (idx % 2 === 1) return esc(p);
+    const clean = p.trim();
+    if (!isNavigableArtist(clean)) return esc(p);
+    const safeArg = esc(clean).replace(/'/g, "\\'");
+    return `<a href="#artist/${encodeURIComponent(clean.toLowerCase())}" class="artist-link" onclick="event.stopPropagation();openArtistPage('${safeArg}');return false;" title="Open artist page: ${esc(clean)}">${esc(p)}</a>`;
+  }).join("");
+}
+function openAlbumByKey(albumKey, titleHint = "") {
+  const key = String(albumKey || "").trim().toLowerCase();
+  if (!key) return;
+  openAlbumModal({ albumKey: key, title: titleHint || albumKey, artist: "", totalDuration: 0, userRating: 0 });
 }
 function streamURL(trackId, transcode = false) {
   const qs = [];
@@ -2197,10 +2355,13 @@ function switchSettingsSubTab(sub) {
   if (sub === "appearance") renderThemeGallery();
 }
 
-function switchTab(tab) {
+function switchTab(tab, keepArtistPage = false) {
   if ((tab === "server" || tab === "settings") && !IS_ADMIN) tab = firstAllowedTab();
   if ((tab === "library" || tab === "dj" || tab === "party") && !hasPerm(tab)) tab = firstAllowedTab();
   currentTab = tab;
+  if (tab === "library" && !keepArtistPage && activeArtistPageKey) {
+    closeArtistPage(false);
+  }
   document.querySelectorAll(".nav-tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
   ["library", "dj", "party", "server", "settings"].forEach(t => document.getElementById("tab-" + t).classList.toggle("hidden", t !== tab));
   if (tab === "dj" && hasPerm("dj")) { ensureDJOptions().then(refreshDJState); }
@@ -2310,6 +2471,7 @@ function appendGroupSection(container, groupKey, containerClass) {
 
 // --- Library Browse ---
 function setLibSubView(view, btn) {
+  if (activeArtistPageKey) closeArtistPage(false);
   libSubView = view;
   libOffset = 0;
   document.querySelectorAll("#libViewChips .chip").forEach(b => b.classList.toggle("active", b.dataset.view === view || b === btn));
@@ -2396,7 +2558,7 @@ async function loadLibrary(append) {
         card.innerHTML = `
           <img class="album-art" loading="lazy" src="${artURL(alb.artworkHash)}" alt="" />
           <div class="album-title" title="${esc(alb.title)}">${esc(alb.title)}</div>
-          <div class="album-sub">${esc(alb.artist)}${yrText} · ${alb.trackCount} tracks</div>
+          <div class="album-sub">${renderArtistLinksHTML(alb.artist)}${yrText} · ${alb.trackCount} tracks</div>
           <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px;">
             ${renderStarsHTML(alb.userRating, "album", alb.albumKey)}
           </div>
@@ -2439,9 +2601,11 @@ async function loadLibrary(append) {
         }
         const card = document.createElement("div");
         card.className = "album-card";
-        card.onclick = () => openArtistModal(art);
+        card.onclick = () => openArtistPage(art.name, art.artistKey);
+        const fallbackArt = artURL(art.artworkHash);
+        const primaryArt = art.imageURL ? esc(art.imageURL) : fallbackArt;
         card.innerHTML = `
-          <img class="album-art" loading="lazy" style="border-radius:50%;" src="${artURL(art.artworkHash)}" alt="" />
+          <img class="album-art" loading="lazy" style="border-radius:50%;" src="${primaryArt}" onerror="this.onerror=null;this.src='${esc(fallbackArt)}'" alt="" />
           <div class="album-title" style="text-align:center;">${esc(art.name)}</div>
           <div class="album-sub" style="text-align:center;">${art.albumCount} albums · ${art.trackCount} tracks</div>
         `;
@@ -2518,7 +2682,7 @@ function renderTrackRow(tr, onPlay) {
         <span style="overflow:hidden;text-overflow:ellipsis;">${esc(tr.title)}</span>
         <span class="badge mint playing-pill">PLAYING</span>
       </div>
-      <div class="track-artist">${esc(tr.artist)} · ${esc(tr.album)}${tr.year ? " · " + tr.year : ""}</div>
+      <div class="track-artist">${renderArtistLinksHTML(tr.artist)} · ${esc(tr.album)}${tr.year ? " · " + tr.year : ""}</div>
     </div>
     <div style="display:flex;align-items:center;gap:6px;" class="track-hide-sm">
       ${renderStarsHTML(tr.userRating, "track", tr.id)}
@@ -2531,9 +2695,10 @@ function renderTrackRow(tr, onPlay) {
       <button class="btn btn-dim btn-sm" title="Add to Browser Queue">+ Q</button>
       <button class="btn btn-amber btn-sm" title="Add to AI Radio DJ">+ DJ</button>
       <button class="btn btn-mag btn-sm" title="Request in Party Mode">+ Party</button>
+      <button class="icon-btn" title="Track properties &amp; metadata">${ico("info")}</button>
     </div>
   `;
-  const [bPlay, bQ, bDJ, bParty] = row.querySelectorAll(".row-actions button");
+  const [bPlay, bQ, bDJ, bParty, bProps] = row.querySelectorAll(".row-actions button");
   bPlay.onclick = e => {
     e.stopPropagation();
     if (currentTrackObj && currentTrackObj.id === tr.id) { togglePlay(); }
@@ -2542,6 +2707,7 @@ function renderTrackRow(tr, onPlay) {
   bQ.onclick = e => { e.stopPropagation(); enqueueTrack(tr); };
   bDJ.onclick = e => { e.stopPropagation(); addTrackToDJ(tr.id, tr.title); };
   bParty.onclick = e => { e.stopPropagation(); addTrackToParty(tr.id, tr.title); };
+  bProps.onclick = e => { e.stopPropagation(); openTrackPropertiesModal(tr); };
   row.ondblclick = onPlay;
   return row;
 }
@@ -2590,16 +2756,23 @@ async function openAlbumModal(alb) {
   const res = await fetch(`/api/v2/web/album?key=${encodeURIComponent(alb.albumKey)}`, { headers: HEADERS });
   const data = await res.json();
   const tracks = data.tracks || [];
+  const meta = data.album || {};
+  const title = alb.title || meta.title || alb.albumKey;
+  const artist = alb.artist || meta.artist || tracks[0]?.albumArtist || tracks[0]?.artist || "";
+  const year = alb.year || meta.year || tracks[0]?.year || null;
+  const artHash = alb.artworkHash || meta.artworkHash || tracks[0]?.artworkHash || null;
+  const totalDur = alb.totalDuration || meta.totalDuration || tracks.reduce((s, t) => s + Number(t.duration || 0), 0);
   const body = document.getElementById("modalBody");
+  body.classList.remove("props-wide");
   body.innerHTML = `
     <div style="position:relative;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-bottom:16px;">
       <button class="btn btn-dim btn-sm" onclick="closeModal()" style="position:absolute;top:0;right:0;">Close</button>
-      <img src="${artURL(alb.artworkHash)}" style="width:150px;height:150px;border-radius:8px;object-fit:cover;" />
+      <img src="${artURL(artHash)}" style="width:150px;height:150px;border-radius:8px;object-fit:cover;" />
       <div style="flex:1;min-width:220px;padding-right:68px;">
         <div class="card-title" style="margin-bottom:4px;">ALBUM${data.editorial?.label ? " · " + esc(data.editorial.label) : ""}</div>
-        <h2 style="margin:0 0 6px;">${esc(alb.title)}</h2>
+        <h2 style="margin:0 0 6px;">${esc(title)}</h2>
         <div style="margin-bottom:8px;">${renderStarsHTML(data.userRating ?? alb.userRating, "album", alb.albumKey)}</div>
-        <div class="mono" style="margin-bottom:10px;">${esc(alb.artist)}${alb.year ? " · " + alb.year : ""}${data.editorial?.releaseDate ? " (" + esc(data.editorial.releaseDate) + ")" : ""} · ${tracks.length} tracks · ${fmtDur(alb.totalDuration)}</div>
+        <div class="mono" style="margin-bottom:10px;">${renderArtistLinksHTML(artist)}${year ? " · " + year : ""}${data.editorial?.releaseDate ? " (" + esc(data.editorial.releaseDate) + ")" : ""} · ${tracks.length} tracks · ${fmtDur(totalDur)}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-mint" id="mPlayAlb">${ico("play")} Play Album</button>
           <button class="btn btn-dim" id="mQueueAlb">+ Queue</button>
@@ -2619,36 +2792,783 @@ async function openAlbumModal(alb) {
   syncPlayingRows();
 }
 
-async function openArtistModal(art) {
-  const res = await fetch(`/api/v2/web/artist?key=${encodeURIComponent(art.artistKey)}`, { headers: HEADERS });
-  const data = await res.json();
-  const tracks = data.tracks || [];
-  const body = document.getElementById("modalBody");
-  body.innerHTML = `
-    <div style="position:relative;display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:14px;flex-wrap:wrap;padding-right:68px;">
-      <button class="btn btn-dim btn-sm" onclick="closeModal()" style="position:absolute;top:0;right:0;">Close</button>
-      <div style="display:flex;gap:14px;align-items:center;flex:1;min-width:220px;">
-        <img src="${data.editorial?.imageURL ? esc(data.editorial.imageURL) : artURL(art.artworkHash)}" style="width:78px;height:78px;border-radius:50%;object-fit:cover;border:1px solid var(--border-strong);" />
-        <div>
-          <div class="card-title" style="margin-bottom:4px;">ARTIST</div>
-          <h2 style="margin:0;">${esc(art.name)}</h2>
-          <div class="mono">${art.albumCount} albums · ${tracks.length} tracks${data.editorial?.fans ? " · " + data.editorial.fans.toLocaleString() + " fans" : ""}</div>
+// --- Dedicated Artist Page + Inline Lidarr Search ---
+let activeArtistPageKey = "";
+let activeArtistData = null;
+let artistPageFetchGen = 0;
+let artistLidarrOpen = false;
+let artistLidarrMode = "albums"; // "albums" | "tracks" | "queue"
+let artistLidarrQuery = "";
+let artistLidarrMissingOnly = false;
+let artistLidarrLoading = false;
+let artistLidarrError = "";
+let artistLidarrAlbums = [];
+let artistLidarrTracks = [];
+let artistLidarrQueue = [];
+let artistLidarrOrderedKeys = new Set();
+
+function openArtistModal(art) {
+  if (!art) return;
+  openArtistPage(art.name || art.artistKey, art.artistKey);
+}
+
+function closeArtistPage(updateHash = true) {
+  activeArtistPageKey = "";
+  activeArtistData = null;
+  artistLidarrOpen = false;
+  document.getElementById("artistPageView")?.classList.add("hidden");
+  document.getElementById("libBrowseWrap")?.classList.remove("hidden");
+  if (updateHash && location.hash.startsWith("#artist/")) {
+    try { history.replaceState(null, "", location.pathname + location.search); } catch (e) { location.hash = ""; }
+  }
+}
+
+async function openArtistPage(artistName, artistKeyOpt = "", opts = {}) {
+  const cleanName = String(artistName || artistKeyOpt || "").trim();
+  const key = String(artistKeyOpt || cleanName).trim().toLowerCase();
+  if (!key) return;
+
+  closeModal();
+  if (currentTab !== "library") {
+    switchTab("library", true);
+  }
+  activeArtistPageKey = key;
+  artistLidarrOpen = !!opts.openLidarr;
+  artistLidarrMode = opts.lidarrMode || "albums";
+  artistLidarrQuery = cleanName;
+  artistLidarrError = "";
+  artistLidarrAlbums = [];
+  artistLidarrTracks = [];
+  artistLidarrQueue = [];
+
+  if (!opts.skipHash) {
+    const wantHash = "#artist/" + encodeURIComponent(key);
+    if (location.hash !== wantHash) {
+      try { history.pushState({ artistKey: key, artistName: cleanName }, "", wantHash); } catch (e) { location.hash = wantHash; }
+    }
+  }
+
+  const browseWrap = document.getElementById("libBrowseWrap");
+  const pageEl = document.getElementById("artistPageView");
+  browseWrap?.classList.add("hidden");
+  pageEl.classList.remove("hidden");
+  pageEl.innerHTML = `
+    <div class="artist-page-nav">
+      <button class="btn btn-dim btn-sm" onclick="closeArtistPage(true)">${ico("arrowLeft")} Back to Library</button>
+      <span class="mono" style="color:var(--text-3);">Library / Artists / ${esc(cleanName)}</span>
+    </div>
+    <div class="card mono">Loading ${esc(cleanName)}…</div>
+  `;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+
+  const myGen = ++artistPageFetchGen;
+  try {
+    const res = await fetch(`/api/v2/web/artist?key=${encodeURIComponent(key)}&name=${encodeURIComponent(cleanName)}`, { headers: HEADERS });
+    const data = await res.json();
+    if (myGen !== artistPageFetchGen || activeArtistPageKey !== key) return;
+    if (!res.ok) {
+      pageEl.innerHTML = `
+        <div class="artist-page-nav">
+          <button class="btn btn-dim btn-sm" onclick="closeArtistPage(true)">${ico("arrowLeft")} Back to Library</button>
         </div>
+        <div class="card mono" style="color:var(--coral);">${esc(data.error || "Could not load artist")}</div>
+      `;
+      return;
+    }
+    activeArtistData = data;
+    artistLidarrQuery = data.name || cleanName;
+    renderArtistPage(data);
+    if (artistLidarrOpen && IS_ADMIN) {
+      runArtistLidarrSearch();
+    }
+  } catch (e) {
+    if (myGen !== artistPageFetchGen) return;
+    pageEl.innerHTML = `
+      <div class="artist-page-nav">
+        <button class="btn btn-dim btn-sm" onclick="closeArtistPage(true)">${ico("arrowLeft")} Back to Library</button>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-mint" id="mPlayArt">${ico("play")} Play All</button>
-        <button class="btn btn-amber" id="mDJArt">${ico("mic")} Artist DJ Radio</button>
+      <div class="card mono" style="color:var(--coral);">Error loading artist page: ${esc(e?.message || e)}</div>
+    `;
+  }
+}
+
+function renderArtistPage(data) {
+  const pageEl = document.getElementById("artistPageView");
+  if (!pageEl || !data) return;
+
+  const tracks = data.tracks || [];
+  const albums = data.albums || [];
+  const popular = data.popularTracks || [];
+  const appearsOn = data.appearsOnTracks || [];
+  const ed = data.editorial || null;
+  const fallbackArt = artURL(data.artworkHash);
+  const heroArt = ed?.imageURL ? esc(ed.imageURL) : fallbackArt;
+  const genresHTML = (data.genres || []).map(g => `<span class="badge">${esc(g)}</span>`).join(" ");
+
+  const statsParts = [
+    `${albums.length} album${albums.length === 1 ? "" : "s"}`,
+    `${tracks.length} track${tracks.length === 1 ? "" : "s"}`,
+    data.totalDuration ? fmtDur(data.totalDuration) : "",
+    data.totalBytes ? fmtBytes(data.totalBytes) : ""
+  ].filter(Boolean);
+
+  const fanBadge = ed?.fans ? `<span class="badge cyan">${Number(ed.fans).toLocaleString()} fans</span>` : "";
+  const relBadge = ed?.albumCount ? `<span class="badge dim">${Number(ed.albumCount).toLocaleString()} online releases</span>` : "";
+
+  pageEl.innerHTML = `
+    <div class="artist-page-nav">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-dim btn-sm" onclick="closeArtistPage(true)">${ico("arrowLeft")} Back to Library</button>
+        <span class="mono" style="color:var(--text-3);">Library / Artists / <strong style="color:var(--text);">${esc(data.name)}</strong></span>
       </div>
     </div>
-    ${data.editorial?.summary ? `<p style="font-size:12.5px;color:var(--text-2);line-height:1.5;margin:0 0 14px;">${esc(data.editorial.summary)}</p>` : ""}
-    <div class="track-list" id="mTrackList"></div>
+
+    <div class="artist-hero">
+      <img class="artist-hero-img" src="${heroArt}" onerror="this.onerror=null;this.src='${esc(fallbackArt)}'" alt="${esc(data.name)}" />
+      <div class="artist-hero-main">
+        <div class="card-title" style="margin-bottom:3px;color:var(--mint);">ARTIST</div>
+        <h1 class="artist-hero-name">${esc(data.name)}</h1>
+        <div class="mono" style="margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span>${esc(statsParts.join(" · "))}</span>
+          ${fanBadge}
+          ${relBadge}
+        </div>
+        ${genresHTML ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;">${genresHTML}</div>` : ""}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-mint" id="artPlayAllBtn" ${tracks.length ? "" : "disabled"}>${ico("play")} Play All</button>
+          <button class="btn btn-dim" id="artQueueAllBtn" ${tracks.length ? "" : "disabled"}>+ Queue</button>
+          ${IS_ADMIN && hasPerm("dj") ? `<button class="btn btn-amber" id="artDJBtn" ${tracks.length ? "" : "disabled"}>${ico("mic")} Artist DJ Radio</button>` : ""}
+          ${IS_ADMIN ? `<button class="btn btn-cyan" id="artLidarrBtn" onclick="toggleArtistLidarr()" title="Search Lidarr for albums &amp; tracks by ${esc(data.name)} to order &amp; download">${ico("download")} Search Lidarr</button>` : ""}
+        </div>
+      </div>
+      ${ed?.summary ? `
+        <div class="artist-bio-box">
+          <div class="card-title" style="margin-bottom:5px;color:var(--mint);">ABOUT ${esc(data.name).toUpperCase()}</div>
+          <div>${esc(ed.summary)}</div>
+        </div>
+      ` : ""}
+    </div>
+
+    <div id="artistLidarrPanel" class="lidarr-panel ${artistLidarrOpen ? "" : "hidden"}"></div>
+    <div id="artistPopularSection"></div>
+    <div id="artistAlbumsSection"></div>
+    <div id="artistTracksSection"></div>
   `;
-  document.getElementById("mPlayArt").onclick = () => { startQueue(tracks, 0); };
-  document.getElementById("mDJArt").onclick = () => { closeModal(); createDJSession("artist", art.artistKey); };
-  const tl = document.getElementById("mTrackList");
-  tracks.forEach((tr, i) => tl.appendChild(renderTrackRow(tr, () => startQueue(tracks, i))));
-  document.getElementById("modalBackdrop").classList.remove("hidden");
+
+  document.getElementById("artPlayAllBtn")?.addEventListener("click", () => { if (tracks.length) startQueue(tracks, 0); });
+  document.getElementById("artQueueAllBtn")?.addEventListener("click", () => {
+    if (!tracks.length) return;
+    playQueue.push(...tracks);
+    updateQueueCount();
+    renderSidebarQueue();
+    showToast(`Queued ${tracks.length} tracks by ${data.name}`);
+  });
+  document.getElementById("artDJBtn")?.addEventListener("click", () => {
+    createDJSession("artist", data.artistKey);
+  });
+
+  if (artistLidarrOpen && IS_ADMIN) {
+    renderArtistLidarrPanel();
+  }
+
+  // 1. Popular / Top-Rated Tracks
+  const popEl = document.getElementById("artistPopularSection");
+  if (popular.length) {
+    popEl.className = "artist-section";
+    popEl.innerHTML = `
+      <div class="artist-section-hdr">
+        <div class="artist-section-title">${ico("music")} Popular &amp; Top Rated <span class="badge cyan">${popular.length}</span></div>
+      </div>
+      <div class="track-list" id="artistPopList"></div>
+    `;
+    const list = document.getElementById("artistPopList");
+    popular.forEach((tr, i) => list.appendChild(renderTrackRow(tr, () => startQueue(popular, i))));
+  }
+
+  // 2. Albums Grid
+  const albSec = document.getElementById("artistAlbumsSection");
+  if (albums.length) {
+    albSec.className = "artist-section";
+    albSec.innerHTML = `
+      <div class="artist-section-hdr">
+        <div class="artist-section-title">${ico("disc")} Albums in Library <span class="badge mint">${albums.length}</span></div>
+      </div>
+      <div class="album-grid" id="artistAlbumGrid"></div>
+    `;
+    const grid = document.getElementById("artistAlbumGrid");
+    for (const alb of albums) {
+      const card = document.createElement("div");
+      card.className = "album-card";
+      card.onclick = () => openAlbumModal(alb);
+      const yrText = alb.year ? ` · ${alb.year}` : "";
+      card.innerHTML = `
+        <img class="album-art" loading="lazy" src="${artURL(alb.artworkHash)}" alt="" />
+        <div class="album-title" title="${esc(alb.title)}">${esc(alb.title)}</div>
+        <div class="album-sub">${esc(alb.year ? String(alb.year) : "Unknown year")} · ${alb.trackCount} track${alb.trackCount === 1 ? "" : "s"} · ${fmtDur(alb.totalDuration)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px;">
+          ${renderStarsHTML(alb.userRating, "album", alb.albumKey)}
+        </div>
+      `;
+      grid.appendChild(card);
+    }
+  }
+
+  // 3. All Tracks (grouped cleanly by album)
+  const trSec = document.getElementById("artistTracksSection");
+  trSec.className = "artist-section";
+  const collabBadge = appearsOn.length ? `<span class="badge cyan">incl. ${appearsOn.length} collab${appearsOn.length === 1 ? "" : "s"}</span>` : "";
+  trSec.innerHTML = `
+    <div class="artist-section-hdr">
+      <div class="artist-section-title">${ico("music")} All Tracks <span class="badge dim">${tracks.length}</span> ${collabBadge}</div>
+    </div>
+    <div id="artistGroupedTracks"></div>
+  `;
+  const groupedBox = document.getElementById("artistGroupedTracks");
+  if (!tracks.length) {
+    groupedBox.innerHTML = `<div class="card mono">No tracks by ${esc(data.name)} are in your local library yet.${IS_ADMIN ? ' Click <strong>Search Lidarr</strong> above to find and order their albums.' : ''}</div>`;
+  } else {
+    const ownKeys = new Set(albums.map(a => a.albumKey));
+    const albByKey = new Map(albums.map(a => [a.albumKey, a]));
+    const groupOrder = [];
+    const groupMap = new Map();
+    tracks.forEach((tr, flatIdx) => {
+      const ak = tr.albumKey || (tr.album || "").toLowerCase();
+      if (!groupMap.has(ak)) {
+        groupOrder.push(ak);
+        groupMap.set(ak, []);
+      }
+      groupMap.get(ak).push({ tr, flatIdx });
+    });
+
+    for (const ak of groupOrder) {
+      const entries = groupMap.get(ak);
+      const first = entries[0].tr;
+      const albObj = albByKey.get(ak) || {
+        albumKey: ak,
+        title: first.album,
+        artist: first.albumArtist || first.artist,
+        year: first.year,
+        artworkHash: first.artworkHash,
+        totalDuration: entries.reduce((s, e) => s + Number(e.tr.duration || 0), 0),
+        userRating: 0
+      };
+      const isCollab = !ownKeys.has(ak);
+      const grpHdr = document.createElement("div");
+      grpHdr.className = "artist-alb-group-hdr";
+      grpHdr.innerHTML = `
+        <img src="${artURL(albObj.artworkHash)}" alt="" />
+        <div style="min-width:0;flex:1;">
+          <div style="font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <a href="#" class="album-link" onclick="event.preventDefault();openAlbumByKey('${esc(ak).replace(/'/g, "\\'")}','${esc(albObj.title).replace(/'/g, "\\'")}')">${esc(albObj.title)}</a>
+            ${albObj.year ? `<span class="mono" style="font-size:11px;color:var(--text-3);">${albObj.year}</span>` : ""}
+            ${isCollab ? `<span class="badge cyan" style="font-size:9px;">APPEARS ON</span>` : ""}
+          </div>
+        </div>
+        <button class="btn btn-dim btn-sm" title="Play this album's tracks">${ico("play")} Play (${entries.length})</button>
+      `;
+      grpHdr.querySelector("button").onclick = () => startQueue(entries.map(e => e.tr), 0);
+      groupedBox.appendChild(grpHdr);
+
+      const list = document.createElement("div");
+      list.className = "track-list";
+      entries.forEach(({ tr, flatIdx }) => {
+        list.appendChild(renderTrackRow(tr, () => startQueue(tracks, flatIdx)));
+      });
+      groupedBox.appendChild(list);
+    }
+  }
   syncPlayingRows();
+}
+
+function toggleArtistLidarr() {
+  artistLidarrOpen = !artistLidarrOpen;
+  const panel = document.getElementById("artistLidarrPanel");
+  if (!panel) return;
+  panel.classList.toggle("hidden", !artistLidarrOpen);
+  if (artistLidarrOpen) {
+    renderArtistLidarrPanel();
+    panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    if (artistLidarrMode === "queue") {
+      refreshArtistLidarrQueue();
+    } else if ((artistLidarrMode === "albums" && !artistLidarrAlbums.length) || (artistLidarrMode === "tracks" && !artistLidarrTracks.length)) {
+      runArtistLidarrSearch();
+    }
+  }
+}
+
+function switchArtistLidarrMode(mode) {
+  artistLidarrMode = mode;
+  renderArtistLidarrPanel();
+  if (mode === "queue") {
+    refreshArtistLidarrQueue();
+  } else {
+    runArtistLidarrSearch();
+  }
+}
+
+function renderArtistLidarrPanel() {
+  const panel = document.getElementById("artistLidarrPanel");
+  if (!panel) return;
+  const configured = !!activeArtistData?.lidarrConfigured;
+  const qCount = artistLidarrQueue.length;
+
+  panel.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <div class="card-title" style="margin:0;color:var(--cyan);">SEARCH LIDARR · ORDER ALBUMS &amp; TRACKS</div>
+        ${configured ? `<span class="badge mint">CONNECTED</span>` : `<span class="badge amber">SETUP NEEDED</span>`}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div class="chip-group">
+          <button type="button" class="chip ${artistLidarrMode === "albums" ? "active" : ""}" onclick="switchArtistLidarrMode('albums')">Albums</button>
+          <button type="button" class="chip ${artistLidarrMode === "tracks" ? "active" : ""}" onclick="switchArtistLidarrMode('tracks')">Tracks</button>
+          <button type="button" class="chip ${artistLidarrMode === "queue" ? "active" : ""}" onclick="switchArtistLidarrMode('queue')">Queue${qCount ? ` (${qCount})` : ""}</button>
+        </div>
+        <button class="btn btn-dim btn-sm" onclick="toggleArtistLidarr()">Hide</button>
+      </div>
+    </div>
+
+    ${!configured ? `
+      <div style="background:rgba(255,148,46,0.10);border:1px solid rgba(255,148,46,0.42);border-radius:6px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+        <div style="font-size:12.5px;color:var(--text-2);line-height:1.45;">
+          <strong style="color:var(--amber);">Lidarr is not configured yet.</strong> Add your Lidarr URL &amp; API Key in Settings to search discographies and order lossless downloads directly into your NAS.
+        </div>
+        <button class="btn btn-cyan btn-sm" onclick="switchTab('settings');switchSettingsSubTab('server')">Open Lidarr Settings</button>
+      </div>
+    ` : `
+      ${artistLidarrMode !== "queue" ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;">
+          <input id="artistLidarrInput" class="search-input" style="flex:1;min-width:200px;"
+            value="${esc(artistLidarrQuery)}"
+            placeholder="${artistLidarrMode === "tracks" ? "Search tracks by artist, song, or album..." : "Search Lidarr albums & artist discography..."}"
+            oninput="artistLidarrQuery=this.value"
+            onkeydown="if(event.key==='Enter'){event.preventDefault();runArtistLidarrSearch();}" />
+          <label style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-2);cursor:pointer;white-space:nowrap;">
+            <input type="checkbox" ${artistLidarrMissingOnly ? "checked" : ""} onchange="artistLidarrMissingOnly=this.checked;renderArtistLidarrResults();" />
+            Missing only
+          </label>
+          <button class="btn btn-mint btn-sm" id="artistLidarrGoBtn" onclick="runArtistLidarrSearch()" ${artistLidarrLoading ? "disabled" : ""}>${ico("search")} ${artistLidarrLoading ? "Searching…" : "Search"}</button>
+        </div>
+      ` : `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span class="mono" style="color:var(--text-2);">Live Lidarr download &amp; import queue</span>
+          <button class="btn btn-dim btn-sm" onclick="refreshArtistLidarrQueue()">${ico("refresh")} Refresh Queue</button>
+        </div>
+      `}
+      <div id="artistLidarrBody"></div>
+    `}
+  `;
+  if (configured) renderArtistLidarrResults();
+}
+
+async function runArtistLidarrSearch() {
+  if (!activeArtistData?.lidarrConfigured) return;
+  const q = (document.getElementById("artistLidarrInput")?.value ?? artistLidarrQuery).trim();
+  artistLidarrQuery = q;
+  if (!q) return;
+  artistLidarrLoading = true;
+  artistLidarrError = "";
+  renderArtistLidarrPanel();
+
+  try {
+    const res = await fetch(`/api/v2/lidarr/search?mode=${encodeURIComponent(artistLidarrMode)}&q=${encodeURIComponent(q)}`, { headers: HEADERS });
+    const data = await res.json();
+    if (!res.ok) {
+      artistLidarrError = data.error || "Lidarr search failed";
+    } else if (artistLidarrMode === "tracks") {
+      artistLidarrTracks = data.tracks || [];
+    } else {
+      artistLidarrAlbums = data.albums || [];
+    }
+  } catch (e) {
+    artistLidarrError = e?.message || "Could not reach server";
+  } finally {
+    artistLidarrLoading = false;
+    renderArtistLidarrPanel();
+  }
+}
+
+async function refreshArtistLidarrQueue() {
+  if (!activeArtistData?.lidarrConfigured) return;
+  artistLidarrLoading = true;
+  artistLidarrError = "";
+  renderArtistLidarrPanel();
+  try {
+    const res = await fetch("/api/v2/lidarr/queue", { headers: HEADERS });
+    const data = await res.json();
+    if (!res.ok) artistLidarrError = data.error || "Could not load Lidarr queue";
+    else artistLidarrQueue = data.items || [];
+  } catch (e) {
+    artistLidarrError = e?.message || "Could not reach Lidarr queue";
+  } finally {
+    artistLidarrLoading = false;
+    renderArtistLidarrPanel();
+  }
+}
+
+function renderArtistLidarrResults() {
+  const body = document.getElementById("artistLidarrBody");
+  if (!body) return;
+  if (artistLidarrLoading) {
+    body.innerHTML = `<div class="mono" style="padding:12px 0;color:var(--cyan);">Searching ${artistLidarrMode === "tracks" ? "catalog for tracks &amp; parent albums" : (artistLidarrMode === "queue" ? "Lidarr queue" : "Lidarr &amp; discography metadata")}…</div>`;
+    return;
+  }
+  if (artistLidarrError) {
+    body.innerHTML = `<div class="mono" style="color:var(--coral);padding:8px 0;">${esc(artistLidarrError)}</div>`;
+    return;
+  }
+
+  if (artistLidarrMode === "queue") {
+    if (!artistLidarrQueue.length) {
+      body.innerHTML = `<div class="mono" style="color:var(--text-3);padding:10px 0;">Lidarr download queue is currently empty.</div>`;
+      return;
+    }
+    body.innerHTML = `<div class="lidarr-list">` + artistLidarrQueue.map(it => {
+      const pct = Math.round((it.progress || 0) * 100);
+      const badgeCls = it.phase === "DOWNLOADING" ? "mint" : (it.phase === "WARNING" || it.phase === "FAILED" ? "amber" : "");
+      return `
+        <div class="lidarr-row" style="grid-template-columns:1fr auto;">
+          <div style="min-width:0;">
+            <div style="font-weight:800;font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+              <span>${esc(it.albumTitle || it.title)}</span>
+              <span class="badge ${badgeCls}">${esc(it.phase || it.status)}</span>
+              ${it.qualityName ? `<span class="badge dim">${esc(it.qualityName)}</span>` : ""}
+            </div>
+            <div class="mono" style="font-size:11px;margin-top:3px;">
+              ${esc(it.artistName || "")}${it.timeleft ? ` · ETA ${esc(it.timeleft)}` : ""}${it.downloadClient ? ` · ${esc(it.downloadClient)}` : ""}
+            </div>
+            ${it.errorMessage ? `<div class="mono" style="font-size:11px;color:var(--coral);margin-top:2px;">${esc(it.errorMessage)}</div>` : ""}
+            <div class="progress-track" style="margin-top:5px;"><div class="progress-fill" style="width:${pct}%;"></div></div>
+          </div>
+          <span class="mono" style="font-weight:800;color:var(--mint);">${pct}%</span>
+        </div>
+      `;
+    }).join("") + `</div>`;
+    return;
+  }
+
+  if (artistLidarrMode === "tracks") {
+    const list = artistLidarrMissingOnly ? artistLidarrTracks.filter(t => !t.inEchoLibrary) : artistLidarrTracks;
+    if (!list.length) {
+      body.innerHTML = `<div class="mono" style="color:var(--text-3);padding:10px 0;">${artistLidarrMissingOnly && artistLidarrTracks.length ? "All found tracks are already in your library!" : "No track matches found. Try another search term."}</div>`;
+      return;
+    }
+    const wrap = document.createElement("div");
+    wrap.className = "lidarr-list";
+    list.forEach((tr, idx) => {
+      const orderKey = `track:${(tr.artistName || "").toLowerCase()}::${(tr.albumTitle || "").toLowerCase()}`;
+      const ordered = artistLidarrOrderedKeys.has(orderKey);
+      const row = document.createElement("div");
+      row.className = "lidarr-row";
+      row.innerHTML = `
+        <img src="${tr.coverURL ? esc(tr.coverURL) : "/icon.png"}" onerror="this.onerror=null;this.src='/icon.png'" alt="" />
+        <div style="min-width:0;">
+          <div style="font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span>${esc(tr.title)}</span>
+            ${tr.inEchoLibrary ? `<span class="badge mint">IN LIBRARY</span>` : ""}
+            ${tr.popularity ? `<span class="badge amber">POP ${tr.popularity}</span>` : ""}
+          </div>
+          <div class="mono" style="font-size:11.5px;margin-top:2px;">
+            ${esc(tr.artistName)} · Album: <strong style="color:var(--text);">${esc(tr.albumTitle || "Single")}</strong>${tr.duration ? " · " + fmtDur(tr.duration) : ""}
+          </div>
+        </div>
+        <div>
+          <button class="btn ${ordered ? "btn-dim" : "btn-mint"} btn-sm" ${ordered || !tr.albumTitle ? "disabled" : ""}>
+            ${ordered ? "Ordered ✓" : `${ico("download")} Order Album`}
+          </button>
+        </div>
+      `;
+      const btn = row.querySelector("button");
+      if (btn && !ordered && tr.albumTitle) {
+        btn.onclick = () => orderLidarrAlbumFromUI({
+          title: tr.albumTitle,
+          artistName: tr.artistName
+        }, orderKey, btn);
+      }
+      wrap.appendChild(row);
+    });
+    body.innerHTML = "";
+    body.appendChild(wrap);
+    return;
+  }
+
+  // Albums mode
+  const list = artistLidarrMissingOnly ? artistLidarrAlbums.filter(a => !a.inEchoLibrary && !a.isDownloaded) : artistLidarrAlbums;
+  if (!list.length) {
+    body.innerHTML = `<div class="mono" style="color:var(--text-3);padding:10px 0;">${artistLidarrMissingOnly && artistLidarrAlbums.length ? "You already have all matching albums in your library!" : "No album matches found in Lidarr."}</div>`;
+    return;
+  }
+  const wrap = document.createElement("div");
+  wrap.className = "lidarr-list";
+  list.forEach(alb => {
+    const orderKey = `alb:${alb.foreignAlbumId || (alb.artistName + "::" + alb.title).toLowerCase()}`;
+    const ordered = artistLidarrOrderedKeys.has(orderKey);
+    const row = document.createElement("div");
+    row.className = "lidarr-row";
+    const lidarrBadge = alb.isDownloaded
+      ? `<span class="badge mint">DOWNLOADED</span>`
+      : (alb.isInLidarr ? `<span class="badge">IN LIDARR${alb.trackCount ? ` (${alb.trackFileCount}/${alb.trackCount})` : ""}</span>` : "");
+    const btnLabel = ordered
+      ? "Ordered ✓"
+      : (alb.isInLidarr ? `${ico("search")} Search in Lidarr` : `${ico("download")} Order Album`);
+    const btnCls = ordered ? "btn-dim" : (alb.isInLidarr ? "btn-cyan" : "btn-mint");
+    row.innerHTML = `
+      <img src="${alb.coverURL ? esc(alb.coverURL) : "/icon.png"}" onerror="this.onerror=null;this.src='/icon.png'" alt="" />
+      <div style="min-width:0;">
+        <div style="font-weight:800;font-size:13.5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span>${esc(alb.title)}</span>
+          ${alb.albumType ? `<span class="badge dim">${esc(alb.albumType)}</span>` : ""}
+          ${alb.inEchoLibrary ? `<span class="badge mint">IN LIBRARY</span>` : ""}
+          ${lidarrBadge}
+        </div>
+        <div class="mono" style="font-size:11.5px;margin-top:2px;">
+          ${esc(alb.artistName)}${alb.releaseYear ? " · " + alb.releaseYear : ""}
+        </div>
+      </div>
+      <div>
+        <button class="btn ${btnCls} btn-sm" ${ordered ? "disabled" : ""}>${btnLabel}</button>
+      </div>
+    `;
+    const btn = row.querySelector("button");
+    if (btn && !ordered) {
+      btn.onclick = () => orderLidarrAlbumFromUI({
+        lidarrId: alb.lidarrId || 0,
+        foreignAlbumId: alb.foreignAlbumId || "",
+        title: alb.title,
+        artistName: alb.artistName,
+        foreignArtistId: alb.foreignArtistId || "",
+        rawLookup: alb.rawLookup || undefined
+      }, orderKey, btn);
+    }
+    wrap.appendChild(row);
+  });
+  body.innerHTML = "";
+  body.appendChild(wrap);
+}
+
+async function orderLidarrAlbumFromUI(payload, orderKey, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = "Ordering…"; }
+  try {
+    const res = await fetch("/api/v2/lidarr/order-album", {
+      method: "POST",
+      headers: { ...HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || "Could not order album in Lidarr");
+      if (btn) { btn.disabled = false; btn.innerHTML = `${ico("download")} Order Album`; }
+      return;
+    }
+    artistLidarrOrderedKeys.add(orderKey);
+    if (btn) { btn.className = "btn btn-dim btn-sm"; btn.textContent = "Ordered ✓"; }
+    showToast(data.result?.message || `Ordered "${payload.title}" in Lidarr!`);
+  } catch (e) {
+    showToast("Lidarr order failed: " + (e?.message || e));
+    if (btn) { btn.disabled = false; btn.innerHTML = `${ico("download")} Order Album`; }
+  }
+}
+
+// --- Track Properties Lightbox (All Metadata) ---
+async function openTrackPropertiesModal(trackOrId) {
+  const trackId = typeof trackOrId === "string" ? trackOrId : (trackOrId?.id || "");
+  if (!trackId) return;
+  const fallback = typeof trackOrId === "object" ? trackOrId : null;
+
+  const body = document.getElementById("modalBody");
+  body.classList.add("props-wide");
+  body.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div class="card-title" style="margin:0;">TRACK PROPERTIES &amp; METADATA</div>
+      <button class="btn btn-dim btn-sm" onclick="closeModal()">Close</button>
+    </div>
+    <div class="mono">Loading full metadata…</div>
+  `;
+  document.getElementById("modalBackdrop").classList.remove("hidden");
+
+  try {
+    const res = await fetch(`/api/v2/web/track?id=${encodeURIComponent(trackId)}`, { headers: HEADERS });
+    const data = await res.json();
+    if (!res.ok) {
+      body.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="card-title" style="margin:0;">TRACK PROPERTIES</div>
+          <button class="btn btn-dim btn-sm" onclick="closeModal()">Close</button>
+        </div>
+        <div class="mono" style="color:var(--coral);">${esc(data.error || "Track not found")}</div>
+      `;
+      return;
+    }
+
+    const tr = data.track || fallback || {};
+    const rec = data.record || {};
+    const an = data.analysis || null;
+    const st = data.stats || null;
+    const albEd = data.albumEditorial || null;
+    const artEd = data.artistEditorial || null;
+
+    const kv = (label, val, isMono = false) => {
+      if (val === null || val === undefined || val === "") return "";
+      return `<div class="meta-kv"><div class="meta-k">${esc(label)}</div><div class="meta-v${isMono ? " mono-v" : ""}">${val}</div></div>`;
+    };
+    const fmtDate = (iso) => {
+      if (!iso) return "";
+      const d = new Date(iso);
+      return isNaN(d.getTime()) ? esc(iso) : esc(d.toLocaleString());
+    };
+
+    const qual = [tr.format, tr.formatDetail].filter(Boolean).join(" ");
+    const origArt = artOrigURL(tr.artworkHash);
+    const thumbArt = artURL(tr.artworkHash);
+    const tagsHTML = (tr.tags && tr.tags.length)
+      ? tr.tags.map(t => `<span class="badge">${esc(t)}</span>`).join(" ")
+      : "";
+    const edGenresHTML = (albEd?.genres && albEd.genres.length)
+      ? albEd.genres.map(g => `<span class="badge cyan">${esc(g)}</span>`).join(" ")
+      : "";
+
+    const audioItems = [
+      kv("Format", esc(tr.format || rec.format || "")),
+      kv("Extension", esc(rec.fileExtension || ""), true),
+      kv("Bit Depth", rec.bitDepth ? `${rec.bitDepth}-bit` : "", true),
+      kv("Sample Rate", rec.sampleRate ? `${(rec.sampleRate / 1000).toFixed(rec.sampleRate % 1000 === 0 ? 0 : 1)} kHz (${rec.sampleRate.toLocaleString()} Hz)` : "", true),
+      kv("Bitrate", rec.bitrate ? `${rec.bitrate} kbps` : "", true),
+      kv("Duration", tr.duration ? `${fmtDur(tr.duration)} (${Number(tr.duration).toFixed(2)}s)` : "", true),
+      kv("Hi-Res Lossless", tr.isHiRes ? `<span class="badge hires">HI-RES</span>` : "Standard"),
+      kv("Embedded Artwork", rec.hasEmbeddedArtwork ? "Yes" : "No"),
+      kv("Lyrics File", rec.lyricsRelativePath ? esc(rec.lyricsRelativePath) : "", true)
+    ].filter(Boolean).join("");
+
+    const catalogItems = [
+      kv("Title", esc(rec.title || tr.title || "")),
+      kv("Artist", renderArtistLinksHTML(rec.artist || tr.artist || "")),
+      kv("Album Artist", renderArtistLinksHTML(rec.albumArtist || tr.albumArtist || "")),
+      kv("Album", `<a href="#" class="album-link" onclick="event.preventDefault();openAlbumByKey('${esc(tr.albumKey || "").replace(/'/g, "\\'")}','${esc(tr.album || "").replace(/'/g, "\\'")}')">${esc(rec.album || tr.album || "")}</a>`),
+      kv("Track #", rec.trackNumber ? String(rec.trackNumber) : "", true),
+      kv("Disc #", rec.discNumber ? String(rec.discNumber) : "", true),
+      kv("Year", rec.year ? String(rec.year) : "", true),
+      kv("Release Date", albEd?.releaseDate ? esc(albEd.releaseDate) : "", true),
+      kv("Record Label", albEd?.label ? esc(albEd.label) : ""),
+      kv("Genre", tr.genre ? esc(tr.genre) : (rec.genre ? esc(rec.genre) : ""))
+    ].filter(Boolean).join("");
+
+    const dspItems = an ? [
+      kv("Tempo (BPM)", an.bpm ? `${Math.round(an.bpm)} BPM (${an.bpm.toFixed(1)})` : "", true),
+      kv("Energy", an.energy ? `${Math.round(an.energy * 100)}% (${an.energy.toFixed(2)})` : "", true),
+      kv("Integrated Loudness", an.loudnessDB ? `${an.loudnessDB.toFixed(2)} dBFS` : "", true),
+      kv("Peak Linear", an.peakLinear ? `${an.peakLinear.toFixed(3)}` : "", true),
+      kv("Normalization Gain", an.normGainDB ? `${an.normGainDB >= 0 ? "+" : ""}${an.normGainDB.toFixed(2)} dB` : "0.00 dB", true),
+      kv("Vocal Intro Start", `${Number(an.vocalStartSec || 0).toFixed(1)}s`, true),
+      kv("Vocal Outro End", an.vocalEndSec ? `${Number(an.vocalEndSec).toFixed(1)}s` : "", true),
+      kv("AI / DSP Genre", an.genre ? esc(an.genre) : ""),
+      kv("Analyzed At", fmtDate(an.analyzedAt), true)
+    ].filter(Boolean).join("") : "";
+
+    const statsItems = [
+      kv("Your Rating", tr.userRating ? `${"★".repeat(tr.userRating)} (${tr.userRating}/5)` : "Unrated"),
+      kv("Play Count", st ? String(st.userPlayCount || 0) : "0", true),
+      kv("Last Played", st?.lastPlayedAt ? fmtDate(st.lastPlayedAt) : "", true),
+      kv("Online Popularity", st?.onlinePopularity ? `${st.onlinePopularity} / 100` : "", true),
+      kv("Online Listeners", st?.onlineListeners ? Number(st.onlineListeners).toLocaleString() : "", true),
+      kv("Online Plays", st?.onlinePlayCount ? Number(st.onlinePlayCount).toLocaleString() : "", true),
+      kv("Popularity Source", st?.onlineSource ? esc(st.onlineSource) : "")
+    ].filter(Boolean).join("");
+
+    const fileItems = [
+      kv("Library", esc(data.libraryName || rec.libraryId || "")),
+      kv("File Name", esc(rec.fileName || ""), true),
+      kv("File Size", rec.fileSize ? `${fmtBytes(rec.fileSize)} (${Number(rec.fileSize).toLocaleString()} bytes)` : "", true),
+      kv("Relative Path", esc(rec.relativePath || ""), true),
+      kv("Modified", fmtDate(rec.modifiedAt), true),
+      kv("Added", fmtDate(rec.addedAt), true),
+      kv("Track Key", esc(rec.trackKey || ""), true),
+      kv("Legacy ID", rec.legacyId ? esc(rec.legacyId) : "", true),
+      kv("Artwork Hash", rec.artworkHash ? esc(rec.artworkHash) : "", true),
+      kv("Index Shard", rec.shardId !== undefined ? `#${rec.shardId}` : "", true)
+    ].filter(Boolean).join("");
+
+    body.innerHTML = `
+      <div style="position:relative;display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="btn btn-dim btn-sm" onclick="closeModal()" style="position:absolute;top:0;right:0;">Close</button>
+        <img src="${origArt}" onerror="this.onerror=null;this.src='${esc(thumbArt)}'" style="width:154px;height:154px;border-radius:8px;object-fit:cover;border:1px solid var(--border-strong);background:var(--surface-2);flex-shrink:0;" alt="" />
+        <div style="flex:1;min-width:230px;padding-right:68px;">
+          <div class="card-title" style="margin-bottom:4px;">TRACK PROPERTIES · METADATA LIGHTBOX</div>
+          <h2 style="margin:0 0 5px;font-size:21px;">${esc(tr.title || rec.title)}</h2>
+          <div style="font-size:13.5px;color:var(--text-2);margin-bottom:8px;">
+            ${renderArtistLinksHTML(tr.artist)} · <a href="#" class="album-link" onclick="event.preventDefault();openAlbumByKey('${esc(tr.albumKey || "").replace(/'/g, "\\'")}','${esc(tr.album || "").replace(/'/g, "\\'")}')">${esc(tr.album)}</a>${tr.year ? " · " + tr.year : ""}
+          </div>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:10px;">
+            ${renderStarsHTML(tr.userRating, "track", tr.id)}
+            ${qual ? `<span class="badge ${tr.isHiRes ? "hires" : ""}">${esc(qual)}</span>` : ""}
+            ${tr.bpm ? `<span class="badge amber">${Math.round(tr.bpm)} BPM</span>` : ""}
+            ${tr.duration ? `<span class="mono">${fmtDur(tr.duration)}</span>` : ""}
+          </div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap;">
+            <button class="btn btn-mint btn-sm" id="tpPlayBtn">${ico("play")} Play</button>
+            <button class="btn btn-dim btn-sm" id="tpQueueBtn">+ Queue</button>
+            <button class="btn btn-amber btn-sm" id="tpDJBtn">+ DJ</button>
+            <button class="btn btn-mag btn-sm" id="tpPartyBtn">+ Party</button>
+            ${rec.relativePath ? `<button class="btn btn-dim btn-sm" id="tpCopyPathBtn">Copy Path</button>` : ""}
+          </div>
+        </div>
+      </div>
+
+      <div class="meta-section">
+        <div class="meta-section-title">CATALOG &amp; TAGS</div>
+        <div class="meta-grid">${catalogItems}</div>
+        ${tagsHTML || edGenresHTML ? `
+          <div style="margin-top:9px;padding-top:8px;border-top:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap;align-items:center;">
+            <span class="meta-k" style="margin-right:4px;">TAGS &amp; GENRES:</span>
+            ${edGenresHTML} ${tagsHTML}
+          </div>
+        ` : ""}
+      </div>
+
+      <div class="meta-section">
+        <div class="meta-section-title">AUDIO &amp; QUALITY</div>
+        <div class="meta-grid">${audioItems}</div>
+      </div>
+
+      ${dspItems ? `
+        <div class="meta-section">
+          <div class="meta-section-title">DSP ANALYSIS · LOUDNESS &amp; VOCAL CUES</div>
+          <div class="meta-grid">${dspItems}</div>
+        </div>
+      ` : ""}
+
+      <div class="meta-section">
+        <div class="meta-section-title">PLAY STATS &amp; POPULARITY</div>
+        <div class="meta-grid">${statsItems}</div>
+      </div>
+
+      <div class="meta-section">
+        <div class="meta-section-title">FILE &amp; STORAGE</div>
+        <div class="meta-grid">${fileItems}</div>
+      </div>
+
+      ${albEd?.albumSummary || artEd?.summary ? `
+        <div class="meta-section" style="margin-bottom:0;">
+          <div class="meta-section-title">EDITORIAL NOTES</div>
+          ${albEd?.albumSummary ? `<p style="margin:0 0 8px;font-size:12.5px;color:var(--text-2);line-height:1.5;"><strong style="color:var(--text);">Album:</strong> ${esc(albEd.albumSummary)}</p>` : ""}
+          ${artEd?.summary ? `<p style="margin:0;font-size:12.5px;color:var(--text-2);line-height:1.5;"><strong style="color:var(--text);">Artist:</strong> ${esc(artEd.summary)}</p>` : ""}
+        </div>
+      ` : ""}
+    `;
+
+    document.getElementById("tpPlayBtn").onclick = () => { startQueue([tr], 0); };
+    document.getElementById("tpQueueBtn").onclick = () => { enqueueTrack(tr); };
+    document.getElementById("tpDJBtn").onclick = () => { addTrackToDJ(tr.id, tr.title); };
+    document.getElementById("tpPartyBtn").onclick = () => { addTrackToParty(tr.id, tr.title); };
+    document.getElementById("tpCopyPathBtn")?.addEventListener("click", () => { copyText(rec.relativePath); });
+  } catch (e) {
+    body.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="card-title" style="margin:0;">TRACK PROPERTIES</div>
+        <button class="btn btn-dim btn-sm" onclick="closeModal()">Close</button>
+      </div>
+      <div class="mono" style="color:var(--coral);">Error loading track properties: ${esc(e?.message || e)}</div>
+    `;
+  }
 }
 
 function openPlaylistModal(pl) {
@@ -2710,7 +3630,10 @@ function clearActiveQueue() {
   }
 }
 
-function closeModal() { document.getElementById("modalBackdrop").classList.add("hidden"); }
+function closeModal() {
+  document.getElementById("modalBackdrop").classList.add("hidden");
+  document.getElementById("modalBody")?.classList.remove("props-wide");
+}
 
 // --- Dual-Deck & Now Playing Engine ---
 function cancelVolumeRamp(el) {
@@ -2743,7 +3666,7 @@ function updateNowPlayingDisplay(tr) {
   const art = artURL(tr.artworkHash);
   document.getElementById("npArt").src = art;
   document.getElementById("npTitle").textContent = tr.title;
-  document.getElementById("npArtist").textContent = `${tr.artist} · ${tr.album}`;
+  document.getElementById("npArtist").innerHTML = `${renderArtistLinksHTML(tr.artist)}${tr.album ? ` · <a href="#" class="album-link" onclick="event.preventDefault();openAlbumByKey('${esc(tr.albumKey || (tr.album || "").toLowerCase()).replace(/'/g, "\\'")}','${esc(tr.album).replace(/'/g, "\\'")}')">${esc(tr.album)}</a>` : ""}`;
   const b = document.getElementById("npBadge");
   const q = [tr.format, tr.formatDetail].filter(Boolean).join(" ");
   if (q) { b.textContent = q; b.classList.remove("hidden"); b.classList.toggle("hires", !!tr.isHiRes); } else b.classList.add("hidden");
@@ -2751,9 +3674,15 @@ function updateNowPlayingDisplay(tr) {
   // Sidebar update
   document.getElementById("sideArt").src = art;
   document.getElementById("sideTitle").textContent = tr.title;
-  document.getElementById("sideArtist").textContent = tr.artist;
+  document.getElementById("sidePropsBtn")?.classList.remove("hidden");
+  document.getElementById("sideArtist").innerHTML = renderArtistLinksHTML(tr.artist);
   document.getElementById("sideStarsWrap").innerHTML = renderStarsHTML(tr.userRating, "track", tr.id);
-  document.getElementById("sideAlbumLine").textContent = tr.album || "";
+  const sideAlb = document.getElementById("sideAlbumLine");
+  if (tr.album) {
+    sideAlb.innerHTML = `<a href="#" class="album-link" onclick="event.preventDefault();openAlbumByKey('${esc(tr.albumKey || (tr.album || "").toLowerCase()).replace(/'/g, "\\'")}','${esc(tr.album).replace(/'/g, "\\'")}')">${esc(tr.album)}</a>`;
+  } else {
+    sideAlb.textContent = "";
+  }
   const sb = document.getElementById("sideFormatBadge");
   if (q) { sb.textContent = q; sb.classList.remove("hidden"); sb.classList.toggle("hires", !!tr.isHiRes); } else sb.classList.add("hidden");
   const sy = document.getElementById("sideYearBadge");
@@ -3663,7 +4592,7 @@ async function refreshDJState() {
         const lMeta = document.getElementById("djListenerMeta");
         if (lArt) lArt.src = artURL(liveSlot.track.artworkHash);
         if (lTitle) lTitle.textContent = liveSlot.track.title || "Live DJ Radio";
-        if (lArtist) lArtist.textContent = [liveSlot.track.artist, liveSlot.track.album].filter(Boolean).join(" · ");
+        if (lArtist) lArtist.innerHTML = [renderArtistLinksHTML(liveSlot.track.artist), esc(liveSlot.track.album)].filter(Boolean).join(" · ");
         if (lMeta) lMeta.textContent = [liveSlot.track.year || "", liveSlot.track.bpm ? Math.round(liveSlot.track.bpm) + " BPM" : "", fmtDur(liveSlot.track.duration)].filter(Boolean).join(" · ");
       }
       if (djLiveStreamActive && liveSlot?.track) {
@@ -3954,11 +4883,12 @@ function renderDJSlots() {
           ${slot.fromLidarr ? '<span class="badge">LIDARR</span>' : ""}
         </div>
         <div class="track-artist">
-          ${esc(tr.artist)} · ${esc(tr.album)}${tr.year ? " · " + tr.year : ""} · ${fmtDur(tr.duration)}${tr.hasAnalysis ? ` · Intro ${Number(tr.vocalStartSec || 0).toFixed(1)}s` : ""}
+          ${renderArtistLinksHTML(tr.artist)} · ${esc(tr.album)}${tr.year ? " · " + tr.year : ""} · ${fmtDur(tr.duration)}${tr.hasAnalysis ? ` · Intro ${Number(tr.vocalStartSec || 0).toFixed(1)}s` : ""}
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
         ${tr.bpm ? `<span class="badge amber">${Math.round(tr.bpm)} BPM</span>` : ""}
+        <button class="icon-btn" onclick="event.stopPropagation();openTrackPropertiesModal('${esc(tr.id).replace(/'/g, "\\'")}')" title="Track properties &amp; metadata">${ico("info")}</button>
         <button class="icon-btn accent-mint" onclick="playDJSlot(${idx}, false)" title="${isPlayed ? "Replay this track" : "Start broadcast on this track"}">${ico("play", "ico-lg")}</button>
         <button class="icon-btn accent-danger" onclick="removeDJSlot(${idx})" title="Remove track">${ico("close")}</button>
       </div>
@@ -4624,7 +5554,7 @@ async function refreshParty() {
           <img class="track-thumb" src="${artURL(entry.track.artworkHash)}" />
           <div class="track-main">
             <div class="track-name">${esc(entry.track.title)} ${entry.hasVoiceIntro ? '<span class="badge hires">MIC INTRO</span>' : ''}</div>
-            <div class="track-artist">${esc(entry.track.artist)} ${entry.addedBy ? '· Req by <strong style="color:var(--magenta);">' + esc(entry.addedBy) + '</strong>' : ''}</div>
+            <div class="track-artist">${renderArtistLinksHTML(entry.track.artist)} ${entry.addedBy ? '· Req by <strong style="color:var(--magenta);">' + esc(entry.addedBy) + '</strong>' : ''}</div>
           </div>
           <span class="badge ${entry.isCurrent ? 'mint' : ''}">${eta}</span>
           <span class="mono track-hide-sm">${fmtDur(entry.track.duration)}</span>
@@ -4702,7 +5632,7 @@ function onPartyQuickSearch() {
       row.className = "track-row";
       row.innerHTML = `
         <img class="track-thumb" src="${artURL(tr.artworkHash)}" />
-        <div class="track-main"><div class="track-name">${esc(tr.title)}</div><div class="track-artist">${esc(tr.artist)} · ${esc(tr.album)}</div></div>
+        <div class="track-main"><div class="track-name">${esc(tr.title)}</div><div class="track-artist">${renderArtistLinksHTML(tr.artist)} · ${esc(tr.album)}</div></div>
         <span class="badge track-hide-sm">${esc(tr.format)}</span>
         <span class="mono track-hide-sm">${fmtDur(tr.duration)}</span>
         <button class="btn btn-mag btn-sm">+ Add</button>
@@ -5794,6 +6724,18 @@ async function toggleRequireLoginOnLAN(val) {
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") {
       document.querySelectorAll(".rating-dd-menu").forEach(m => m.classList.add("hidden"));
+      const mb = document.getElementById("modalBackdrop");
+      if (mb && !mb.classList.contains("hidden")) closeModal();
+    }
+  });
+
+  window.addEventListener("hashchange", () => {
+    const m = location.hash.match(/^#artist\/(.+)$/);
+    if (m) {
+      const k = decodeURIComponent(m[1]);
+      if (k && k !== activeArtistPageKey) openArtistPage(k, k, { skipHash: true });
+    } else if (activeArtistPageKey) {
+      closeArtistPage(false);
     }
   });
 
@@ -5807,6 +6749,13 @@ applyTheme(currentTheme, true);
 applyUserPermissionsUI();
 if (!hasPerm(currentTab)) switchTab(firstAllowedTab());
 restorePersistentState();
+{
+  const m = location.hash.match(/^#artist\/(.+)$/);
+  if (m && hasPerm("library")) {
+    const k = decodeURIComponent(m[1]);
+    if (k) openArtistPage(k, k, { skipHash: true });
+  }
+}
 if (hasPerm("library")) loadWebFacets();
 if (hasPerm("party")) refreshParty();
 if (IS_ADMIN) refreshServerStatus();

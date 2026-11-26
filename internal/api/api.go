@@ -178,6 +178,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/v2/admin/analysis/stop", s.requireAdmin(s.handleAdminAnalysisStop))
 	mux.HandleFunc("/api/v2/admin/lidarr/status", s.requireAdmin(s.handleLidarrStatus))
 	mux.HandleFunc("/api/v2/admin/lidarr/register-webhook", s.requireAdmin(s.handleLidarrRegisterWebhook))
+	mux.HandleFunc("/api/v2/lidarr/search", s.requireAdmin(s.handleLidarrSearch))
+	mux.HandleFunc("/api/v2/lidarr/order-album", s.requireAdmin(s.handleLidarrOrderAlbum))
+	mux.HandleFunc("/api/v2/lidarr/queue", s.requireAdmin(s.handleLidarrQueue))
 	mux.HandleFunc("/api/v2/webhooks/lidarr", s.requireAuth(s.handleLidarrWebhook))
 
 	// AI Radio DJ Mode endpoints (uses server's global Gemini API key for all authorized users;
@@ -192,6 +195,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/v2/dj/models/live", s.requireAdmin(s.handleDJLiveModels))
 	mux.HandleFunc("/api/v2/dj/profiles", s.requirePerm("dj", s.handleDJProfiles))
 	mux.HandleFunc("/api/v2/web/tracks", s.requirePerm("library", s.handleWebTracks))
+	mux.HandleFunc("/api/v2/web/track", s.requirePerm("library", s.handleWebTrackDetail))
 	mux.HandleFunc("/api/v2/web/albums", s.requirePerm("library", s.handleWebAlbums))
 	mux.HandleFunc("/api/v2/web/album", s.requirePerm("library", s.handleWebAlbumDetail))
 	mux.HandleFunc("/api/v2/web/artists", s.requirePerm("library", s.handleWebArtists))

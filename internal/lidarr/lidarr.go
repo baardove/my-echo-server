@@ -83,7 +83,7 @@ func NewManager(cfg *config.Config, idx *indexer.Indexer, ed *editorial.Fetcher)
 		cfg:             cfg,
 		idx:             idx,
 		editorial:       ed,
-		httpClient:      &http.Client{Timeout: 8 * time.Second},
+		httpClient:      &http.Client{Timeout: 20 * time.Second},
 		recentAlbumKeys: make(map[string]time.Time),
 	}
 }

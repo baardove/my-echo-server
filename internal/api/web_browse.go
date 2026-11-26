@@ -31,13 +31,15 @@ type webTrackDTO struct {
 	FormatDetail  string   `json:"formatDetail,omitempty"`
 	IsHiRes       bool     `json:"isHiRes"`
 	ArtworkHash   *string  `json:"artworkHash,omitempty"`
-	ArrivalUnix   int64    `json:"arrivalUnix"`
-	UserRating    int      `json:"userRating"`
-	BPM           float64  `json:"bpm,omitempty"`
-	VocalStartSec float64  `json:"vocalStartSec"`
-	VocalEndSec   float64  `json:"vocalEndSec,omitempty"`
-	Energy        float64  `json:"energy,omitempty"`
-	Tags          []string `json:"tags,omitempty"`
+	ArrivalUnix      int64    `json:"arrivalUnix"`
+	UserRating       int      `json:"userRating"`
+	UserPlayCount    int      `json:"userPlayCount,omitempty"`
+	OnlinePopularity int      `json:"onlinePopularity,omitempty"`
+	BPM              float64  `json:"bpm,omitempty"`
+	VocalStartSec    float64  `json:"vocalStartSec"`
+	VocalEndSec      float64  `json:"vocalEndSec,omitempty"`
+	Energy           float64  `json:"energy,omitempty"`
+	Tags             []string `json:"tags,omitempty"`
 }
 
 type webAlbumDTO struct {
@@ -61,6 +63,7 @@ type webArtistDTO struct {
 	AlbumCount  int     `json:"albumCount"`
 	TrackCount  int     `json:"trackCount"`
 	ArtworkHash *string `json:"artworkHash,omitempty"`
+	ImageURL    *string `json:"imageURL,omitempty"`
 }
 
 type webPlaylistDTO struct {
@@ -273,6 +276,82 @@ func (s *Server) handleWebTracks(w http.ResponseWriter, r *http.Request) {
 		"limit":   limit,
 		"hasMore": end < total,
 		"tracks":  page,
+	})
+}
+
+func (s *Server) handleWebTrackDetail(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimSpace(r.URL.Query().Get("id"))
+	if id == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Missing track id"})
+		return
+	}
+	tr, err := s.store.FindTrackByID(id)
+	if err != nil || tr == nil {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "Track not found"})
+		return
+	}
+
+	ratingMap := s.loadTrackRatingsMap()
+	statsMap := s.loadTrackStatsMap()
+	analysisMap, _ := s.store.ListTrackAnalysisMap()
+	edGenresByAlb := s.loadAlbumEditorialGenresMap()
+
+	dto := toWebTrack(*tr)
+	enrichTrackDTO(&dto, *tr, ratingMap, analysisMap, edGenresByAlb)
+
+	var statsPtr *db.SharedTrackStats
+	if st, ok := lookupTrackStats(statsMap, *tr); ok {
+		cp := st
+		statsPtr = &cp
+		dto.UserPlayCount = st.UserPlayCount
+		if st.OnlinePopularity != nil {
+			dto.OnlinePopularity = *st.OnlinePopularity
+		}
+	}
+
+	var analysisPtr *db.TrackAnalysis
+	if an, ok := analysisMap[tr.TrackKey]; ok {
+		cp := an
+		analysisPtr = &cp
+	}
+
+	var albEd *db.AlbumEditorial
+	albKey := strings.ToLower(strings.TrimSpace(tr.Album))
+	if eds, err := s.store.ListAlbumEditorial(); err == nil {
+		for _, ed := range eds {
+			if strings.ToLower(strings.TrimSpace(ed.AlbumKey)) == albKey {
+				cp := ed
+				albEd = &cp
+				break
+			}
+		}
+	}
+
+	var artEd *db.ArtistEditorial
+	artKey := strings.ToLower(strings.TrimSpace(dto.AlbumArtist))
+	if eds, err := s.store.ListArtistEditorial(); err == nil {
+		for _, ed := range eds {
+			if strings.ToLower(strings.TrimSpace(ed.ArtistKey)) == artKey {
+				cp := ed
+				artEd = &cp
+				break
+			}
+		}
+	}
+
+	libName := tr.LibraryID
+	if lib, ok := s.cfg.LibraryByID(tr.LibraryID); ok && lib.Name != "" {
+		libName = lib.Name
+	}
+
+	writeMaybeGzipJSON(w, r, http.StatusOK, map[string]any{
+		"track":           dto,
+		"record":          tr,
+		"libraryName":     libName,
+		"analysis":        analysisPtr,
+		"stats":           statsPtr,
+		"albumEditorial":  albEd,
+		"artistEditorial": artEd,
 	})
 }
 
@@ -528,11 +607,31 @@ func (s *Server) handleWebAlbumDetail(w http.ResponseWriter, r *http.Request) {
 	albRatingMap := s.loadAlbumRatingsMap()
 
 	var matched []webTrackDTO
+	var albSummary *webAlbumDTO
 	for _, tr := range tracks {
 		dto := toWebTrack(tr)
 		if dto.AlbumKey == key {
 			enrichTrackDTO(&dto, tr, ratingMap, analysisMap, edGenresByAlb)
 			matched = append(matched, dto)
+			if albSummary == nil {
+				albSummary = &webAlbumDTO{
+					AlbumKey:          key,
+					Title:             dto.Album,
+					Artist:            dto.AlbumArtist,
+					Year:              dto.Year,
+					ArtworkHash:       dto.ArtworkHash,
+					LatestArrivalUnix: dto.ArrivalUnix,
+					UserRating:        albRatingMap[key],
+				}
+			}
+			albSummary.TrackCount++
+			albSummary.TotalDuration += dto.Duration
+			if albSummary.ArtworkHash == nil && dto.ArtworkHash != nil {
+				albSummary.ArtworkHash = dto.ArtworkHash
+			}
+			if albSummary.Year == nil && dto.Year != nil {
+				albSummary.Year = dto.Year
+			}
 		}
 	}
 	sort.Slice(matched, func(i, j int) bool {
@@ -575,6 +674,7 @@ func (s *Server) handleWebAlbumDetail(w http.ResponseWriter, r *http.Request) {
 
 	writeMaybeGzipJSON(w, r, http.StatusOK, map[string]any{
 		"albumKey":   key,
+		"album":      albSummary,
 		"userRating": albRatingMap[key],
 		"tracks":     matched,
 		"editorial":  editorial,
@@ -602,6 +702,15 @@ func (s *Server) handleWebArtists(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	artImgMap := make(map[string]string)
+	if eds, err := s.store.ListArtistEditorial(); err == nil {
+		for _, ed := range eds {
+			if ed.ImageURL != nil && strings.TrimSpace(*ed.ImageURL) != "" {
+				artImgMap[strings.ToLower(strings.TrimSpace(ed.ArtistKey))] = strings.TrimSpace(*ed.ImageURL)
+			}
+		}
+	}
+
 	type acc struct {
 		dto    webArtistDTO
 		albums map[string]struct{}
@@ -616,8 +725,13 @@ func (s *Server) handleWebArtists(w http.ResponseWriter, r *http.Request) {
 		key := strings.ToLower(name)
 		a, ok := byKey[key]
 		if !ok {
+			var imgPtr *string
+			if u, ok := artImgMap[key]; ok {
+				cp := u
+				imgPtr = &cp
+			}
 			a = &acc{
-				dto:    webArtistDTO{ArtistKey: key, Name: name, ArtworkHash: dto.ArtworkHash},
+				dto:    webArtistDTO{ArtistKey: key, Name: name, ArtworkHash: dto.ArtworkHash, ImageURL: imgPtr},
 				albums: make(map[string]struct{}),
 			}
 			byKey[key] = a
@@ -658,27 +772,160 @@ func (s *Server) handleWebArtists(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleWebArtistDetail(w http.ResponseWriter, r *http.Request) {
-	key := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("key")))
+	rawKey := strings.TrimSpace(r.URL.Query().Get("key"))
+	key := strings.ToLower(rawKey)
 	if key == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Missing artist key"})
 		return
 	}
+	displayHint := strings.TrimSpace(r.URL.Query().Get("name"))
 	tracks, err := s.store.LoadAllTracks()
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
+
 	ratingMap := s.loadTrackRatingsMap()
+	statsMap := s.loadTrackStatsMap()
+	albRatingMap := s.loadAlbumRatingsMap()
 	analysisMap, _ := s.store.ListTrackAnalysisMap()
 	edGenresByAlb := s.loadAlbumEditorialGenresMap()
-	var matched []webTrackDTO
-	for _, tr := range tracks {
-		dto := toWebTrack(tr)
-		if strings.ToLower(dto.AlbumArtist) == key || strings.ToLower(dto.Artist) == key {
-			enrichTrackDTO(&dto, tr, ratingMap, analysisMap, edGenresByAlb)
-			matched = append(matched, dto)
+
+	edReleaseByAlb := make(map[string]string)
+	if eds, err := s.store.ListAlbumEditorial(); err == nil {
+		for _, ed := range eds {
+			if ed.ReleaseDate != nil && strings.TrimSpace(*ed.ReleaseDate) != "" {
+				edReleaseByAlb[strings.ToLower(ed.AlbumKey)] = strings.TrimSpace(*ed.ReleaseDate)
+			}
 		}
 	}
+
+	ownAlbumsByKey := make(map[string]*webAlbumDTO)
+	albGenreSet := make(map[string]map[string]bool)
+	artistGenreCounts := make(map[string]int)
+	artistGenreDisplay := make(map[string]string)
+
+	var matched []webTrackDTO
+	var appearsOn []webTrackDTO
+	var totalDuration float64
+	var totalBytes int64
+	var canonicalName string
+	var heroArtHash *string
+
+	for _, tr := range tracks {
+		dto := toWebTrack(tr)
+		ownMatch := artistFieldMatchesKey(dto.AlbumArtist, key)
+		trackMatch := !ownMatch && artistFieldMatchesKey(dto.Artist, key)
+		if !ownMatch && !trackMatch {
+			continue
+		}
+
+		enrichTrackDTO(&dto, tr, ratingMap, analysisMap, edGenresByAlb)
+		if st, ok := lookupTrackStats(statsMap, tr); ok {
+			dto.UserPlayCount = st.UserPlayCount
+			if st.OnlinePopularity != nil {
+				dto.OnlinePopularity = *st.OnlinePopularity
+			}
+		}
+
+		if canonicalName == "" {
+			if strings.EqualFold(strings.TrimSpace(dto.AlbumArtist), key) {
+				canonicalName = strings.TrimSpace(dto.AlbumArtist)
+			} else if strings.EqualFold(strings.TrimSpace(dto.Artist), key) {
+				canonicalName = strings.TrimSpace(dto.Artist)
+			}
+		}
+		if heroArtHash == nil && dto.ArtworkHash != nil {
+			heroArtHash = dto.ArtworkHash
+		}
+
+		totalDuration += dto.Duration
+		totalBytes += tr.FileSize
+		matched = append(matched, dto)
+
+		if dto.Genre != nil && strings.TrimSpace(*dto.Genre) != "" {
+			g := strings.TrimSpace(*dto.Genre)
+			gk := strings.ToLower(g)
+			artistGenreCounts[gk]++
+			if artistGenreDisplay[gk] == "" {
+				artistGenreDisplay[gk] = g
+			}
+		}
+
+		if ownMatch {
+			alb, ok := ownAlbumsByKey[dto.AlbumKey]
+			if !ok {
+				alb = &webAlbumDTO{
+					AlbumKey:          dto.AlbumKey,
+					Title:             dto.Album,
+					Artist:            dto.AlbumArtist,
+					Year:              dto.Year,
+					ArtworkHash:       dto.ArtworkHash,
+					LatestArrivalUnix: dto.ArrivalUnix,
+					UserRating:        albRatingMap[dto.AlbumKey],
+				}
+				ownAlbumsByKey[dto.AlbumKey] = alb
+				albGenreSet[dto.AlbumKey] = make(map[string]bool)
+			}
+			alb.TrackCount++
+			alb.TotalDuration += dto.Duration
+			if alb.ArtworkHash == nil && dto.ArtworkHash != nil {
+				alb.ArtworkHash = dto.ArtworkHash
+			}
+			if alb.Year == nil && dto.Year != nil {
+				alb.Year = dto.Year
+			}
+			if dto.ArrivalUnix > alb.LatestArrivalUnix {
+				alb.LatestArrivalUnix = dto.ArrivalUnix
+			}
+			if dto.Genre != nil && strings.TrimSpace(*dto.Genre) != "" {
+				albGenreSet[dto.AlbumKey][strings.TrimSpace(*dto.Genre)] = true
+			}
+		} else {
+			appearsOn = append(appearsOn, dto)
+		}
+	}
+
+	if canonicalName == "" {
+		if displayHint != "" {
+			canonicalName = displayHint
+		} else {
+			canonicalName = rawKey
+		}
+	}
+
+	albums := make([]webAlbumDTO, 0, len(ownAlbumsByKey))
+	for ak, alb := range ownAlbumsByKey {
+		if rd, ok := edReleaseByAlb[ak]; ok {
+			alb.ReleaseDate = rd
+			if alb.Year == nil && len(rd) >= 4 {
+				if y, err := strconv.Atoi(rd[:4]); err == nil && y > 1900 {
+					alb.Year = &y
+				}
+			}
+		} else if alb.Year != nil && *alb.Year > 0 {
+			alb.ReleaseDate = fmt.Sprintf("%04d-00-00", *alb.Year)
+		}
+		for g := range albGenreSet[ak] {
+			alb.Genres = append(alb.Genres, g)
+		}
+		sort.Strings(alb.Genres)
+		if heroArtHash == nil && alb.ArtworkHash != nil {
+			heroArtHash = alb.ArtworkHash
+		}
+		albums = append(albums, *alb)
+	}
+	sort.Slice(albums, func(i, j int) bool {
+		yi, yj := albumReleaseYear(albums[i]), albumReleaseYear(albums[j])
+		if yi != yj {
+			return yi > yj
+		}
+		if albums[i].ReleaseDate != albums[j].ReleaseDate {
+			return albums[i].ReleaseDate > albums[j].ReleaseDate
+		}
+		return strings.ToLower(albums[i].Title) < strings.ToLower(albums[j].Title)
+	})
+
 	sort.Slice(matched, func(i, j int) bool {
 		if matched[i].AlbumKey != matched[j].AlbumKey {
 			yi, yj := 0, 0
@@ -693,6 +940,16 @@ func (s *Server) handleWebArtistDetail(w http.ResponseWriter, r *http.Request) {
 			}
 			return matched[i].AlbumKey < matched[j].AlbumKey
 		}
+		di, dj := 1, 1
+		if matched[i].DiscNumber != nil {
+			di = *matched[i].DiscNumber
+		}
+		if matched[j].DiscNumber != nil {
+			dj = *matched[j].DiscNumber
+		}
+		if di != dj {
+			return di < dj
+		}
 		ti, tj := 999, 999
 		if matched[i].TrackNumber != nil {
 			ti = *matched[i].TrackNumber
@@ -700,26 +957,170 @@ func (s *Server) handleWebArtistDetail(w http.ResponseWriter, r *http.Request) {
 		if matched[j].TrackNumber != nil {
 			tj = *matched[j].TrackNumber
 		}
-		return ti < tj
+		if ti != tj {
+			return ti < tj
+		}
+		return strings.ToLower(matched[i].Title) < strings.ToLower(matched[j].Title)
 	})
+
+	// Popular / Top-Rated tracks (top 5 by onlinePopularity, userRating, userPlayCount)
+	var popular []webTrackDTO
+	for _, tr := range matched {
+		if tr.OnlinePopularity > 0 || tr.UserRating >= 3 || tr.UserPlayCount > 0 {
+			popular = append(popular, tr)
+		}
+	}
+	sort.Slice(popular, func(i, j int) bool {
+		if popular[i].OnlinePopularity != popular[j].OnlinePopularity {
+			return popular[i].OnlinePopularity > popular[j].OnlinePopularity
+		}
+		if popular[i].UserRating != popular[j].UserRating {
+			return popular[i].UserRating > popular[j].UserRating
+		}
+		if popular[i].UserPlayCount != popular[j].UserPlayCount {
+			return popular[i].UserPlayCount > popular[j].UserPlayCount
+		}
+		return strings.ToLower(popular[i].Title) < strings.ToLower(popular[j].Title)
+	})
+	if len(popular) > 5 {
+		popular = popular[:5]
+	}
+
+	// Top genres for artist hero
+	type gkv struct {
+		name string
+		n    int
+	}
+	var gList []gkv
+	for gk, n := range artistGenreCounts {
+		gList = append(gList, gkv{name: artistGenreDisplay[gk], n: n})
+	}
+	sort.Slice(gList, func(i, j int) bool {
+		if gList[i].n != gList[j].n {
+			return gList[i].n > gList[j].n
+		}
+		return gList[i].name < gList[j].name
+	})
+	genres := make([]string, 0, min(len(gList), 6))
+	for _, item := range gList {
+		if len(genres) >= 6 {
+			break
+		}
+		genres = append(genres, item.name)
+	}
+
 	var artistEditorial *db.ArtistEditorial
 	if eds, err := s.store.ListArtistEditorial(); err == nil {
 		for _, ed := range eds {
-			if strings.ToLower(ed.ArtistKey) == key {
+			if strings.ToLower(strings.TrimSpace(ed.ArtistKey)) == key {
 				cp := ed
 				artistEditorial = &cp
 				break
 			}
 		}
 	}
-	if artistEditorial == nil && s.editorial != nil && len(matched) > 0 {
-		artistEditorial = s.editorial.EnsureArtist(r.Context(), key, matched[0].AlbumArtist)
+	if artistEditorial == nil && s.editorial != nil && canonicalName != "" {
+		artistEditorial = s.editorial.EnsureArtist(r.Context(), key, canonicalName)
 	}
+
+	if matched == nil {
+		matched = []webTrackDTO{}
+	}
+	if appearsOn == nil {
+		appearsOn = []webTrackDTO{}
+	}
+	if popular == nil {
+		popular = []webTrackDTO{}
+	}
+
 	writeMaybeGzipJSON(w, r, http.StatusOK, map[string]any{
-		"artistKey": key,
-		"tracks":    matched,
-		"editorial": artistEditorial,
+		"artistKey":        key,
+		"name":             canonicalName,
+		"artworkHash":      heroArtHash,
+		"albumCount":       len(albums),
+		"trackCount":       len(matched),
+		"totalDuration":    totalDuration,
+		"totalBytes":       totalBytes,
+		"genres":           genres,
+		"albums":           albums,
+		"popularTracks":    popular,
+		"appearsOnTracks":  appearsOn,
+		"tracks":           matched,
+		"editorial":        artistEditorial,
+		"lidarrConfigured": s.lidarr != nil && s.lidarr.IsConfigured(),
 	})
+}
+
+func artistFieldMatchesKey(raw, key string) bool {
+	s := strings.ToLower(strings.TrimSpace(raw))
+	if s == "" || key == "" {
+		return false
+	}
+	if s == key {
+		return true
+	}
+	for _, part := range splitArtistCredits(s) {
+		if part == key {
+			return true
+		}
+	}
+	return false
+}
+
+func splitArtistCredits(lower string) []string {
+	replacer := strings.NewReplacer(
+		" feat. ", "|",
+		" feat ", "|",
+		" ft. ", "|",
+		" ft ", "|",
+		" featuring ", "|",
+		" & ", "|",
+		"; ", "|",
+		", ", "|",
+		" / ", "|",
+		" x ", "|",
+		" with ", "|",
+	)
+	cleaned := strings.NewReplacer("(", " ", ")", " ", "[", " ", "]", " ").Replace(lower)
+	parts := strings.Split(replacer.Replace(cleaned), "|")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		t := strings.TrimSpace(p)
+		if t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
+}
+
+func (s *Server) loadTrackStatsMap() map[string]db.SharedTrackStats {
+	stats, err := s.store.ListTrackStats()
+	if err != nil {
+		return nil
+	}
+	m := make(map[string]db.SharedTrackStats, len(stats))
+	for _, st := range stats {
+		m[st.TrackID] = st
+	}
+	return m
+}
+
+func lookupTrackStats(statsMap map[string]db.SharedTrackStats, tr db.TrackRecord) (db.SharedTrackStats, bool) {
+	if statsMap == nil {
+		return db.SharedTrackStats{}, false
+	}
+	if st, ok := statsMap[tr.EffectiveID()]; ok {
+		return st, true
+	}
+	if st, ok := statsMap[tr.TrackKey]; ok {
+		return st, true
+	}
+	if tr.LegacyID != "" {
+		if st, ok := statsMap[tr.LegacyID]; ok {
+			return st, true
+		}
+	}
+	return db.SharedTrackStats{}, false
 }
 
 func (s *Server) handleWebPlaylists(w http.ResponseWriter, r *http.Request) {

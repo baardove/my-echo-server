@@ -509,6 +509,126 @@ func (s *Server) handleLidarrRegisterWebhook(w http.ResponseWriter, r *http.Requ
 	})
 }
 
+func (s *Server) handleLidarrSearch(w http.ResponseWriter, r *http.Request) {
+	if s.lidarr == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "Lidarr manager unavailable"})
+		return
+	}
+	mode := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("mode")))
+	if mode == "" {
+		mode = "albums"
+	}
+	query := strings.TrimSpace(r.URL.Query().Get("q"))
+	if query == "" {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"mode":       mode,
+			"configured": s.lidarr.IsConfigured(),
+			"albums":     []lidarr.AlbumSearchResult{},
+			"tracks":     []lidarr.TrackMatch{},
+		})
+		return
+	}
+
+	// Build normalized local library lookup sets so UI can badge albums/tracks already in Echo
+	ownedAlbums := make(map[string]bool)
+	ownedTracks := make(map[string]bool)
+	if tracks, err := s.store.LoadAllTracks(); err == nil {
+		for _, tr := range tracks {
+			albKey := lidarr.NormalizeForMatch(tr.Album)
+			if albKey != "" {
+				ownedAlbums[albKey] = true
+			}
+			art := tr.Artist
+			if strings.TrimSpace(art) == "" {
+				art = tr.AlbumArtist
+			}
+			trKey := lidarr.NormalizeForMatch(art) + "::" + lidarr.NormalizeForMatch(tr.Title)
+			if trKey != "::" {
+				ownedTracks[trKey] = true
+			}
+		}
+	}
+
+	switch mode {
+	case "tracks":
+		results, err := s.lidarr.SearchTracks(r.Context(), query)
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
+		for i := range results {
+			tk := lidarr.NormalizeForMatch(results[i].ArtistName) + "::" + lidarr.NormalizeForMatch(results[i].Title)
+			ak := lidarr.NormalizeForMatch(results[i].AlbumTitle)
+			if ownedTracks[tk] || (ak != "" && ownedAlbums[ak]) {
+				results[i].InEchoLibrary = true
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"mode":       "tracks",
+			"configured": s.lidarr.IsConfigured(),
+			"tracks":     results,
+		})
+	default:
+		results, err := s.lidarr.SearchAlbums(r.Context(), query)
+		if err != nil {
+			writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+			return
+		}
+		for i := range results {
+			ak := lidarr.NormalizeForMatch(results[i].Title)
+			if ak != "" && ownedAlbums[ak] {
+				results[i].InEchoLibrary = true
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"mode":       "albums",
+			"configured": s.lidarr.IsConfigured(),
+			"albums":     results,
+		})
+	}
+}
+
+func (s *Server) handleLidarrOrderAlbum(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "POST required"})
+		return
+	}
+	if s.lidarr == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "Lidarr manager unavailable"})
+		return
+	}
+	var req lidarr.OrderAlbumRequest
+	if err := json.NewDecoder(io.LimitReader(r.Body, 524_288)).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+		return
+	}
+	res, err := s.lidarr.OrderAlbum(r.Context(), req)
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"ok":     true,
+		"result": res,
+	})
+}
+
+func (s *Server) handleLidarrQueue(w http.ResponseWriter, r *http.Request) {
+	if s.lidarr == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"configured": false, "items": []lidarr.QueueItem{}})
+		return
+	}
+	items, err := s.lidarr.FetchQueue(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusBadGateway, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"configured": s.lidarr.IsConfigured(),
+		"items":      items,
+	})
+}
+
 func maskSecret(s string) string {
 	s = strings.TrimSpace(s)
 	if s == "" {
