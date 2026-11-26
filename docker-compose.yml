@@ -6,6 +6,9 @@ services:
       dockerfile: Dockerfile
     container_name: my-echo-server
     restart: unless-stopped
+    labels:
+      net.unraid.docker.webui: "http://[IP]:[PORT:48721]/"
+      net.unraid.docker.icon: "https://raw.githubusercontent.com/baardove/my-echo-server/main/internal/admin/icon.png"
     # Host networking enables DLNA SSDP discovery, LAN DLNA casting, and UPnP/NAT-PMP router port mapping.
     # If you prefer bridge networking, comment out `network_mode: host`, uncomment `ports:` below,
     # and set ECHO_ADVERTISE_HOST to your server's LAN IP.

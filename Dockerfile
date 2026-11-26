@@ -35,7 +35,7 @@ EXPOSE 48721 53333 53334
 
 LABEL net.unraid.docker.managed="dockerman" \
       net.unraid.docker.webui="http://[IP]:[PORT:48721]/" \
-      net.unraid.docker.icon="http://[IP]:[PORT:48721]/icon.png" \
+      net.unraid.docker.icon="https://raw.githubusercontent.com/baardove/my-echo-server/main/internal/admin/icon.png" \
       org.opencontainers.image.title="My Echo Server" \
       org.opencontainers.image.description="Self-hosted Hi-Fi music indexer, Apple TV backend, Web Player & Party Mode Jukebox for My Echo"
 
