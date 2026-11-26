@@ -673,23 +673,19 @@
           </select>
         </div>
         <div>
-          <div class="stat-k" style="margin-bottom:4px;">Star Rating Rule</div>
+          <div class="stat-k" style="margin-bottom:4px;">Minimum Star Rating</div>
           <select id="fltMinRating" class="search-input" onchange="onAdvFilterChange()">
             <option value="0">Any Rating</option>
-            <optgroup label="Avoid Low Stars (Allow Unrated)">
-              <option value="avoid:1">Avoid 1★ (allow unrated)</option>
-              <option value="avoid:2">Avoid 1–2★ (allow unrated)</option>
-              <option value="avoid:3">Avoid 1–3★ (allow unrated)</option>
-              <option value="avoid:4">Avoid 1–4★ (allow unrated)</option>
-            </optgroup>
-            <optgroup label="Require Minimum Stars">
-              <option value="1">★ 1+ Star</option>
-              <option value="2">★★ 2+ Stars</option>
-              <option value="3">★★★ 3+ Stars</option>
-              <option value="4">★★★★ 4+ Stars</option>
-              <option value="5">★★★★★ 5 Stars Only</option>
-            </optgroup>
+            <option value="1">★ 1+ Star</option>
+            <option value="2">★★ 2+ Stars</option>
+            <option value="3">★★★ 3+ Stars</option>
+            <option value="4">★★★★ 4+ Stars</option>
+            <option value="5">★★★★★ 5 Stars Only</option>
           </select>
+          <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-2);margin-top:4px;cursor:pointer;">
+            <input type="checkbox" id="fltAllowUnrated" checked onchange="onAdvFilterChange()" />
+            Allow unrated
+          </label>
         </div>
         <div>
           <div class="stat-k" style="margin-bottom:4px;">Era (Decade)</div>
@@ -1778,17 +1774,36 @@ function toggleAdvancedSearch() {
 function hasActiveAdvFilters() {
   return advMinRating > 0 || advAvoidMaxRating > 0 || !!advEra || !!advGenre || !!advTag || !!advBPMMin || !!advBPMMax;
 }
-function parseRatingSelectVal(raw) {
-  const s = String(raw || "0");
-  if (s.startsWith("avoid:")) return { minRating: 0, avoidMaxRating: parseInt(s.slice(6), 10) || 0 };
-  return { minRating: parseInt(s, 10) || 0, avoidMaxRating: 0 };
+function ratingRuleFromInputs(starsRaw, allowUnrated) {
+  const stars = parseInt(String(starsRaw || "0"), 10) || 0;
+  if (stars <= 0) return { minRating: 0, avoidMaxRating: 0 };
+  if (allowUnrated) {
+    // Allow unrated (0) + tracks rated >= stars (i.e. exclude rated tracks 1..(stars-1))
+    return { minRating: 0, avoidMaxRating: Math.max(0, stars - 1) };
+  }
+  return { minRating: stars, avoidMaxRating: 0 };
 }
-function formatRatingSelectVal(minRating, avoidMaxRating) {
-  if (avoidMaxRating > 0) return "avoid:" + avoidMaxRating;
-  return String(minRating || 0);
+function ratingInputsFromRule(minRating, avoidMaxRating) {
+  if (avoidMaxRating > 0) {
+    return { stars: String(Math.min(5, avoidMaxRating + 1)), allowUnrated: true };
+  }
+  if (minRating > 0) {
+    return { stars: String(Math.min(5, minRating)), allowUnrated: false };
+  }
+  return { stars: "0", allowUnrated: true };
+}
+function setFilterRatingInputs(minRating, avoidMaxRating) {
+  const v = ratingInputsFromRule(minRating, avoidMaxRating);
+  const sel = document.getElementById("fltMinRating");
+  const chk = document.getElementById("fltAllowUnrated");
+  if (sel) sel.value = v.stars;
+  if (chk) chk.checked = v.allowUnrated;
 }
 function onAdvFilterChange() {
-  const r = parseRatingSelectVal(document.getElementById("fltMinRating").value);
+  const r = ratingRuleFromInputs(
+    document.getElementById("fltMinRating").value,
+    !!document.getElementById("fltAllowUnrated")?.checked
+  );
   advMinRating = r.minRating;
   advAvoidMaxRating = r.avoidMaxRating;
   advEra = document.getElementById("fltEra").value;
@@ -1804,7 +1819,7 @@ function onAdvFilterChange() {
 function clearAdvancedFilters() {
   advMinRating = 0; advAvoidMaxRating = 0; advEra = ""; advGenre = ""; advTag = ""; advBPMMin = ""; advBPMMax = "";
   document.getElementById("fltProfilePreset").value = "";
-  document.getElementById("fltMinRating").value = "0";
+  setFilterRatingInputs(0, 0);
   document.getElementById("fltEra").value = "";
   document.getElementById("fltGenre").value = "";
   document.getElementById("fltTag").value = "";
@@ -1845,7 +1860,7 @@ function applyProfileToLibraryFilter(profileId) {
   advBPMMax = p.maxBPM ? String(Math.round(p.maxBPM)) : "";
 
   document.getElementById("fltProfilePreset").value = p.id;
-  document.getElementById("fltMinRating").value = formatRatingSelectVal(advMinRating, advAvoidMaxRating);
+  setFilterRatingInputs(advMinRating, advAvoidMaxRating);
   // Ensure multi-value era/genre options exist in dropdown if profile has multiple
   ensureSelectOption("fltEra", advEra);
   ensureSelectOption("fltGenre", advGenre);
@@ -3253,19 +3268,20 @@ function openProfileEditorModal(prof) {
       <div><div class="stat-k" style="margin-bottom:4px;">Exclude Genres (comma separated)</div><input id="peExclude" class="search-input" value="${esc((p.excludeGenres||[]).join(", "))}" placeholder="Christmas, Classical" /></div>
       <div><div class="stat-k" style="margin-bottom:4px;">Smart Tags / Vibes (comma separated)</div><input id="peTags" class="search-input" value="${esc((p.tags||[]).join(", "))}" placeholder="Upbeat, High Energy, Chill" /></div>
       <div>
-        <div class="stat-k" style="margin-bottom:4px;">Star Rating Rule</div>
-        <select id="peMinRating" class="search-input">
-          <option value="0" ${!(p.minRating||0) && !(p.avoidMaxRating||0) ? "selected" : ""}>Any Rating</option>
-          <optgroup label="Avoid Low Stars (Allow Unrated)">
-            <option value="avoid:1" ${(p.avoidMaxRating||0)===1?"selected":""}>Avoid 1★ (allow unrated)</option>
-            <option value="avoid:2" ${(p.avoidMaxRating||0)===2?"selected":""}>Avoid 1–2★ (allow unrated)</option>
-            <option value="avoid:3" ${(p.avoidMaxRating||0)===3?"selected":""}>Avoid 1–3★ (allow unrated)</option>
-            <option value="avoid:4" ${(p.avoidMaxRating||0)===4?"selected":""}>Avoid 1–4★ (allow unrated)</option>
-          </optgroup>
-          <optgroup label="Require Minimum Stars">
-            ${[1,2,3,4,5].map(n => `<option value="${n}" ${(p.minRating||0)===n && !(p.avoidMaxRating||0) ? "selected" : ""}>${"★".repeat(n)} ${n}${n<5?"+":""} Star${n>1?"s":""}${n===5?" Only":""}</option>`).join("")}
-          </optgroup>
-        </select>
+        <div class="stat-k" style="margin-bottom:4px;">Minimum Star Rating</div>
+        ${(() => {
+          const rv = ratingInputsFromRule(p.minRating || 0, p.avoidMaxRating || 0);
+          return `
+            <select id="peMinRating" class="search-input">
+              <option value="0" ${rv.stars==="0"?"selected":""}>Any Rating</option>
+              ${[1,2,3,4,5].map(n => `<option value="${n}" ${rv.stars===String(n)?"selected":""}>${"★".repeat(n)} ${n}${n<5?"+":""} Star${n>1?"s":""}${n===5?" Only":""}</option>`).join("")}
+            </select>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);margin-top:5px;cursor:pointer;">
+              <input type="checkbox" id="peAllowUnrated" ${rv.allowUnrated ? "checked" : ""} />
+              Allow unrated tracks
+            </label>
+          `;
+        })()}
       </div>
       <div>
         <div class="stat-k" style="margin-bottom:4px;">BPM Speed Range (0 = any)</div>
@@ -3332,7 +3348,7 @@ async function saveDJProfileFromModal(existingId) {
     excludeGenres: splitCSV(document.getElementById("peExclude").value),
     tags: splitCSV(document.getElementById("peTags").value),
     eras,
-    ...parseRatingSelectVal(document.getElementById("peMinRating").value),
+    ...ratingRuleFromInputs(document.getElementById("peMinRating").value, !!document.getElementById("peAllowUnrated")?.checked),
     minBPM: parseFloat(document.getElementById("peMinBPM").value) || 0,
     maxBPM: parseFloat(document.getElementById("peMaxBPM").value) || 0,
     persona: document.getElementById("pePersona").value,
@@ -5044,7 +5060,7 @@ async function restorePersistentState() {
   advBPMMin = saved.advBPMMin || "";
   advBPMMax = saved.advBPMMax || "";
   document.getElementById("advSearchPanel").classList.toggle("hidden", !advOpen);
-  document.getElementById("fltMinRating").value = formatRatingSelectVal(advMinRating, advAvoidMaxRating);
+  setFilterRatingInputs(advMinRating, advAvoidMaxRating);
   ensureSelectOption("fltEra", advEra);
   document.getElementById("fltEra").value = advEra;
   document.getElementById("fltBPMMin").value = advBPMMin;
