@@ -766,8 +766,8 @@
           <a href="#" onclick="switchTab('settings');return false;" style="color:var(--cyan);font-weight:800;">Settings → AI Radio DJ</a>.
         </div>
 
-        <!-- Unified Profile-Driven Controls -->
-        <div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding-top:10px;border-top:1px solid var(--border);">
+        <!-- Unified Profile-Driven Controls (Admin Host only) -->
+        <div id="djHostControlsRow" style="display:flex;gap:7px;flex-wrap:wrap;align-items:center;padding-top:10px;border-top:1px solid var(--border);">
           <select id="djQuickProfileSelect" class="search-input" style="width:auto;min-width:210px;padding:6px 10px;font-size:12.5px;font-weight:700;" onchange="if(this.value)launchDJProfile(this.value)" title="Select &amp; launch a DJ Radio Profile (defines genres, era, BPM, stars &amp; vibe)">
             <option value="">Select DJ Profile…</option>
           </select>
@@ -795,7 +795,20 @@
         </div>
       </div>
 
-      <div style="margin-top:6px;">
+      <!-- STREAM-ONLY LISTENER VIEW: CURRENT SONG ONLY (no skipping / timeline scrub) -->
+      <div id="djListenerNowPlaying" class="card hidden" style="margin-top:6px;border-color:rgba(20,241,149,0.34);">
+        <div class="card-title" style="color:var(--mint);">ON AIR NOW · LIVE RADIO STREAM</div>
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+          <img id="djListenerArt" src="/icon.png" alt="Now Playing" style="width:110px;height:110px;border-radius:8px;object-fit:cover;border:1px solid var(--border-strong);background:var(--surface-2);" />
+          <div style="min-width:0;flex:1;">
+            <div id="djListenerTitle" style="font-size:20px;font-weight:900;color:var(--text);">Press Live Stream to tune in</div>
+            <div id="djListenerArtist" style="font-size:14px;color:var(--text-2);margin-top:3px;">Live synchronized AI DJ Radio</div>
+            <div id="djListenerMeta" class="mono" style="font-size:11.5px;color:var(--text-3);margin-top:6px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="djRundownSection" style="margin-top:6px;">
         <div style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px;padding:0 2px;">
           <div class="card-title" style="margin:0;">LIVE DJ RUNDOWN · TRACKS &amp; INTERLEAVED OUT/INTROS</div>
           <span class="mono" id="djPlaylistMeta">No active set</span>
@@ -1407,11 +1420,11 @@
 
     <div class="transport">
       <div class="transport-btns">
-        <button class="icon-btn" onclick="prevTrack()" title="Previous track"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20" fill="currentColor"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
+        <button class="icon-btn" id="prevBtn" onclick="prevTrack()" title="Previous track"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20" fill="currentColor"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
         <button class="btn btn-mint" id="playPauseBtn" onclick="togglePlay()"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg> Play</button>
-        <button class="icon-btn" onclick="nextTrack()" title="Next track"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4" fill="currentColor"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
+        <button class="icon-btn" id="nextBtn" onclick="nextTrack()" title="Next track"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4" fill="currentColor"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
         <button class="icon-btn" id="shuffleBtn" onclick="toggleShuffle()" title="Toggle shuffle"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg></button>
-        <button class="btn btn-dim btn-sm" onclick="openQueueModal()">Queue (<span id="queueLen">0</span>)</button>
+        <button class="btn btn-dim btn-sm" id="queueBtn" onclick="openQueueModal()">Queue (<span id="queueLen">0</span>)</button>
       </div>
       <div class="scrub-row">
         <span class="mono" id="curTime">0:00</span>
@@ -2079,6 +2092,7 @@ function switchTab(tab) {
   if (tab === "party" && hasPerm("party")) refreshParty();
   if (tab === "server" && IS_ADMIN) refreshServerStatus();
   if (tab === "settings" && IS_ADMIN) { switchSettingsSubTab(currentSettingsSubTab); ensureDJOptions().then(loadSettingsForm); loadManagedUsers(); }
+  updateTransportStreamLock();
   savePersistentState(true);
 }
 
@@ -2104,13 +2118,19 @@ function applyUserPermissionsUI() {
   setTabVis("server", IS_ADMIN);
   setTabVis("settings", IS_ADMIN);
 
-  // Non-admins share the server's global Gemini key and don't see Admin Settings / Lidarr
+  // Non-admins share the server's global Gemini key and get Stream-Only DJ Radio (Play/Stop + Current Song only, no skipping or timeline scrub!)
+  document.getElementById("djPlayToggleBtn")?.classList.toggle("hidden", !IS_ADMIN);
+  document.getElementById("djCastBtn")?.classList.toggle("hidden", !IS_ADMIN);
   document.getElementById("djVoiceSettingsBtn")?.classList.toggle("hidden", !IS_ADMIN);
+  document.getElementById("djHostControlsRow")?.classList.toggle("hidden", !IS_ADMIN);
+  document.getElementById("djRundownSection")?.classList.toggle("hidden", !IS_ADMIN);
+  document.getElementById("djListenerNowPlaying")?.classList.toggle("hidden", IS_ADMIN);
   document.getElementById("djLidarrFreshBtn")?.classList.toggle("hidden", !IS_ADMIN);
   const canEditProf = IS_ADMIN || !!SESSION.canEditProfiles;
   document.getElementById("djEditProfileBtn")?.classList.toggle("hidden", !canEditProf);
   document.getElementById("djDuplicateProfileBtn")?.classList.toggle("hidden", !canEditProf);
   document.getElementById("djNewProfileBtn")?.classList.toggle("hidden", !canEditProf);
+  updateTransportStreamLock();
   if (!IS_ADMIN) {
     const warn = document.getElementById("djKeyWarning");
     if (warn) {
@@ -2741,10 +2761,12 @@ function renderSidebarQueue() {
 }
 
 function startQueue(list, startIndex) {
+  stopDJLiveStream();
   playbackMode = "normal";
   djActive = false;
   stopAllAudio();
   updateDJNavIndicator();
+  updateTransportStreamLock();
   playQueue = [...list];
   playAtIndex(startIndex);
 }
@@ -2784,8 +2806,33 @@ function playAtIndex(idx) {
   activeDeck.play().catch(err => handleDeckPlayRejection(activeDeck, tr, err));
   updateNowPlayingDisplay(tr);
 }
+function isStreamLockedMode() {
+  return djLiveStreamActive || (!IS_ADMIN && (playbackMode === "stream" || currentTab === "dj"));
+}
+function updateTransportStreamLock() {
+  const locked = isStreamLockedMode();
+  document.getElementById("prevBtn")?.classList.toggle("hidden", locked);
+  document.getElementById("nextBtn")?.classList.toggle("hidden", locked);
+  document.getElementById("shuffleBtn")?.classList.toggle("hidden", locked);
+  document.getElementById("queueBtn")?.classList.toggle("hidden", locked);
+  const scrub = document.getElementById("scrubSlider");
+  if (scrub) {
+    scrub.disabled = locked;
+    scrub.style.pointerEvents = locked ? "none" : "";
+    scrub.title = locked ? "Live radio stream — seeking disabled" : "";
+  }
+  const pb = document.getElementById("playPauseBtn");
+  if (pb && locked) {
+    pb.innerHTML = djLiveStreamActive ? (ico("stop") + " Stop") : (ico("play") + " Play");
+  }
+}
+
 function togglePlay() {
   primeAudioDecks();
+  if (isStreamLockedMode()) {
+    toggleDJLiveStream();
+    return;
+  }
   if (playbackMode === "dj" && djState?.slots?.length) {
     if (djSpeakingBreak && djVoice.src) {
       if (djVoice.paused) {
@@ -2820,6 +2867,7 @@ function togglePlay() {
   }
 }
 function nextTrack() {
+  if (isStreamLockedMode()) return;
   if (playbackMode === "dj" && djState?.slots?.length) {
     const nextIdx = (djState.currentIndex || 0) + 1;
     if (nextIdx < djState.slots.length) playDJSlot(nextIdx, false);
@@ -2831,6 +2879,7 @@ function nextTrack() {
   else if (playIndex + 1 < playQueue.length) playAtIndex(playIndex + 1);
 }
 function prevTrack() {
+  if (isStreamLockedMode()) return;
   if (activeDeck.currentTime > 3) { activeDeck.currentTime = 0; return; }
   if (playbackMode === "dj" && djState?.slots?.length) {
     const prevIdx = Math.max(0, (djState.currentIndex || 0) - 1);
@@ -2840,10 +2889,12 @@ function prevTrack() {
   if (playIndex > 0) playAtIndex(playIndex - 1);
 }
 function toggleShuffle() {
+  if (isStreamLockedMode()) return;
   isShuffled = !isShuffled;
   document.getElementById("shuffleBtn").classList.toggle("active", isShuffled);
 }
 function seekToPct(val) {
+  if (isStreamLockedMode()) return;
   if (isFinite(activeDeck.duration) && activeDeck.duration > 0) {
     activeDeck.currentTime = (val / 100) * activeDeck.duration;
   }
@@ -3479,10 +3530,21 @@ async function refreshDJState() {
       }
     }
     renderDJHeader();
-    renderDJSlots();
-    if (djLiveStreamActive && djState?.slots?.length) {
+    if (IS_ADMIN) renderDJSlots();
+    if (djState?.slots?.length) {
       const liveSlot = djState.slots[djState.currentIndex || 0];
       if (liveSlot?.track) {
+        // Update Stream-Only listener Current Song card
+        const lArt = document.getElementById("djListenerArt");
+        const lTitle = document.getElementById("djListenerTitle");
+        const lArtist = document.getElementById("djListenerArtist");
+        const lMeta = document.getElementById("djListenerMeta");
+        if (lArt) lArt.src = artURL(liveSlot.track.artworkHash);
+        if (lTitle) lTitle.textContent = liveSlot.track.title || "Live DJ Radio";
+        if (lArtist) lArtist.textContent = [liveSlot.track.artist, liveSlot.track.album].filter(Boolean).join(" · ");
+        if (lMeta) lMeta.textContent = [liveSlot.track.year || "", liveSlot.track.bpm ? Math.round(liveSlot.track.bpm) + " BPM" : "", fmtDur(liveSlot.track.duration)].filter(Boolean).join(" · ");
+      }
+      if (djLiveStreamActive && liveSlot?.track) {
         if (!currentTrackObj || currentTrackObj.id !== liveSlot.track.id) {
           updateNowPlayingDisplay(liveSlot.track);
         }
@@ -3492,15 +3554,16 @@ async function refreshDJState() {
           const pSec = Math.min(liveSlot.track.duration, Math.max(0, djState.playbackPositionSec));
           document.getElementById("curTime").textContent = fmtDur(pSec);
           document.getElementById("totTime").textContent = "-" + fmtDur(Math.max(0, liveSlot.track.duration - pSec));
-          const sb = document.getElementById("seekBar");
+          const sb = document.getElementById("scrubSlider");
           if (sb) sb.value = Math.min(100, (pSec / liveSlot.track.duration) * 100);
         }
+        if (IS_ADMIN) renderSidebarQueue();
+      } else if (playbackMode === "dj" && IS_ADMIN) {
+        updateQueueCount();
         renderSidebarQueue();
       }
-    } else if (playbackMode === "dj") {
-      updateQueueCount();
-      renderSidebarQueue();
     }
+    updateTransportStreamLock();
     if (djWaitingForBreak && djState?.slots) {
       const w = djWaitingForBreak;
       const slot = djState.slots[w.ownerIdx];
@@ -5241,6 +5304,7 @@ function stopDJLiveStream() {
   djLiveStreamActive = false;
   const btn = document.getElementById("djStreamToggleBtn");
   if (btn) btn.innerHTML = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg> Live Stream`;
+  updateTransportStreamLock();
 }
 function toggleDJLiveStream() {
   if (djLiveStreamActive) {
@@ -5249,6 +5313,7 @@ function toggleDJLiveStream() {
     activeDeck.pause();
     activeDeck.src = "";
     document.getElementById("djOnAirBadge").textContent = djActive ? "ON AIR" : "STANDBY";
+    updateTransportStreamLock();
     showToast("Stopped Live DJ Radio Stream");
     return;
   }
@@ -5258,6 +5323,7 @@ function toggleDJLiveStream() {
   playbackMode = "stream";
   stopAllAudio();
   djLiveStreamActive = true;
+  updateTransportStreamLock();
   const streamSrc = `${location.origin}/stream/dj.mp3?t=${Date.now()}`;
   activeDeck.src = streamSrc;
   setDeckVolume(activeDeck, masterVolume);
@@ -5267,14 +5333,19 @@ function toggleDJLiveStream() {
     const station = djState?.stationName || "Echo FM";
     document.getElementById("djOnAirBadge").textContent = "LIVE STREAM";
     document.getElementById("sideModeBadge").textContent = "LIVE MP3 STREAM";
-    document.getElementById("npTitle").textContent = `${station} · Live MP3 Stream`;
-    document.getElementById("npArtist").textContent = "Continuous 192 kbps AI DJ Radio";
-    document.getElementById("sideTitle").textContent = `${station} · Live Stream`;
-    document.getElementById("sideArtist").textContent = "Continuous AI DJ Radio (/stream/dj.mp3)";
-    updatePlayBtn();
+    if (djState?.slots?.length && djState.slots[djState.currentIndex || 0]?.track) {
+      updateNowPlayingDisplay(djState.slots[djState.currentIndex || 0].track);
+    } else {
+      document.getElementById("npTitle").textContent = `${station} · Live MP3 Stream`;
+      document.getElementById("npArtist").textContent = "Continuous 192 kbps AI DJ Radio";
+      document.getElementById("sideTitle").textContent = `${station} · Live Stream`;
+      document.getElementById("sideArtist").textContent = "Continuous AI DJ Radio (/stream/dj.mp3)";
+    }
+    updateTransportStreamLock();
     showToast("Tuned into Live DJ Radio MP3 Stream!");
   }).catch(err => {
     djLiveStreamActive = false;
+    updateTransportStreamLock();
     showToast("Could not start live stream: " + (err?.message || "check DJ rundown"));
   });
 }

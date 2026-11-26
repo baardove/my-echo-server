@@ -172,12 +172,13 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/v2/admin/lidarr/register-webhook", s.requireAdmin(s.handleLidarrRegisterWebhook))
 	mux.HandleFunc("/api/v2/webhooks/lidarr", s.requireAuth(s.handleLidarrWebhook))
 
-	// AI Radio DJ Mode endpoints (uses server's global Gemini API key for all authorized users)
+	// AI Radio DJ Mode endpoints (uses server's global Gemini API key for all authorized users;
+	// non-admin listeners are stream-only: GET state + /stream/dj.mp3, no skipping/mutating)
 	mux.HandleFunc("/api/v2/dj/state", s.requirePerm("dj", s.handleDJState))
 	mux.HandleFunc("/api/v2/dj/options", s.requirePerm("dj", s.handleDJOptions))
-	mux.HandleFunc("/api/v2/dj/session/create", s.requirePerm("dj", s.handleDJSessionCreate))
-	mux.HandleFunc("/api/v2/dj/queue/add", s.requirePerm("dj", s.handleDJQueueAdd))
-	mux.HandleFunc("/api/v2/dj/queue/action", s.requirePerm("dj", s.handleDJQueueAction))
+	mux.HandleFunc("/api/v2/dj/session/create", s.requireAdmin(s.handleDJSessionCreate))
+	mux.HandleFunc("/api/v2/dj/queue/add", s.requireAdmin(s.handleDJQueueAdd))
+	mux.HandleFunc("/api/v2/dj/queue/action", s.requireAdmin(s.handleDJQueueAction))
 	mux.HandleFunc("/api/v2/dj/audio/", s.requirePerm("dj", s.handleDJAudio))
 	mux.HandleFunc("/api/v2/dj/test-voice", s.requireAdmin(s.handleDJTestVoice))
 	mux.HandleFunc("/api/v2/dj/models/live", s.requireAdmin(s.handleDJLiveModels))
