@@ -597,6 +597,30 @@
     display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
     gap: 8px; align-items: end;
   }
+  /* Compact Rating Dropdown with Allow Unrated footer inside menu */
+  .rating-dd { position: relative; width: 100%; }
+  .rating-dd-btn {
+    width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+    text-align: left; cursor: pointer; white-space: nowrap; overflow: hidden;
+  }
+  .rating-dd-menu {
+    position: absolute; top: calc(100% + 4px); left: 0; min-width: 100%; width: max-content; z-index: 90;
+    background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 6px;
+    box-shadow: 0 12px 28px rgba(0,0,0,0.65); padding: 4px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .rating-dd-opt {
+    border: none; background: transparent; color: var(--text); font-size: 12.5px; font-weight: 600;
+    padding: 6px 9px; border-radius: 4px; text-align: left; cursor: pointer;
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  }
+  .rating-dd-opt:hover { background: rgba(255,255,255,0.08); }
+  .rating-dd-opt.active { background: rgba(20,241,149,0.16); color: var(--mint); }
+  .rating-dd-foot {
+    margin-top: 3px; padding: 7px 9px 5px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text); cursor: pointer;
+    user-select: none;
+  }
 </style>
 </head>
 <body>
@@ -674,18 +698,25 @@
         </div>
         <div>
           <div class="stat-k" style="margin-bottom:4px;">Minimum Star Rating</div>
-          <select id="fltMinRating" class="search-input" onchange="onAdvFilterChange()">
-            <option value="0">Any Rating</option>
-            <option value="1">★ 1+ Star</option>
-            <option value="2">★★ 2+ Stars</option>
-            <option value="3">★★★ 3+ Stars</option>
-            <option value="4">★★★★ 4+ Stars</option>
-            <option value="5">★★★★★ 5 Stars Only</option>
-          </select>
-          <label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text-2);margin-top:4px;cursor:pointer;">
-            <input type="checkbox" id="fltAllowUnrated" checked onchange="onAdvFilterChange()" />
-            Allow unrated
-          </label>
+          <div class="rating-dd" id="fltRatingDD">
+            <input type="hidden" id="fltMinRating" value="0" />
+            <button type="button" class="search-input rating-dd-btn" id="fltRatingBtn" onclick="toggleRatingDD('flt', event)">
+              <span id="fltRatingLabel" style="overflow:hidden;text-overflow:ellipsis;">Any Rating</span>
+              <span style="opacity:0.6;font-size:10px;">▾</span>
+            </button>
+            <div class="rating-dd-menu hidden" id="fltRatingMenu" onclick="event.stopPropagation()">
+              <button type="button" class="rating-dd-opt active" data-val="0" onclick="pickRatingDD('flt','0')">Any Rating</button>
+              <button type="button" class="rating-dd-opt" data-val="1" onclick="pickRatingDD('flt','1')">★ 1+ Star</button>
+              <button type="button" class="rating-dd-opt" data-val="2" onclick="pickRatingDD('flt','2')">★★ 2+ Stars</button>
+              <button type="button" class="rating-dd-opt" data-val="3" onclick="pickRatingDD('flt','3')">★★★ 3+ Stars</button>
+              <button type="button" class="rating-dd-opt" data-val="4" onclick="pickRatingDD('flt','4')">★★★★ 4+ Stars</button>
+              <button type="button" class="rating-dd-opt" data-val="5" onclick="pickRatingDD('flt','5')">★★★★★ 5 Stars Only</button>
+              <label class="rating-dd-foot">
+                <input type="checkbox" id="fltAllowUnrated" checked onchange="syncRatingDDLabel('flt');onAdvFilterChange()" />
+                Allow unrated
+              </label>
+            </div>
+          </div>
         </div>
         <div>
           <div class="stat-k" style="margin-bottom:4px;">Era (Decade)</div>
@@ -1832,12 +1863,47 @@ function ratingInputsFromRule(minRating, avoidMaxRating) {
   }
   return { stars: "0", allowUnrated: true };
 }
+function ratingLabelText(starsStr, allowUnrated) {
+  const n = parseInt(String(starsStr || "0"), 10) || 0;
+  if (n <= 0) return "Any Rating";
+  const base = `${"★".repeat(n)} ${n}${n < 5 ? "+" : ""}`;
+  return allowUnrated ? `${base} (+unrated)` : base;
+}
+function syncRatingDDLabel(prefix) {
+  const val = document.getElementById(prefix + "MinRating")?.value || "0";
+  const allow = !!document.getElementById(prefix + "AllowUnrated")?.checked;
+  const lbl = document.getElementById(prefix + "RatingLabel");
+  if (lbl) lbl.textContent = ratingLabelText(val, allow);
+  document.querySelectorAll(`#${prefix}RatingMenu .rating-dd-opt`).forEach(b => {
+    b.classList.toggle("active", b.dataset.val === String(val));
+  });
+}
+function toggleRatingDD(prefix, ev) {
+  if (ev) ev.stopPropagation();
+  const menu = document.getElementById(prefix + "RatingMenu");
+  if (!menu) return;
+  const wasHidden = menu.classList.contains("hidden");
+  document.querySelectorAll(".rating-dd-menu").forEach(m => m.classList.add("hidden"));
+  if (wasHidden) menu.classList.remove("hidden");
+}
+function pickRatingDD(prefix, val) {
+  const inp = document.getElementById(prefix + "MinRating");
+  if (inp) inp.value = String(val);
+  syncRatingDDLabel(prefix);
+  document.getElementById(prefix + "RatingMenu")?.classList.add("hidden");
+  if (prefix === "flt") onAdvFilterChange();
+}
+document.addEventListener("click", () => {
+  document.querySelectorAll(".rating-dd-menu").forEach(m => m.classList.add("hidden"));
+});
+
 function setFilterRatingInputs(minRating, avoidMaxRating) {
   const v = ratingInputsFromRule(minRating, avoidMaxRating);
   const sel = document.getElementById("fltMinRating");
   const chk = document.getElementById("fltAllowUnrated");
   if (sel) sel.value = v.stars;
   if (chk) chk.checked = v.allowUnrated;
+  syncRatingDDLabel("flt");
 }
 function onAdvFilterChange() {
   const r = ratingRuleFromInputs(
@@ -3376,14 +3442,21 @@ function openProfileEditorModal(prof) {
         ${(() => {
           const rv = ratingInputsFromRule(p.minRating || 0, p.avoidMaxRating || 0);
           return `
-            <select id="peMinRating" class="search-input">
-              <option value="0" ${rv.stars==="0"?"selected":""}>Any Rating</option>
-              ${[1,2,3,4,5].map(n => `<option value="${n}" ${rv.stars===String(n)?"selected":""}>${"★".repeat(n)} ${n}${n<5?"+":""} Star${n>1?"s":""}${n===5?" Only":""}</option>`).join("")}
-            </select>
-            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-2);margin-top:5px;cursor:pointer;">
-              <input type="checkbox" id="peAllowUnrated" ${rv.allowUnrated ? "checked" : ""} />
-              Allow unrated tracks
-            </label>
+            <div class="rating-dd" id="peRatingDD">
+              <input type="hidden" id="peMinRating" value="${rv.stars}" />
+              <button type="button" class="search-input rating-dd-btn" id="peRatingBtn" onclick="toggleRatingDD('pe', event)">
+                <span id="peRatingLabel" style="overflow:hidden;text-overflow:ellipsis;">${esc(ratingLabelText(rv.stars, rv.allowUnrated))}</span>
+                <span style="opacity:0.6;font-size:10px;">▾</span>
+              </button>
+              <div class="rating-dd-menu hidden" id="peRatingMenu" onclick="event.stopPropagation()">
+                <button type="button" class="rating-dd-opt ${rv.stars==="0"?"active":""}" data-val="0" onclick="pickRatingDD('pe','0')">Any Rating</button>
+                ${[1,2,3,4,5].map(n => `<button type="button" class="rating-dd-opt ${rv.stars===String(n)?"active":""}" data-val="${n}" onclick="pickRatingDD('pe','${n}')">${"★".repeat(n)} ${n}${n<5?"+":""} Star${n>1?"s":""}${n===5?" Only":""}</button>`).join("")}
+                <label class="rating-dd-foot">
+                  <input type="checkbox" id="peAllowUnrated" ${rv.allowUnrated ? "checked" : ""} onchange="syncRatingDDLabel('pe')" />
+                  Allow unrated
+                </label>
+              </div>
+            </div>
           `;
         })()}
       </div>
