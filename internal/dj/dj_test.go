@@ -229,6 +229,28 @@ func TestMatchesProfileEraBPMStarsAndAutoRefill(t *testing.T) {
 	if MatchesProfile(trExcluded, prof, anFast, db.AlbumEditorial{}, ratings, nil) {
 		t.Fatalf("expected excluded Metal genre to be rejected")
 	}
+
+	// Verify Search Keywords & ExcludeKeywords match across title, album, editorial description, tags & genre
+	xmasSummary := "A cozy Norwegian holiday album recorded for Christmas Eve."
+	xmasProf := config.DJProfile{
+		ID:              "xmas",
+		Name:            "Christmas",
+		Keywords:        []string{"christmas", "xmas", "jul"},
+		ExcludeKeywords: []string{"remix"},
+	}
+	popGenre := "Pop"
+	xmasByDesc := db.TrackRecord{TrackKey: "x1", Title: "Winter Song", Artist: "Sissel", Album: "Vinternatt", Genre: &popGenre}
+	if !MatchesProfile(xmasByDesc, xmasProf, db.TrackAnalysis{}, db.AlbumEditorial{AlbumSummary: &xmasSummary}, nil, nil) {
+		t.Fatalf("expected track with 'Christmas' in album editorial description to match Keywords")
+	}
+	xmasExcluded := db.TrackRecord{TrackKey: "x2", Title: "Last Christmas (Club Remix)", Artist: "Wham!", Album: "Singles", Genre: &popGenre}
+	if MatchesProfile(xmasExcluded, xmasProf, db.TrackAnalysis{}, db.AlbumEditorial{}, nil, nil) {
+		t.Fatalf("expected track matching ExcludeKeywords ('remix') to be excluded")
+	}
+	nonXmas := db.TrackRecord{TrackKey: "x3", Title: "Summer Breeze", Artist: "Seals", Album: "Sun", Genre: &popGenre}
+	if MatchesProfile(nonXmas, xmasProf, db.TrackAnalysis{}, db.AlbumEditorial{}, nil, nil) {
+		t.Fatalf("expected non-matching track to be rejected by Keywords")
+	}
 	if MatchesProfile(trGood, prof, anFast, db.AlbumEditorial{}, map[string]int{"k1": 2}, nil) {
 		t.Fatalf("expected 2-star track to be rejected by MinRating=4")
 	}

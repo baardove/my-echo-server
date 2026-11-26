@@ -1102,6 +1102,78 @@ func MatchesProfile(
 		}
 	}
 
+	// Search Keywords & ExcludeKeywords check across title, artist, album, folder path, genre, tags & editorial description
+	if len(prof.Keywords) > 0 || len(prof.ExcludeKeywords) > 0 {
+		var hb strings.Builder
+		hb.WriteString(tr.Title)
+		hb.WriteByte(' ')
+		hb.WriteString(tr.Artist)
+		hb.WriteByte(' ')
+		hb.WriteString(tr.AlbumArtist)
+		hb.WriteByte(' ')
+		hb.WriteString(tr.Album)
+		hb.WriteByte(' ')
+		hb.WriteString(tr.RelativePath)
+		for _, g := range genres {
+			hb.WriteByte(' ')
+			hb.WriteString(g)
+		}
+		for _, t := range tags {
+			hb.WriteByte(' ')
+			hb.WriteString(t)
+		}
+		if ed.AlbumSummary != nil {
+			hb.WriteByte(' ')
+			hb.WriteString(*ed.AlbumSummary)
+		}
+		if ed.ArtistSummary != nil {
+			hb.WriteByte(' ')
+			hb.WriteString(*ed.ArtistSummary)
+		}
+		if ed.Label != nil {
+			hb.WriteByte(' ')
+			hb.WriteString(*ed.Label)
+		}
+		haystack := strings.ToLower(hb.String())
+
+		var includeKWs []string
+		var excludeKWs []string
+		for _, kw := range prof.ExcludeKeywords {
+			k := strings.ToLower(strings.TrimSpace(kw))
+			if k != "" {
+				excludeKWs = append(excludeKWs, k)
+			}
+		}
+		for _, kw := range prof.Keywords {
+			k := strings.ToLower(strings.TrimSpace(kw))
+			if k == "" {
+				continue
+			}
+			if strings.HasPrefix(k, "-") && len(k) > 1 {
+				excludeKWs = append(excludeKWs, strings.TrimSpace(k[1:]))
+			} else {
+				includeKWs = append(includeKWs, k)
+			}
+		}
+		for _, ex := range excludeKWs {
+			if ex != "" && strings.Contains(haystack, ex) {
+				return false
+			}
+		}
+		if len(includeKWs) > 0 {
+			hit := false
+			for _, inc := range includeKWs {
+				if strings.Contains(haystack, inc) {
+					hit = true
+					break
+				}
+			}
+			if !hit {
+				return false
+			}
+		}
+	}
+
 	// Include Genres check (match any)
 	if len(prof.Genres) > 0 {
 		hit := false

@@ -71,6 +71,8 @@ type DJProfile struct {
 	ID               string   `json:"id"`
 	Name             string   `json:"name"`
 	Description      string   `json:"description,omitempty"`
+	Keywords         []string `json:"keywords,omitempty"`
+	ExcludeKeywords  []string `json:"excludeKeywords,omitempty"`
 	Genres           []string `json:"genres,omitempty"`
 	ExcludeGenres    []string `json:"excludeGenres,omitempty"`
 	Tags             []string `json:"tags,omitempty"`

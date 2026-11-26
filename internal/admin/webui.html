@@ -1870,6 +1870,11 @@ function applyProfileToLibraryFilter(profileId) {
   document.getElementById("fltTag").value = advTag;
   document.getElementById("fltBPMMin").value = advBPMMin;
   document.getElementById("fltBPMMax").value = advBPMMax;
+  if (p.keywords && p.keywords.length) {
+    document.getElementById("libSearch").value = p.keywords[0];
+  } else {
+    document.getElementById("libSearch").value = "";
+  }
   document.getElementById("advToggleBtn").classList.add("btn-cyan");
   libOffset = 0;
   loadLibrary(false);
@@ -1890,9 +1895,12 @@ function ensureSelectOption(selId, val) {
 
 function buildAdHocFilterProfile() {
   const splitCSV = s => String(s || "").split(",").map(x => x.trim()).filter(Boolean);
+  const qRaw = (document.getElementById("libSearch")?.value || "").trim();
   return {
     id: "library-filter",
     name: "Library Filter Radio",
+    keywords: splitCSV(qRaw),
+    excludeKeywords: [],
     genres: splitCSV(advGenre),
     eras: splitCSV(advEra),
     tags: splitCSV(advTag),
@@ -3180,6 +3188,7 @@ function renderDJProfiles() {
   grid.innerHTML = djProfiles.map(p => {
     const isLive = activePID && activePID === p.id;
     const pills = [];
+    if (p.keywords && p.keywords.length) pills.push(`<span class="badge cyan">${esc(p.keywords.slice(0, 3).join(", "))}${p.keywords.length > 3 ? "…" : ""}</span>`);
     if (p.eras && p.eras.length) pills.push(`<span class="badge">${esc(p.eras.join(", "))}</span>`);
     if (p.minRating > 0) pills.push(`<span class="badge amber">${"★".repeat(p.minRating)}+</span>`);
     if (p.avoidMaxRating > 0) pills.push(`<span class="badge" style="color:var(--coral);border-color:rgba(255,85,96,0.45);">Avoid ≤${p.avoidMaxRating}★</span>`);
@@ -3264,6 +3273,10 @@ function openProfileEditorModal(prof) {
       <div><div class="stat-k" style="margin-bottom:4px;">Profile Name *</div><input id="peName" class="search-input" value="${esc(p.name)}" placeholder="e.g. 90s Eurodance Workout" /></div>
       <div><div class="stat-k" style="margin-bottom:4px;">Station Callsign (optional)</div><input id="peStation" class="search-input" value="${esc(p.stationName||"")}" placeholder="Echo Pulse FM" /></div>
       <div style="grid-column:1/-1;"><div class="stat-k" style="margin-bottom:4px;">Description</div><input id="peDesc" class="search-input" value="${esc(p.description||"")}" placeholder="High-energy 90s dance tracks with fast transitions" /></div>
+      <div style="grid-column:1/-1;display:grid;grid-template-columns:2fr 1fr;gap:10px;">
+        <div><div class="stat-k" style="margin-bottom:4px;">Search Keywords — Title, Album, Artist, Description, Tags, Genre (comma separated, matches any)</div><input id="peKeywords" class="search-input" value="${esc((p.keywords||[]).join(", "))}" placeholder="e.g. christmas, xmas, jul, santa, winter (leave blank for any)" /></div>
+        <div><div class="stat-k" style="margin-bottom:4px;">Exclude Keywords (comma separated)</div><input id="peExcludeKeywords" class="search-input" value="${esc((p.excludeKeywords||[]).join(", "))}" placeholder="e.g. live, remix, karaoke" /></div>
+      </div>
       <div><div class="stat-k" style="margin-bottom:4px;">Include Genres (comma separated)</div><input id="peGenres" class="search-input" value="${esc((p.genres||[]).join(", "))}" placeholder="Electronic, Dance, Pop (blank = any)" /></div>
       <div><div class="stat-k" style="margin-bottom:4px;">Exclude Genres (comma separated)</div><input id="peExclude" class="search-input" value="${esc((p.excludeGenres||[]).join(", "))}" placeholder="Christmas, Classical" /></div>
       <div><div class="stat-k" style="margin-bottom:4px;">Smart Tags / Vibes (comma separated)</div><input id="peTags" class="search-input" value="${esc((p.tags||[]).join(", "))}" placeholder="Upbeat, High Energy, Chill" /></div>
@@ -3344,6 +3357,8 @@ async function saveDJProfileFromModal(existingId) {
     name: document.getElementById("peName").value.trim(),
     description: document.getElementById("peDesc").value.trim(),
     stationName: document.getElementById("peStation").value.trim(),
+    keywords: splitCSV(document.getElementById("peKeywords")?.value || ""),
+    excludeKeywords: splitCSV(document.getElementById("peExcludeKeywords")?.value || ""),
     genres: splitCSV(document.getElementById("peGenres").value),
     excludeGenres: splitCSV(document.getElementById("peExclude").value),
     tags: splitCSV(document.getElementById("peTags").value),
