@@ -33,6 +33,7 @@ import (
 	"github.com/baardove/my-echo-server/internal/netmap"
 	"github.com/baardove/my-echo-server/internal/party"
 	"github.com/baardove/my-echo-server/internal/snapshot"
+	"github.com/baardove/my-echo-server/internal/spotify"
 	"github.com/baardove/my-echo-server/internal/tunnel"
 )
 
@@ -47,6 +48,7 @@ type Server struct {
 	backfill  *backfill.Worker
 	dj        *dj.Engine
 	lidarr    *lidarr.Manager
+	spotify   *spotify.Importer
 	analyzer  *analysis.Analyzer
 	broadcast *broadcast.Hub
 	dlna      *dlna.Manager
@@ -89,6 +91,10 @@ func (s *Server) SetDJEngine(d *dj.Engine) {
 
 func (s *Server) SetLidarrManager(l *lidarr.Manager) {
 	s.lidarr = l
+}
+
+func (s *Server) SetSpotifyImporter(sp *spotify.Importer) {
+	s.spotify = sp
 }
 
 func (s *Server) SetAnalyzer(a *analysis.Analyzer) {
@@ -201,6 +207,15 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/v2/web/artists", s.requirePerm("library", s.handleWebArtists))
 	mux.HandleFunc("/api/v2/web/artist", s.requirePerm("library", s.handleWebArtistDetail))
 	mux.HandleFunc("/api/v2/web/playlists", s.requirePerm("library", s.handleWebPlaylists))
+	mux.HandleFunc("/api/v2/web/playlists/create", s.requirePerm("library", s.handleWebPlaylistCreate))
+	mux.HandleFunc("/api/v2/web/playlists/update", s.requirePerm("library", s.handleWebPlaylistUpdate))
+	mux.HandleFunc("/api/v2/web/playlists/delete", s.requirePerm("library", s.handleWebPlaylistDelete))
+	mux.HandleFunc("/api/v2/web/playlists/rematch", s.requirePerm("library", s.handleWebPlaylistRematch))
+	mux.HandleFunc("/api/v2/web/playlists/spotify/preview", s.requirePerm("library", s.handleSpotifyPlaylistPreview))
+	mux.HandleFunc("/api/v2/web/playlists/spotify/import", s.requirePerm("library", s.handleSpotifyPlaylistImport))
+	mux.HandleFunc("/api/v2/web/playlists/spotify/resync", s.requirePerm("library", s.handleSpotifyPlaylistResync))
+	mux.HandleFunc("/api/v2/web/playlists/lidarr/search", s.requireAdmin(s.handleWebPlaylistLidarrSearch))
+	mux.HandleFunc("/api/v2/web/playlists/lidarr/status", s.requirePerm("library", s.handleWebPlaylistLidarrStatus))
 	mux.HandleFunc("/api/v2/web/facets", s.requirePerm("library", s.handleWebFacets))
 	mux.HandleFunc("/api/v2/web/rate", s.requirePerm("library", s.handleWebRate))
 	mux.HandleFunc("/api/v2/web/random-queue", s.requirePerm("library", s.handleWebRandomQueue))
@@ -438,7 +453,7 @@ func (s *Server) handleCatalogFull(w http.ResponseWriter, r *http.Request) {
 	pls, _ := s.store.ListPlaylists(false)
 	wPls := make([]wirePlaylist, 0, len(pls))
 	for _, p := range pls {
-		tids := p.TrackIDs
+		tids := p.PlayableTrackIDs()
 		if tids == nil {
 			tids = []string{}
 		}

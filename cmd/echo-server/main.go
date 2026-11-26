@@ -26,6 +26,7 @@ import (
 	"github.com/baardove/my-echo-server/internal/netmap"
 	"github.com/baardove/my-echo-server/internal/party"
 	"github.com/baardove/my-echo-server/internal/snapshot"
+	"github.com/baardove/my-echo-server/internal/spotify"
 	"github.com/baardove/my-echo-server/internal/tunnel"
 )
 
@@ -91,6 +92,7 @@ func main() {
 	edFetcher := editorial.NewFetcher(store, rebuildAndMirrorEditorial)
 	backfillWorker := backfill.NewWorker(cfg, store, rebuildAndMirrorEditorial)
 	lidarrMgr := lidarr.NewManager(cfg, idx, edFetcher)
+	spotifyImporter := spotify.NewImporter(store, lidarrMgr)
 	analyzer := analysis.NewAnalyzer(cfg, store)
 	djEngine := dj.NewEngine(cfg, store, edFetcher)
 	djEngine.SetLidarrChecker(lidarrMgr)
@@ -103,6 +105,7 @@ func main() {
 
 	idx.SetOnChanged(func() {
 		partyEngine.ReloadCatalog()
+		spotifyImporter.ResolveAllPlaylists()
 		if cfg.AutoFetchEditorial {
 			edFetcher.TriggerEnrichment()
 		}
@@ -120,6 +123,7 @@ func main() {
 	apiServer.SetBackfillWorker(backfillWorker)
 	apiServer.SetDJEngine(djEngine)
 	apiServer.SetLidarrManager(lidarrMgr)
+	apiServer.SetSpotifyImporter(spotifyImporter)
 	apiServer.SetAnalyzer(analyzer)
 	apiServer.SetBroadcastHub(broadcastHub)
 	apiServer.SetDLNAManager(dlnaMgr)

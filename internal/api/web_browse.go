@@ -67,11 +67,15 @@ type webArtistDTO struct {
 }
 
 type webPlaylistDTO struct {
-	ID          string        `json:"id"`
-	Name        string        `json:"name"`
-	Description string        `json:"description"`
-	TrackCount  int           `json:"trackCount"`
-	Tracks      []webTrackDTO `json:"tracks"`
+	ID                string               `json:"id"`
+	Name              string               `json:"name"`
+	Description       string               `json:"description"`
+	TrackCount        int                  `json:"trackCount"`
+	MissingCount      int                  `json:"missingCount"`
+	SpotifyPlaylistID string               `json:"spotifyPlaylistID,omitempty"`
+	SpotifySourceURL  string               `json:"spotifySourceURL,omitempty"`
+	Tracks            []webTrackDTO        `json:"tracks"`
+	Items             []webPlaylistItemDTO `json:"items"`
 }
 
 func toWebTrack(tr db.TrackRecord) webTrackDTO {
@@ -1129,33 +1133,15 @@ func (s *Server) handleWebPlaylists(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	tracks, _ := s.store.LoadAllTracks()
-	byID := make(map[string]webTrackDTO, len(tracks)*2)
-	for _, tr := range tracks {
-		dto := toWebTrack(tr)
-		byID[dto.ID] = dto
-		byID[tr.TrackKey] = dto
-		if tr.LegacyID != "" {
-			byID[tr.LegacyID] = dto
-		}
-	}
+	byID := s.loadWebTrackLookup()
 	out := make([]webPlaylistDTO, 0, len(pls))
 	for _, p := range pls {
-		resolved := make([]webTrackDTO, 0, len(p.TrackIDs))
-		for _, id := range p.TrackIDs {
-			if t, ok := byID[id]; ok {
-				resolved = append(resolved, t)
-			}
-		}
-		out = append(out, webPlaylistDTO{
-			ID:          p.ID,
-			Name:        p.Name,
-			Description: p.Description,
-			TrackCount:  len(resolved),
-			Tracks:      resolved,
-		})
+		out = append(out, s.buildWebPlaylistDTO(p, byID))
 	}
-	writeMaybeGzipJSON(w, r, http.StatusOK, map[string]any{"playlists": out})
+	writeMaybeGzipJSON(w, r, http.StatusOK, map[string]any{
+		"playlists":        out,
+		"lidarrConfigured": s.lidarr != nil && s.lidarr.IsConfigured(),
+	})
 }
 
 func (s *Server) handlePartyQR(w http.ResponseWriter, r *http.Request) {

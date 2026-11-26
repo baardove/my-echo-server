@@ -283,6 +283,7 @@ func (s *Server) handleDJQueueAdd(w http.ResponseWriter, r *http.Request) {
 		TrackIDs           []string `json:"trackIds"`
 		AlbumKey           string   `json:"albumKey"`
 		InsertAfterCurrent bool     `json:"insertAfterCurrent"`
+		AfterIndex         *int     `json:"afterIndex,omitempty"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 262_144)).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
@@ -303,7 +304,7 @@ func (s *Server) handleDJQueueAdd(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if req.InsertAfterCurrent {
-		st, insertedIdx, err := s.dj.InsertTracksAfterCurrent(ids)
+		st, insertedIdx, err := s.dj.InsertTracksAfterCurrentAt(ids, req.AfterIndex)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return

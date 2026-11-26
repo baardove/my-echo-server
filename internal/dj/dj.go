@@ -413,6 +413,9 @@ func (e *Engine) CreateSession(req CreateSessionRequest) (SessionState, error) {
 			if p.ID == req.Value || strings.EqualFold(p.Name, req.Value) {
 				label = "Playlist · " + p.Name
 				for _, tid := range p.TrackIDs {
+					if db.IsMissingTrackID(tid) {
+						continue
+					}
 					if tr, ok := byID[tid]; ok {
 						picked = append(picked, tr)
 					}
@@ -695,6 +698,12 @@ func (e *Engine) AppendTracks(trackIDs []string) (SessionState, error) {
 // InsertTracksAfterCurrent splices one or more tracks directly after the currently playing slot
 // without disturbing the rest of the DJ playlist, returning the updated state and insertion index.
 func (e *Engine) InsertTracksAfterCurrent(trackIDs []string) (SessionState, int, error) {
+	return e.InsertTracksAfterCurrentAt(trackIDs, nil)
+}
+
+// InsertTracksAfterCurrentAt splices one or more tracks directly after afterIndex (or e.currentIndex if nil)
+// without disturbing the rest of the DJ playlist, returning the updated state and insertion index.
+func (e *Engine) InsertTracksAfterCurrentAt(trackIDs []string, afterIndex *int) (SessionState, int, error) {
 	if len(trackIDs) == 0 {
 		st := e.State()
 		return st, st.CurrentIndex, nil
@@ -746,7 +755,11 @@ func (e *Engine) InsertTracksAfterCurrent(trackIDs []string) (SessionState, int,
 	oldPrev := snapshotPrevTrackIDs(e.slots)
 	insertIdx := 0
 	if len(e.slots) > 0 {
-		insertIdx = e.currentIndex + 1
+		baseIdx := e.currentIndex
+		if afterIndex != nil {
+			baseIdx = *afterIndex
+		}
+		insertIdx = baseIdx + 1
 		if insertIdx < 0 {
 			insertIdx = 0
 		}

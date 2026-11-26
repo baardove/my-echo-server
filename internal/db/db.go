@@ -84,15 +84,55 @@ type DeltaEntry struct {
 	Track        *TrackRecord `json:"track,omitempty"`
 }
 
+// MissingTrackIDPrefix marks placeholder entries inside SharedPlaylist.TrackIDs that retain
+// original playlist order for missing tracks while being skipped on playback, DJ, and sync.
+const MissingTrackIDPrefix = "missing:"
+
+// IsMissingTrackID reports whether a playlist trackID entry is a retained missing-track placeholder.
+func IsMissingTrackID(id string) bool {
+	return len(id) >= len(MissingTrackIDPrefix) && id[:len(MissingTrackIDPrefix)] == MissingTrackIDPrefix
+}
+
+// MissingTrack retains metadata and Lidarr auto-search state for an unavailable playlist track.
+type MissingTrack struct {
+	ID                 string     `json:"id"`
+	Title              string     `json:"title"`
+	Artist             string     `json:"artist"`
+	Album              string     `json:"album,omitempty"`
+	Duration           float64    `json:"duration,omitempty"`
+	SpotifyTrackID     string     `json:"spotifyTrackID,omitempty"`
+	SpotifyURI         string     `json:"spotifyURI,omitempty"`
+	ArtworkURL         string     `json:"artworkURL,omitempty"`
+	LidarrStatus       string     `json:"lidarrStatus,omitempty"` // "missing"|"searching"|"ordered"|"notFound"|"failed"
+	LidarrAlbumTitle   string     `json:"lidarrAlbumTitle,omitempty"`
+	LidarrAlbumID      int        `json:"lidarrAlbumID,omitempty"`
+	LidarrStatusDetail string     `json:"lidarrStatusDetail,omitempty"`
+	LastSearchedAt     *time.Time `json:"lastSearchedAt,omitempty"`
+}
+
 // SharedPlaylist is synced across Mac, Server, and Apple TV.
 type SharedPlaylist struct {
-	ID          string    `json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	TrackIDs    []string  `json:"trackIDs"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
-	Deleted     bool      `json:"deleted,omitempty"`
+	ID                string         `json:"id"`
+	Name              string         `json:"name"`
+	Description       string         `json:"description"`
+	TrackIDs          []string       `json:"trackIDs"`
+	MissingTracks     []MissingTrack `json:"missingTracks,omitempty"`
+	SpotifyPlaylistID string         `json:"spotifyPlaylistID,omitempty"`
+	SpotifySourceURL  string         `json:"spotifySourceURL,omitempty"`
+	CreatedAt         time.Time      `json:"createdAt"`
+	UpdatedAt         time.Time      `json:"updatedAt"`
+	Deleted           bool           `json:"deleted,omitempty"`
+}
+
+// PlayableTrackIDs returns only real local track IDs, skipping missing-track placeholders.
+func (p SharedPlaylist) PlayableTrackIDs() []string {
+	out := make([]string, 0, len(p.TrackIDs))
+	for _, tid := range p.TrackIDs {
+		if !IsMissingTrackID(tid) {
+			out = append(out, tid)
+		}
+	}
+	return out
 }
 
 // SharedTrackStats mirrors EchoCore TrackStats.
@@ -715,6 +755,55 @@ func (s *Store) ListPlaylists(includeDeleted bool) ([]SharedPlaylist, error) {
 		}
 	}
 	return out, nil
+}
+
+func (s *Store) GetPlaylist(id string) (*SharedPlaylist, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	var raw string
+	err := s.sql.QueryRow(`SELECT json FROM playlists WHERE id = ? AND deleted = 0`, id).Scan(&raw)
+	if err != nil {
+		return nil, err
+	}
+	var p SharedPlaylist
+	if err := json.Unmarshal([]byte(raw), &p); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+func (s *Store) SavePlaylist(p SharedPlaylist) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if p.CreatedAt.IsZero() {
+		p.CreatedAt = time.Now().UTC()
+	}
+	if p.UpdatedAt.IsZero() {
+		p.UpdatedAt = time.Now().UTC()
+	}
+	raw, err := json.Marshal(p)
+	if err != nil {
+		return err
+	}
+	del := 0
+	if p.Deleted {
+		del = 1
+	}
+	_, err = s.sql.Exec(`
+		INSERT INTO playlists (id, updated_at, deleted, json) VALUES (?, ?, ?, ?)
+		ON CONFLICT(id) DO UPDATE SET updated_at=excluded.updated_at, deleted=excluded.deleted, json=excluded.json
+	`, p.ID, p.UpdatedAt.Unix(), del, string(raw))
+	return err
+}
+
+func (s *Store) DeletePlaylist(id string) error {
+	existing, err := s.GetPlaylist(id)
+	if err != nil {
+		return err
+	}
+	existing.Deleted = true
+	existing.UpdatedAt = time.Now().UTC()
+	return s.SavePlaylist(*existing)
 }
 
 func (s *Store) MergePlaylists(incoming []SharedPlaylist) error {
