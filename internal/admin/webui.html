@@ -755,6 +755,7 @@
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-amber" id="djPlayToggleBtn" onclick="toggleDJBroadcast()"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg> Go On Air</button>
+            <button class="btn btn-dim" onclick="openDLNACastModal('dj')" title="Cast Live DJ Radio to DLNA speakers, AVRs &amp; TVs"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg> Cast / DLNA</button>
             <button class="btn btn-dim" onclick="switchTab('settings')"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> DJ Voice &amp; Settings</button>
           </div>
         </div>
@@ -814,6 +815,7 @@
           </div>
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <button class="btn btn-mag" id="partyStartStopBtn" onclick="togglePartySession()">Start Party Mode</button>
+            <button class="btn btn-dim" onclick="openDLNACastModal('party')" title="Cast Party Mode to DLNA speakers, AVRs &amp; TVs"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg> Cast / DLNA</button>
             <a class="btn btn-cyan" id="openGuestBtn" href="http://__ECHO_HOST__:__ECHO_PARTY_PORT__" target="_blank" style="text-decoration:none;">Open Guest Jukebox</a>
             <button class="btn btn-mint" onclick="listenAlongParty()">Listen Along Here</button>
           </div>
@@ -1110,6 +1112,106 @@
         </div>
       </div>
 
+      <!-- REMOTE ACCESS (CLOUDFLARE TUNNEL & UPnP/NAT-PMP) + DLNA CASTING -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;margin-top:16px;">
+        <div class="card" style="border-color:rgba(0,229,255,0.32);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+            <div class="card-title" style="margin:0;color:var(--cyan);">REMOTE ACCESS · CLOUDFLARE TUNNEL &amp; UPnP ROUTING</div>
+            <button class="btn btn-dim btn-sm" onclick="refreshRemoteStatus()">Refresh Status</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:11px;">
+            <div style="padding:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <label style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;cursor:pointer;">
+                  <input type="checkbox" id="setCFEnabled" />
+                  Cloudflare Tunnel (HTTPS · Zero Open Ports)
+                </label>
+                <span class="badge dim" id="cfStatusBadge">OFF</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <div>
+                  <div class="stat-k" style="margin-bottom:3px;">Tunnel Mode</div>
+                  <select id="setCFMode" class="search-input" onchange="onCFModeChange()">
+                    <option value="quick">Quick Tunnel (instant trycloudflare.com)</option>
+                    <option value="token">Named Tunnel (custom domain token)</option>
+                  </select>
+                </div>
+                <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:4px;">
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="setCFExposeDJ" checked /> Expose DJ Radio &amp; Web App</label>
+                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="setCFExposeParty" checked /> Expose Party Mode (HTTPS)</label>
+                </div>
+              </div>
+              <div id="cfTokenWrap" class="hidden">
+                <div class="stat-k" style="margin-bottom:3px;">Cloudflare Tunnel Token <span id="cfTokenMask" class="mono"></span></div>
+                <input id="setCFToken" class="search-input" type="password" placeholder="eyJ... (leave blank to keep saved token)" />
+              </div>
+              <div id="cfLiveURLs" class="mono" style="font-size:11.5px;display:flex;flex-direction:column;gap:4px;"></div>
+            </div>
+
+            <div style="padding:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;gap:8px;">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <label style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;cursor:pointer;">
+                  <input type="checkbox" id="setUPnPEnabled" />
+                  UPnP-IGD / NAT-PMP Auto Port-Forwarding
+                </label>
+                <div style="display:flex;align-items:center;gap:6px;">
+                  <span class="badge dim" id="upnpStatusBadge">OFF</span>
+                  <button class="btn btn-dim btn-sm" onclick="syncUPnPNow()">Sync Ports</button>
+                </div>
+              </div>
+              <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="setUPnPParty" checked /> Open Party Mode Port</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="setUPnPDJ" /> Open DJ Radio / Web UI Port</label>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:8px;">
+                <div><div class="stat-k" style="margin-bottom:3px;">Party Ext Port</div><input id="setUPnPExtParty" class="search-input" type="number" min="0" max="65535" placeholder="53333" /></div>
+                <div><div class="stat-k" style="margin-bottom:3px;">DJ Ext Port</div><input id="setUPnPExtDJ" class="search-input" type="number" min="0" max="65535" placeholder="48721" /></div>
+                <div><div class="stat-k" style="margin-bottom:3px;">Router IP (optional)</div><input id="setUPnPGW" class="search-input" placeholder="Auto-discover" /></div>
+              </div>
+              <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;color:var(--mint);">
+                <input type="checkbox" id="setRequirePINRemote" checked />
+                Require 6-digit Pairing PIN login for all remote (WAN/Tunnel) visitors
+              </label>
+              <div id="upnpLiveSummary" class="mono" style="font-size:11.5px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="border-color:rgba(20,241,149,0.32);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+            <div class="card-title" style="margin:0;color:var(--mint);">DLNA / UPnP CASTING &amp; LIVE RADIO STREAMS</div>
+            <button class="btn btn-cyan btn-sm" id="dlnaScanBtn" onclick="scanDLNARenderers()">Scan LAN Speakers</button>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+              <input type="checkbox" id="setDLNAEnabled" checked />
+              Advertise My Echo Radio as a DLNA MediaServer on LAN (WiiM, Sonos, AVRs, Smart TVs)
+            </label>
+            <div>
+              <div class="stat-k" style="margin-bottom:3px;">DLNA Server Name</div>
+              <input id="setDLNAName" class="search-input" placeholder="My Echo Radio" />
+            </div>
+            <div style="padding:8px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;gap:6px;">
+              <div class="stat-k">DIRECT LIVE HTTP / ICY RADIO STREAMS (VLC · SONOS · WIIM · AVR)</div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                <span class="mono" style="font-size:11.5px;">DJ Radio: <strong id="streamDJURL" style="color:var(--amber);">http://__ECHO_HOST__:__ECHO_API_PORT__/stream/dj.mp3</strong> <span id="streamDJListeners"></span></span>
+                <button class="btn btn-dim btn-sm" onclick="copyText(document.getElementById('streamDJURL').textContent)">Copy</button>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+                <span class="mono" style="font-size:11.5px;">Party Live: <strong id="streamPartyURL" style="color:var(--magenta);">http://__ECHO_HOST__:__ECHO_API_PORT__/stream/party.mp3</strong> <span id="streamPartyListeners"></span></span>
+                <button class="btn btn-dim btn-sm" onclick="copyText(document.getElementById('streamPartyURL').textContent)">Copy</button>
+              </div>
+            </div>
+            <div>
+              <div class="stat-k" style="margin-bottom:6px;">DISCOVERED DLNA SPEAKERS / AVRS / TVS</div>
+              <div id="dlnaRenderersList" style="display:flex;flex-direction:column;gap:6px;">
+                <div class="mono" style="font-size:11.5px;">Click "Scan LAN Speakers" to discover DLNA receivers on your network.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:10px;">
         <button class="btn btn-dim" onclick="loadSettingsForm()">Reset</button>
         <button class="btn btn-mint" onclick="saveServerSettings()">Save All Settings</button>
@@ -1225,7 +1327,7 @@
 
 <script>
 const PIN = "__ECHO_PAIRING_PIN__";
-const HEADERS = { "X-Echo-Token": PIN };
+const HEADERS = PIN ? { "X-Echo-Token": PIN } : {};
 
 // Flat borderless monochrome inline SVG icon set
 const ICONS = {
@@ -1262,7 +1364,7 @@ let partySearchTimer = null;
 let partyLive = false;
 let partyStateCache = null;
 
-// Dual-Deck Audio Engine + DJ Voice Deck
+// Dual-Deck Audio Engine + DJ Voice Deck + Web Audio API Normalization/Anti-Interrupt Graph
 const deckA = document.getElementById("deckA");
 const deckB = document.getElementById("deckB");
 const djVoice = document.getElementById("djVoiceEl");
@@ -1272,6 +1374,64 @@ let masterVolume = 0.85;
 deckA.volume = masterVolume;
 deckB.volume = 0;
 djVoice.volume = Math.min(1, masterVolume * 1.05);
+
+let audioCtx = null;
+let webAudioReady = false;
+const deckGainMap = new WeakMap();
+function initWebAudio() {
+  if (webAudioReady) {
+    if (audioCtx && audioCtx.state !== "running") audioCtx.resume().catch(() => {});
+    return;
+  }
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) return;
+  try {
+    audioCtx = new Ctx();
+    const limiter = audioCtx.createDynamicsCompressor();
+    limiter.threshold.value = -1.5;
+    limiter.knee.value = 6;
+    limiter.ratio.value = 12;
+    limiter.attack.value = 0.003;
+    limiter.release.value = 0.12;
+    limiter.connect(audioCtx.destination);
+
+    [deckA, deckB, djVoice].forEach(el => {
+      const src = audioCtx.createMediaElementSource(el);
+      const gain = audioCtx.createGain();
+      gain.gain.value = el.volume;
+      src.connect(gain);
+      gain.connect(limiter);
+      deckGainMap.set(el, gain);
+      el._logicalVol = el.volume;
+      el.volume = 1.0; // GainNode now controls volume (allows true +6 dB loudness boost!)
+    });
+    audioCtx.addEventListener("statechange", () => {
+      if (audioCtx && audioCtx.state !== "running" && !userPaused && ((playbackMode === "dj" && djActive) || (playbackMode === "normal" && playIndex >= 0))) {
+        setTimeout(() => { if (!userPaused && audioCtx && audioCtx.state !== "running") audioCtx.resume().catch(() => {}); }, 350);
+      }
+    });
+    webAudioReady = true;
+    if (audioCtx.state !== "running") audioCtx.resume().catch(() => {});
+  } catch (e) {
+    webAudioReady = false;
+  }
+}
+function getDeckVolume(el) {
+  if (webAudioReady && deckGainMap.has(el)) {
+    return typeof el._logicalVol === "number" ? el._logicalVol : deckGainMap.get(el).gain.value;
+  }
+  return el.volume;
+}
+function setDeckVolume(el, v) {
+  const clamped = Math.max(0, Math.min(webAudioReady ? 2.0 : 1.0, v));
+  if (webAudioReady && deckGainMap.has(el)) {
+    el._logicalVol = clamped;
+    const g = deckGainMap.get(el);
+    try { g.gain.setValueAtTime(clamped, audioCtx.currentTime); } catch (e) { g.gain.value = clamped; }
+  } else {
+    el.volume = Math.max(0, Math.min(1, clamped));
+  }
+}
 
 // Playback State (Normal Queue vs DJ Radio Mode)
 let playbackMode = "normal"; // "normal" | "dj"
@@ -1303,12 +1463,13 @@ let lastPlaybackProgressSec = -1;
 // Tiny 1-sample silent WAV used once per session on first user gesture to unlock deckA/deckB/djVoice for Safari & Chrome autoplay
 const SILENT_WAV_URI = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=";
 function primeAudioDecks() {
+  initWebAudio();
   if (decksPrimed) return;
   decksPrimed = true;
   [deckA, deckB, djVoice].forEach(el => {
     if (el.src) return;
     try {
-      const prevVol = el.volume;
+      const prevVol = getDeckVolume(el);
       el.muted = true;
       el.src = SILENT_WAV_URI;
       const p = el.play();
@@ -1318,17 +1479,17 @@ function primeAudioDecks() {
           el.removeAttribute("src");
           el.load();
           el.muted = false;
-          el.volume = prevVol;
+          setDeckVolume(el, prevVol);
         }).catch(() => {
           el.removeAttribute("src");
           el.muted = false;
-          el.volume = prevVol;
+          setDeckVolume(el, prevVol);
         });
       } else {
         el.pause();
         el.removeAttribute("src");
         el.muted = false;
-        el.volume = prevVol;
+        setDeckVolume(el, prevVol);
       }
     } catch (e) {}
   });
@@ -1337,13 +1498,18 @@ window.addEventListener("pointerdown", primeAudioDecks, { once: true, capture: t
 window.addEventListener("keydown", primeAudioDecks, { once: true, capture: true });
 
 function artURL(hash) {
-  return hash ? `/api/v1/artwork/${encodeURIComponent(hash)}?token=${encodeURIComponent(PIN)}` : "/icon.png";
+  if (!hash) return "/icon.png";
+  return `/api/v1/artwork/${encodeURIComponent(hash)}${PIN ? "?token=" + encodeURIComponent(PIN) : ""}`;
 }
 function streamURL(trackId, transcode = false) {
-  return `/api/v1/catalog/track/${encodeURIComponent(trackId)}?token=${encodeURIComponent(PIN)}${transcode ? "&transcode=1" : ""}`;
+  const qs = [];
+  if (PIN) qs.push("token=" + encodeURIComponent(PIN));
+  if (transcode) qs.push("transcode=1");
+  return `/api/v1/catalog/track/${encodeURIComponent(trackId)}${qs.length ? "?" + qs.join("&") : ""}`;
 }
 function djAudioURL(pathOrURL) {
   if (!pathOrURL) return "";
+  if (!PIN) return pathOrURL;
   return pathOrURL + (pathOrURL.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(PIN);
 }
 function fmtDur(sec) {
@@ -2326,7 +2492,7 @@ function playAtIndex(idx) {
   const tr = playQueue[idx];
   activeDeck.dataset.trackId = tr.id;
   activeDeck.dataset.transcoded = "0";
-  activeDeck.volume = masterVolume;
+  setDeckVolume(activeDeck, effectiveTrackVol(tr, false));
   activeDeck.src = streamURL(tr.id, false);
   activeDeck.play().catch(err => handleDeckPlayRejection(activeDeck, tr, err));
   updateNowPlayingDisplay(tr);
@@ -2395,26 +2561,41 @@ function seekToPct(val) {
     activeDeck.currentTime = (val / 100) * activeDeck.duration;
   }
 }
+// On-the-fly loudness normalization multiplier (targets -14 dBFS using analyzed normGainDB)
+function trackNormMultiplier(tr) {
+  if (!tr || typeof tr.normGainDB !== "number" || !isFinite(tr.normGainDB) || tr.normGainDB === 0) return webAudioReady ? 1.0 : 0.85;
+  const clamped = Math.max(-12, Math.min(6, tr.normGainDB));
+  if (webAudioReady) {
+    // Web Audio GainNode + soft limiter supports true boost (+6 dB) and attenuation (-12 dB)!
+    return Math.max(0.25, Math.min(2.0, Math.pow(10, clamped / 20)));
+  }
+  return Math.max(0.25, Math.min(1.18, 0.85 * Math.pow(10, clamped / 20)));
+}
+function effectiveTrackVol(tr, ducked = false) {
+  const duckFactor = ducked ? (djState?.duckVolume || 0.35) : 1.0;
+  const maxV = webAudioReady ? 2.0 : 1.0;
+  return Math.max(0, Math.min(maxV, masterVolume * trackNormMultiplier(tr) * duckFactor));
+}
 function setVolume(v) {
   masterVolume = parseFloat(v);
-  const duckFactor = djSpeakingBreak ? (djState?.duckVolume || 0.35) : 1.0;
-  activeDeck.volume = Math.min(1, masterVolume * duckFactor);
-  djVoice.volume = Math.min(1, masterVolume * 1.05);
+  setDeckVolume(activeDeck, effectiveTrackVol(currentTrackObj, !!djSpeakingBreak));
+  setDeckVolume(djVoice, Math.min(webAudioReady ? 1.4 : 1.0, masterVolume * 1.05));
 }
 
 // Smooth Volume Ramp Helper using interval timer (works reliably even in background tabs & cancels prior ramps!)
 function rampAudioVolume(el, targetVol, durationMs) {
   cancelVolumeRamp(el);
-  const clampedTarget = Math.max(0, Math.min(1, targetVol));
-  const startVol = el.volume;
+  const maxV = webAudioReady ? 2.0 : 1.0;
+  const clampedTarget = Math.max(0, Math.min(maxV, targetVol));
+  const startVol = getDeckVolume(el);
   const dur = Math.max(40, durationMs || 300);
   const startTs = Date.now();
   el._rampTimer = setInterval(() => {
     const p = Math.min(1, (Date.now() - startTs) / dur);
     const eased = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p + 2, 2)/2;
-    el.volume = Math.max(0, Math.min(1, startVol + (clampedTarget - startVol) * eased));
+    setDeckVolume(el, Math.max(0, Math.min(maxV, startVol + (clampedTarget - startVol) * eased)));
     if (p >= 1) {
-      el.volume = clampedTarget;
+      setDeckVolume(el, clampedTarget);
       cancelVolumeRamp(el);
     }
   }, 35);
@@ -2460,9 +2641,38 @@ function handleDeckDecodeError(deck, tr) {
   }, 400);
 }
 
+function schedulePlingResume(el, isVoice = false) {
+  if (!el) return;
+  if (el._plingTimers) {
+    el._plingTimers.forEach(t => clearTimeout(t));
+  }
+  // Retry at 350ms, 1000ms, and 2200ms so playback resumes cleanly even after long notification chimes!
+  el._plingTimers = [350, 1000, 2200].map(delayMs => setTimeout(() => {
+    if (userPaused || pendingRestoreResume || djTransitionLock) return;
+    if (audioCtx && audioCtx.state !== "running") audioCtx.resume().catch(() => {});
+    if (isVoice) {
+      if (djSpeakingBreak && el.paused && !el.ended && el.src) {
+        el.play().catch(() => {});
+      }
+      return;
+    }
+    if (el === activeDeck && el.paused && !el.ended && !djPendingTrackAfterIntro && el.src && el.src !== SILENT_WAV_URI) {
+      const wantPlaying = (playbackMode === "dj" && djActive) || (playbackMode === "normal" && playIndex >= 0);
+      if (wantPlaying) {
+        el.play().catch(err => {
+          if (err && err.name === "NotAllowedError") {
+            handleDeckPlayRejection(el, currentTrackObj, err);
+          }
+        });
+      }
+    }
+  }, delayMs));
+}
+
 function attachDeckListeners(deck) {
   deck.addEventListener("play", () => {
     if (deck !== activeDeck) return;
+    if (deck._plingTimers) { deck._plingTimers.forEach(t => clearTimeout(t)); deck._plingTimers = null; }
     consecutiveTrackErrors = 0;
     lastPlaybackProgressTs = Date.now();
     lastPlaybackProgressSec = deck.currentTime || 0;
@@ -2480,16 +2690,11 @@ function attachDeckListeners(deck) {
     }
     syncPlayingRows();
     savePersistentState(true);
-    // Recover automatically from involuntary OS/browser pauses (e.g. macOS/iOS system notification plings / audio focus interruptions)
+    // Recover automatically from involuntary OS/browser/notification pauses!
     if (!userPaused && !deck.ended && !djTransitionLock && !djPendingTrackAfterIntro && !pendingRestoreResume && deck.src && deck.src !== SILENT_WAV_URI) {
       const wantPlaying = (playbackMode === "dj" && djActive) || (playbackMode === "normal" && playIndex >= 0);
       if (wantPlaying) {
-        clearTimeout(deck._plingResumeTimer);
-        deck._plingResumeTimer = setTimeout(() => {
-          if (deck === activeDeck && deck.paused && !deck.ended && !userPaused && !djPendingTrackAfterIntro) {
-            deck.play().catch(() => {});
-          }
-        }, 350);
+        schedulePlingResume(deck, false);
       }
     }
   });
@@ -2541,8 +2746,9 @@ function updateMediaSessionMetadata(tr) {
 }
 if ("mediaSession" in navigator) {
   try {
+    // Deliberately do NOT register a "pause" handler that sets userPaused=true — browsers fire
+    // mediaSession "pause" on notification/tab audio-focus interruptions!
     navigator.mediaSession.setActionHandler("play", () => { userPaused = false; togglePlay(); });
-    navigator.mediaSession.setActionHandler("pause", () => { userPaused = true; if (!activeDeck.paused) activeDeck.pause(); if (!djVoice.paused) djVoice.pause(); });
     navigator.mediaSession.setActionHandler("previoustrack", () => prevTrack());
     navigator.mediaSession.setActionHandler("nexttrack", () => nextTrack());
   } catch (e) {}
@@ -2551,6 +2757,9 @@ if ("mediaSession" in navigator) {
 // Playback Watchdog: recovers cleanly from system plings / audio interruptions or stalled streams
 setInterval(() => {
   if (userPaused || pendingRestoreResume || djTransitionLock) return;
+  if (audioCtx && audioCtx.state !== "running") {
+    audioCtx.resume().catch(() => {});
+  }
   // Auto-resume DJ voice if involuntarily paused mid-sentence by a system pling
   if (djSpeakingBreak && djVoice.src && djVoice.paused && !djVoice.ended) {
     djVoice.play().catch(() => {});
@@ -2563,12 +2772,15 @@ setInterval(() => {
   const now = Date.now();
   // Auto-resume if OS/system pling paused the deck without user clicking Pause
   if (activeDeck.paused && !activeDeck.ended) {
-    activeDeck.play().catch(() => {});
+    activeDeck.play().catch(err => {
+      if (err && err.name === "NotAllowedError") handleDeckPlayRejection(activeDeck, currentTrackObj, err);
+    });
     return;
   }
   // Ensure volume never accidentally stays stuck near 0 when DJ is not talking
-  if (!djSpeakingBreak && !activeDeck._rampTimer && activeDeck.volume < masterVolume * 0.5 && masterVolume > 0.05) {
-    activeDeck.volume = masterVolume;
+  const wantVol = effectiveTrackVol(currentTrackObj, false);
+  if (!djSpeakingBreak && !activeDeck._rampTimer && getDeckVolume(activeDeck) < wantVol * 0.45 && wantVol > 0.05) {
+    setDeckVolume(activeDeck, wantVol);
   }
   if (!activeDeck.paused && lastPlaybackProgressTs > 0 && now - lastPlaybackProgressTs > 10000) {
     const resumeAt = activeDeck.currentTime || 0;
@@ -2583,9 +2795,10 @@ setInterval(() => {
       activeDeck.play().catch(() => {});
     }, { once: true });
   }
-}, 2500);
+}, 2000);
 
 djVoice.addEventListener("play", () => {
+  if (djVoice._plingTimers) { djVoice._plingTimers.forEach(t => clearTimeout(t)); djVoice._plingTimers = null; }
   if (djSpeakingBreak) {
     document.getElementById("playPauseBtn").innerHTML = ico("pause") + " Pause";
     syncPlayingRows();
@@ -2597,12 +2810,7 @@ djVoice.addEventListener("pause", () => {
     syncPlayingRows();
   }
   if (djSpeakingBreak && !userPaused && !djVoice.ended && djVoice.src) {
-    clearTimeout(djVoice._plingResumeTimer);
-    djVoice._plingResumeTimer = setTimeout(() => {
-      if (djSpeakingBreak && djVoice.paused && !djVoice.ended && !userPaused) {
-        djVoice.play().catch(() => {});
-      }
-    }, 350);
+    schedulePlingResume(djVoice, true);
   }
 });
 djVoice.addEventListener("ended", () => {
@@ -2615,7 +2823,7 @@ djVoice.addEventListener("ended", () => {
     djPendingTrackAfterIntro = null;
     fn();
   } else {
-    rampAudioVolume(activeDeck, masterVolume, 900);
+    rampAudioVolume(activeDeck, effectiveTrackVol(currentTrackObj, false), 900);
   }
   syncPlayingRows();
   renderDJSlots();
@@ -2936,13 +3144,23 @@ async function refreshDJState() {
     // Live-sync newly analyzed BPM & vocal cues onto the currently playing track object and sidebar badge!
     if (playbackMode === "dj" && currentTrackObj && djState?.slots?.length) {
       const liveSlot = djState.slots[djState.currentIndex || 0];
-      if (liveSlot?.track?.id === currentTrackObj.id && liveSlot.track.bpm && liveSlot.track.bpm !== currentTrackObj.bpm) {
-        currentTrackObj.bpm = liveSlot.track.bpm;
-        currentTrackObj.vocalStartSec = liveSlot.track.vocalStartSec;
-        currentTrackObj.vocalEndSec = liveSlot.track.vocalEndSec;
-        currentTrackObj.hasAnalysis = liveSlot.track.hasAnalysis;
-        const sbpm = document.getElementById("sideBPMBadge");
-        if (sbpm) { sbpm.textContent = Math.round(currentTrackObj.bpm) + " BPM"; sbpm.classList.remove("hidden"); }
+      if (liveSlot?.track?.id === currentTrackObj.id) {
+        if (liveSlot.track.bpm && liveSlot.track.bpm !== currentTrackObj.bpm) {
+          currentTrackObj.bpm = liveSlot.track.bpm;
+          currentTrackObj.vocalStartSec = liveSlot.track.vocalStartSec;
+          currentTrackObj.vocalEndSec = liveSlot.track.vocalEndSec;
+          currentTrackObj.hasAnalysis = liveSlot.track.hasAnalysis;
+          const sbpm = document.getElementById("sideBPMBadge");
+          if (sbpm) { sbpm.textContent = Math.round(currentTrackObj.bpm) + " BPM"; sbpm.classList.remove("hidden"); }
+        }
+        if (typeof liveSlot.track.normGainDB === "number" && liveSlot.track.normGainDB !== currentTrackObj.normGainDB) {
+          currentTrackObj.loudnessDB = liveSlot.track.loudnessDB;
+          currentTrackObj.peakLinear = liveSlot.track.peakLinear;
+          currentTrackObj.normGainDB = liveSlot.track.normGainDB;
+          if (!activeDeck.paused && !djTransitionLock) {
+            rampAudioVolume(activeDeck, effectiveTrackVol(currentTrackObj, !!djSpeakingBreak), 600);
+          }
+        }
       }
     }
     renderDJHeader();
@@ -3363,8 +3581,9 @@ async function clearDJSession(confirmed = false) {
 }
 
 function previewDJBreak(url, kind) {
+  primeAudioDecks();
   djVoice.src = djAudioURL(url);
-  djVoice.volume = Math.min(1, masterVolume * 1.05);
+  setDeckVolume(djVoice, Math.min(webAudioReady ? 1.4 : 1.0, masterVolume * 1.05));
   djVoice.play().catch(() => {});
   showToast(`Playing broadcast-processed DJ ${kind}`);
 }
@@ -3451,15 +3670,17 @@ async function playDJFromBreak(prevIdx, nextIdx, ownerIdx, kind) {
   renderDJHeader();
   renderDJSlots();
 
+  const fullVol = effectiveTrackVol(targetSlot.track, false);
+  const targetDuckVol = effectiveTrackVol(targetSlot.track, true);
   const immediateVocals = targetSlot.track.hasAnalysis && targetSlot.track.vocalStartSec < 3.5;
   activeDeck.dataset.trackId = targetSlot.track.id;
   activeDeck.dataset.transcoded = "0";
   if (kind === "intro" && !immediateVocals) {
     // Classic radio intro: music fades in ducked right under the intro
     activeDeck.src = streamURL(targetSlot.track.id, false);
-    activeDeck.volume = duckVol;
+    setDeckVolume(activeDeck, targetDuckVol);
     activeDeck.play().catch(err => handleDeckPlayRejection(activeDeck, targetSlot.track, err));
-    fireDJVoiceBreak(brk, duckVol);
+    fireDJVoiceBreak(brk, targetDuckVol);
     return;
   }
 
@@ -3472,25 +3693,25 @@ async function playDJFromBreak(prevIdx, nextIdx, ownerIdx, kind) {
     djBridgeMusicTimer = setTimeout(() => {
       djBridgeMusicTimer = null;
       if (!djActive || playbackMode !== "dj") return;
-      activeDeck.volume = 0.02;
+      setDeckVolume(activeDeck, 0.02);
       activeDeck.play().catch(err => handleDeckPlayRejection(activeDeck, targetSlot.track, err));
-      rampAudioVolume(activeDeck, djSpeakingBreak ? duckVol : masterVolume, 1800);
+      rampAudioVolume(activeDeck, djSpeakingBreak ? targetDuckVol : fullVol, 1800);
     }, enterDelayMs);
     djPendingTrackAfterIntro = () => {
       if (activeDeck.paused) {
-        activeDeck.volume = masterVolume;
+        setDeckVolume(activeDeck, fullVol);
         activeDeck.play().catch(err => handleDeckPlayRejection(activeDeck, targetSlot.track, err));
       } else {
-        rampAudioVolume(activeDeck, masterVolume, 900);
+        rampAudioVolume(activeDeck, fullVol, 900);
       }
     };
   } else {
     djPendingTrackAfterIntro = () => {
-      activeDeck.volume = masterVolume;
+      setDeckVolume(activeDeck, fullVol);
       activeDeck.play().catch(err => handleDeckPlayRejection(activeDeck, targetSlot.track, err));
     };
   }
-  fireDJVoiceBreak(brk, duckVol);
+  fireDJVoiceBreak(brk, targetDuckVol);
 }
 
 async function playDJSlot(idx, playIntroIfReady) {
@@ -3524,7 +3745,8 @@ async function playDJSlot(idx, playIntroIfReady) {
   djSpeakingBreak = null;
   updateDJTeleprompterUI(null);
 
-  const duckVol = masterVolume * (djState.duckVolume || 0.35);
+  const fullVol = effectiveTrackVol(slot.track, false);
+  const duckVol = effectiveTrackVol(slot.track, true);
   const introBreak = playIntroIfReady && slot.intro && slot.intro.status === "ready" && !djTriggeredBreaks.has(slot.intro.id)
     ? slot.intro : null;
 
@@ -3540,7 +3762,7 @@ async function playDJSlot(idx, playIntroIfReady) {
     activeDeck.src = streamURL(slot.track.id, false);
     activeDeck.pause();
     djPendingTrackAfterIntro = () => {
-      activeDeck.volume = masterVolume;
+      setDeckVolume(activeDeck, fullVol);
       activeDeck.play().catch(err => handleDeckPlayRejection(activeDeck, slot.track, err));
     };
     fireDJVoiceBreak(introBreak, duckVol);
@@ -3548,7 +3770,7 @@ async function playDJSlot(idx, playIntroIfReady) {
   }
 
   activeDeck.src = streamURL(slot.track.id, false);
-  activeDeck.volume = introBreak ? duckVol : masterVolume;
+  setDeckVolume(activeDeck, introBreak ? duckVol : fullVol);
   activeDeck.play().catch(err => handleDeckPlayRejection(activeDeck, slot.track, err));
   if (introBreak) {
     fireDJVoiceBreak(introBreak, duckVol);
@@ -3562,11 +3784,11 @@ function fireDJVoiceBreak(brk, duckVol) {
   updateDJTeleprompterUI(brk);
   rampAudioVolume(activeDeck, duckVol, 450);
   djVoice.src = djAudioURL(brk.audioURL);
-  djVoice.volume = Math.min(1, masterVolume * 1.05);
+  setDeckVolume(djVoice, Math.min(webAudioReady ? 1.4 : 1.0, masterVolume * 1.05));
   djVoice.play().catch(() => {
     djSpeakingBreak = null;
     updateDJTeleprompterUI(null);
-    rampAudioVolume(activeDeck, masterVolume, 400);
+    rampAudioVolume(activeDeck, effectiveTrackVol(currentTrackObj, false), 400);
   });
   renderDJHeader();
   renderDJSlots();
@@ -3627,11 +3849,12 @@ function triggerDJTransitionToNext() {
 
   const nextSlot = djState.slots[nextIdx];
   const xfadeMs = Math.max(800, (djState.crossfadeSeconds || 5.0) * 1000);
-  const duckVol = masterVolume * (djState.duckVolume || 0.35);
+  const fullIncomingVol = effectiveTrackVol(nextSlot.track, false);
+  const duckVol = effectiveTrackVol(nextSlot.track, true);
 
   // Decide if incoming track enters ducked (either Bridge is still speaking, or incoming track has a ready Intro!)
   const hasReadyIntro = nextSlot.intro && nextSlot.intro.status === "ready" && !djTriggeredBreaks.has(nextSlot.intro.id);
-  const targetIncomingVol = (djSpeakingBreak || hasReadyIntro) ? duckVol : masterVolume;
+  const targetIncomingVol = (djSpeakingBreak || hasReadyIntro) ? duckVol : fullIncomingVol;
 
   // Swap decks for true overlapping equal-power crossfade!
   const outgoingDeck = activeDeck;
@@ -3643,7 +3866,7 @@ function triggerDJTransitionToNext() {
   incomingDeck.dataset.trackId = nextSlot.track.id;
   incomingDeck.dataset.transcoded = "0";
   incomingDeck.src = streamURL(nextSlot.track.id, false);
-  incomingDeck.volume = 0.02;
+  setDeckVolume(incomingDeck, 0.02);
 
   const playPromise = incomingDeck.play();
   if (playPromise && typeof playPromise.catch === "function") {
@@ -3660,7 +3883,7 @@ function triggerDJTransitionToNext() {
         outgoingDeck.dataset.trackId = nextSlot.track.id;
         outgoingDeck.dataset.transcoded = "0";
         outgoingDeck.src = streamURL(nextSlot.track.id, false);
-        outgoingDeck.volume = targetIncomingVol;
+        setDeckVolume(outgoingDeck, targetIncomingVol);
         outgoingDeck.play().catch(e2 => handleDeckPlayRejection(outgoingDeck, nextSlot.track, e2));
         djTransitionLock = false;
       } else {
@@ -3775,7 +3998,7 @@ async function testDJVoice() {
     const data = await res.json();
     if (!res.ok) { showToast(data.error || "Voice test failed"); return; }
     djVoice.src = djAudioURL(data.break.audioURL);
-    djVoice.volume = Math.min(1, masterVolume * 1.05);
+    setDeckVolume(djVoice, Math.min(webAudioReady ? 1.4 : 1.0, masterVolume * 1.05));
     djVoice.play().catch(() => {});
     showToast(`Playing ${payload.voiceName} (${data.break.duration.toFixed(1)}s broadcast DSP)!`);
   } finally {
@@ -4130,7 +4353,218 @@ async function loadSettingsForm() {
       renderDJProfiles();
       populateProfilePresetDropdown();
     }
+    const rem = s.remote || {};
+    document.getElementById("setCFEnabled").checked = !!rem.cloudflareEnabled;
+    document.getElementById("setCFMode").value = rem.cloudflareMode || "quick";
+    document.getElementById("setCFToken").value = "";
+    document.getElementById("cfTokenMask").textContent = rem.hasCloudflareToken ? `(saved: ${rem.cloudflareTokenMask})` : "";
+    document.getElementById("setCFExposeDJ").checked = rem.cloudflareExposeDJ !== false;
+    document.getElementById("setCFExposeParty").checked = rem.cloudflareExposeParty !== false;
+    onCFModeChange();
+
+    document.getElementById("setUPnPEnabled").checked = !!rem.upnpEnabled;
+    document.getElementById("setUPnPParty").checked = rem.upnpExposeParty !== false;
+    document.getElementById("setUPnPDJ").checked = !!rem.upnpExposeDJ;
+    document.getElementById("setUPnPExtParty").value = rem.upnpExternalParty || "";
+    document.getElementById("setUPnPExtDJ").value = rem.upnpExternalDJ || "";
+    document.getElementById("setUPnPGW").value = rem.upnpGatewayOverride || "";
+    document.getElementById("setRequirePINRemote").checked = rem.requirePINOnRemote !== false;
+
+    const dl = s.dlna || {};
+    document.getElementById("setDLNAEnabled").checked = dl.enabled !== false;
+    document.getElementById("setDLNAName").value = dl.friendlyName || "";
+    refreshRemoteStatus();
   } catch (e) {}
+}
+
+function onCFModeChange() {
+  const mode = document.getElementById("setCFMode")?.value || "quick";
+  document.getElementById("cfTokenWrap")?.classList.toggle("hidden", mode !== "token");
+}
+
+let remoteStatusCache = null;
+async function refreshRemoteStatus() {
+  try {
+    const res = await fetch("/api/v2/remote/status", { headers: HEADERS });
+    if (!res.ok) return;
+    const d = await res.json();
+    remoteStatusCache = d;
+
+    // Cloudflare Tunnel status
+    const cf = d.tunnel || {};
+    const cfB = document.getElementById("cfStatusBadge");
+    if (cfB) {
+      if (cf.running && (cf.publicDJURL || cf.publicPartyURL || cf.mode === "token")) {
+        cfB.textContent = "LIVE HTTPS";
+        cfB.className = "badge mint";
+      } else if (cf.running) {
+        cfB.textContent = "CONNECTING…";
+        cfB.className = "badge amber";
+      } else if (cf.enabled) {
+        cfB.textContent = "ERROR";
+        cfB.className = "badge";
+      } else {
+        cfB.textContent = "OFF";
+        cfB.className = "badge dim";
+      }
+    }
+    const cfURLs = document.getElementById("cfLiveURLs");
+    if (cfURLs) {
+      const lines = [];
+      if (cf.publicDJURL) lines.push(`<div>DJ Radio HTTPS: <a href="${esc(cf.publicDJURL)}" target="_blank" style="color:var(--cyan);font-weight:700;">${esc(cf.publicDJURL)}</a> <button class="btn btn-dim btn-sm" style="padding:1px 6px;font-size:10px;" onclick="copyText('${esc(cf.publicDJURL)}')">Copy</button></div>`);
+      if (cf.publicPartyURL) lines.push(`<div>Party Mode HTTPS: <a href="${esc(cf.publicPartyURL)}" target="_blank" style="color:var(--magenta);font-weight:700;">${esc(cf.publicPartyURL)}</a> <button class="btn btn-dim btn-sm" style="padding:1px 6px;font-size:10px;" onclick="copyText('${esc(cf.publicPartyURL)}')">Copy</button></div>`);
+      if (cf.lastError) lines.push(`<div style="color:var(--coral);">${esc(cf.lastError)}</div>`);
+      if (!lines.length && cf.running && cf.mode === "token") lines.push(`<div style="color:var(--mint);">Named Cloudflare Tunnel active — routed to your configured Cloudflare domain.</div>`);
+      cfURLs.innerHTML = lines.join("");
+    }
+
+    // UPnP / NAT-PMP status
+    const up = d.upnp || {};
+    const upB = document.getElementById("upnpStatusBadge");
+    const activeMaps = (up.mappings || []).filter(m => m.active);
+    if (upB) {
+      if (up.enabled && activeMaps.length) {
+        upB.textContent = `${(up.method || "UPnP").toUpperCase()} · ${activeMaps.length} OPEN`;
+        upB.className = "badge mint";
+      } else if (up.enabled && up.lastError) {
+        upB.textContent = "UNAVAILABLE";
+        upB.className = "badge amber";
+      } else if (up.enabled) {
+        upB.textContent = "SYNCING";
+        upB.className = "badge amber";
+      } else {
+        upB.textContent = "OFF";
+        upB.className = "badge dim";
+      }
+    }
+    const upSum = document.getElementById("upnpLiveSummary");
+    if (upSum) {
+      const parts = [];
+      if (up.gatewayName) parts.push(`Gateway: ${esc(up.gatewayName)}${up.externalIP ? " · WAN IP " + esc(up.externalIP) : ""}`);
+      for (const mp of up.mappings || []) {
+        if (mp.active) parts.push(`<div style="color:var(--mint);">${esc(mp.service)}: :${mp.externalPort} → :${mp.internalPort}${mp.externalURL ? ` (<a href="${esc(mp.externalURL)}" target="_blank" style="color:var(--cyan);">${esc(mp.externalURL)}</a>)` : ""}</div>`);
+        else if (mp.error) parts.push(`<div style="color:var(--coral);">${esc(mp.service)}: ${esc(mp.error)}</div>`);
+      }
+      if (up.lastError && !activeMaps.length) parts.push(`<div style="color:var(--amber);">${esc(up.lastError)}</div>`);
+      upSum.innerHTML = parts.join("");
+    }
+
+    // Broadcast live MP3 streams
+    const bc = d.broadcast || {};
+    if (bc.djStreamURL) document.getElementById("streamDJURL").textContent = bc.djStreamURL;
+    if (bc.partyStreamURL) document.getElementById("streamPartyURL").textContent = bc.partyStreamURL;
+    const djl = document.getElementById("streamDJListeners");
+    if (djl) djl.textContent = bc.djListeners ? `(${bc.djListeners} listening)` : "";
+    const pl = document.getElementById("streamPartyListeners");
+    if (pl) pl.textContent = bc.partyListeners ? `(${bc.partyListeners} listening)` : "";
+
+    // DLNA Renderers
+    renderDLNARenderersList(document.getElementById("dlnaRenderersList"), d.dlna?.renderers || []);
+  } catch (e) {}
+}
+
+function renderDLNARenderersList(container, renderers, preferredChannel = "") {
+  if (!container) return;
+  if (!renderers || !renderers.length) {
+    container.innerHTML = '<div class="mono" style="font-size:11.5px;">No DLNA speakers/AVRs found yet — click "Scan LAN Speakers" (requires Docker <code>--network host</code> on Unraid).</div>';
+    return;
+  }
+  container.innerHTML = renderers.map(r => {
+    const safeID = esc(r.id).replace(/'/g, "\\'");
+    const activePill = r.activeChannel ? `<span class="badge mint">CASTING ${esc(r.activeChannel.toUpperCase())}</span>` : "";
+    return `<div class="track-row" style="grid-template-columns:1fr auto;padding:7px 10px;">
+      <div class="track-main">
+        <div class="track-name" style="font-size:13px;">${esc(r.name)} ${activePill}</div>
+        <div class="track-artist">${esc([r.manufacturer, r.model].filter(Boolean).join(" · ") || r.location)}</div>
+      </div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;">
+        ${(!preferredChannel || preferredChannel === "dj") ? `<button class="btn btn-amber btn-sm" onclick="castToDLNA('${safeID}','dj')">Cast DJ</button>` : ""}
+        ${(!preferredChannel || preferredChannel === "party") ? `<button class="btn btn-mag btn-sm" onclick="castToDLNA('${safeID}','party')">Cast Party</button>` : ""}
+        ${r.activeChannel ? `<button class="btn btn-dim btn-sm" onclick="stopDLNACast('${safeID}')">Stop</button>` : ""}
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function scanDLNARenderers(modalContainer = null, preferredChannel = "") {
+  const btn = document.getElementById("dlnaScanBtn");
+  if (btn) { btn.disabled = true; btn.textContent = "Scanning LAN…"; }
+  try {
+    const res = await fetch("/api/v2/dlna/discover", { method: "POST", headers: HEADERS });
+    const d = await res.json();
+    if (!res.ok) { showToast(d.error || "DLNA scan failed"); return; }
+    const list = d.renderers || [];
+    renderDLNARenderersList(document.getElementById("dlnaRenderersList"), list);
+    if (modalContainer) renderDLNARenderersList(modalContainer, list, preferredChannel);
+    showToast(`Found ${list.length} DLNA speaker${list.length === 1 ? "" : "s"}/receiver${list.length === 1 ? "" : "s"}`);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Scan LAN Speakers"; }
+  }
+}
+
+async function castToDLNA(rendererId, channel) {
+  showToast(`Casting ${channel === "party" ? "Party Mode" : "Live DJ Radio"} via DLNA…`);
+  const res = await fetch("/api/v2/dlna/cast", {
+    method: "POST",
+    headers: { ...HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ rendererId, channel })
+  });
+  const d = await res.json();
+  if (!res.ok) { showToast(d.error || "DLNA cast failed"); return; }
+  showToast(`Now casting ${channel.toUpperCase()} to ${d.renderer?.name || "speaker"}!`);
+  refreshRemoteStatus();
+  const modalBox = document.getElementById("mDLNAList");
+  if (modalBox && d.dlna?.renderers) renderDLNARenderersList(modalBox, d.dlna.renderers);
+}
+
+async function stopDLNACast(rendererId) {
+  const res = await fetch("/api/v2/dlna/stop", {
+    method: "POST",
+    headers: { ...HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ rendererId })
+  });
+  if (res.ok) {
+    showToast("Stopped DLNA playback");
+    refreshRemoteStatus();
+    const d = await res.json();
+    const modalBox = document.getElementById("mDLNAList");
+    if (modalBox && d.dlna?.renderers) renderDLNARenderersList(modalBox, d.dlna.renderers);
+  }
+}
+
+async function syncUPnPNow() {
+  showToast("Syncing router ports via UPnP-IGD / NAT-PMP…");
+  const res = await fetch("/api/v2/remote/upnp/sync", { method: "POST", headers: HEADERS });
+  if (res.ok) {
+    await refreshRemoteStatus();
+    showToast("Router port sync complete");
+  }
+}
+
+async function openDLNACastModal(channel) {
+  await refreshRemoteStatus();
+  const bc = remoteStatusCache?.broadcast || {};
+  const streamURLStr = channel === "party" ? (bc.partyStreamURL || "") : (bc.djStreamURL || "");
+  const body = document.getElementById("modalBody");
+  body.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
+      <div>
+        <div class="card-title" style="margin-bottom:3px;color:var(--mint);">DLNA / UPnP AUDIO CASTING</div>
+        <h2 style="margin:0;">Cast ${channel === "party" ? "Party Mode Live" : "Live AI DJ Radio"}</h2>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-cyan btn-sm" onclick="scanDLNARenderers(document.getElementById('mDLNAList'), '${channel}')">Scan LAN</button>
+        <button class="btn btn-dim btn-sm" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+    ${streamURLStr ? `<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;margin-bottom:12px;flex-wrap:wrap;">
+      <span class="mono" style="font-size:11.5px;">Direct Stream URL: <strong style="color:var(--cyan);">${esc(streamURLStr)}</strong></span>
+      <button class="btn btn-dim btn-sm" onclick="copyText('${esc(streamURLStr)}')">Copy URL</button>
+    </div>` : ""}
+    <div id="mDLNAList" style="display:flex;flex-direction:column;gap:6px;"></div>
+  `;
+  renderDLNARenderersList(document.getElementById("mDLNAList"), remoteStatusCache?.dlna?.renderers || [], channel);
+  document.getElementById("modalBackdrop").classList.remove("hidden");
 }
 
 function generateRandomPIN() {
@@ -4169,8 +4603,27 @@ async function saveServerSettings() {
     advancedAnalysisEnabled: document.getElementById("setAdvancedAnalysis").checked,
     lidarrURL: document.getElementById("setLidarrURL").value.trim(),
     lidarrPollEnabled: document.getElementById("setLidarrPoll").checked,
-    dj: djPayload
+    dj: djPayload,
+    remote: {
+      cloudflareEnabled: document.getElementById("setCFEnabled").checked,
+      cloudflareMode: document.getElementById("setCFMode").value,
+      cloudflareExposeDJ: document.getElementById("setCFExposeDJ").checked,
+      cloudflareExposeParty: document.getElementById("setCFExposeParty").checked,
+      upnpEnabled: document.getElementById("setUPnPEnabled").checked,
+      upnpExposeParty: document.getElementById("setUPnPParty").checked,
+      upnpExposeDJ: document.getElementById("setUPnPDJ").checked,
+      upnpExternalParty: parseInt(document.getElementById("setUPnPExtParty").value, 10) || 0,
+      upnpExternalDJ: parseInt(document.getElementById("setUPnPExtDJ").value, 10) || 0,
+      upnpGatewayOverride: document.getElementById("setUPnPGW").value.trim(),
+      requirePINOnRemote: document.getElementById("setRequirePINRemote").checked
+    },
+    dlna: {
+      enabled: document.getElementById("setDLNAEnabled").checked,
+      friendlyName: document.getElementById("setDLNAName").value.trim()
+    }
   };
+  const newCFToken = document.getElementById("setCFToken").value.trim();
+  if (newCFToken) payload.remote.cloudflareToken = newCFToken;
   const newLidarrKey = document.getElementById("setLidarrKey").value.trim();
   if (newLidarrKey) payload.lidarrAPIKey = newLidarrKey;
 
@@ -4183,6 +4636,7 @@ async function saveServerSettings() {
     showToast("Settings saved!");
     await loadSettingsForm();
     await refreshDJState();
+    setTimeout(refreshRemoteStatus, 2500);
   } else {
     showToast("Failed to save settings");
   }
@@ -4217,8 +4671,8 @@ async function restorePersistentState() {
   // Restore volume & shuffle
   if (typeof saved.masterVolume === "number") {
     masterVolume = saved.masterVolume;
-    activeDeck.volume = masterVolume;
-    djVoice.volume = Math.min(1, masterVolume * 1.05);
+    setDeckVolume(activeDeck, masterVolume);
+    setDeckVolume(djVoice, Math.min(webAudioReady ? 1.4 : 1.0, masterVolume * 1.05));
     document.getElementById("volSlider").value = masterVolume;
   }
   if (saved.isShuffled) {
@@ -4291,7 +4745,7 @@ async function restorePersistentState() {
     const resumeTime = Math.max(0, Number(saved.currentTime || 0));
     updateNowPlayingDisplay(restoreTrack);
     activeDeck.src = streamURL(restoreTrack.id);
-    activeDeck.volume = masterVolume;
+    setDeckVolume(activeDeck, effectiveTrackVol(restoreTrack, false));
 
     const shouldAutoResume = !!(saved.wasPlaying || (saved.playbackMode === "dj" && saved.djActive));
     const seekAndMaybePlay = () => {

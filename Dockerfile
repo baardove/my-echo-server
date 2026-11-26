@@ -11,7 +11,11 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -trimpath -ldflags="-s -w" -o /out/echo-server ./cmd/echo-server
 
 FROM alpine:3.21
-RUN apk add --no-cache ffmpeg ca-certificates tzdata su-exec
+ARG TARGETARCH=amd64
+RUN apk add --no-cache ffmpeg ca-certificates tzdata su-exec curl && \
+    CF_ARCH=$([ "${TARGETARCH}" = "arm64" ] && echo "arm64" || echo "amd64") && \
+    curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${CF_ARCH}" -o /usr/local/bin/cloudflared && \
+    chmod +x /usr/local/bin/cloudflared
 WORKDIR /app
 COPY --from=builder /out/echo-server /usr/local/bin/echo-server
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh

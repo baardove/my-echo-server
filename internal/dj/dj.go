@@ -1598,7 +1598,7 @@ func (e *Engine) analyzeNextRundownTracks(ctx context.Context) {
 				}
 				for i := start; i < end; i++ {
 					tr := e.slots[i].Track
-					if !tr.HasAnalysis && !e.analyzeFailed[tr.ID] {
+					if (!tr.HasAnalysis || tr.LoudnessDB == 0) && !e.analyzeFailed[tr.ID] {
 						targetID = tr.ID
 						break
 					}
@@ -1625,6 +1625,9 @@ func (e *Engine) analyzeNextRundownTracks(ctx context.Context) {
 					e.slots[i].Track.VocalStartSec = res.VocalStartSec
 					e.slots[i].Track.VocalEndSec = res.VocalEndSec
 					e.slots[i].Track.Energy = res.Energy
+					e.slots[i].Track.LoudnessDB = res.LoudnessDB
+					e.slots[i].Track.PeakLinear = res.PeakLinear
+					e.slots[i].Track.NormGainDB = res.NormGainDB
 					e.slots[i].Track.HasAnalysis = true
 					updated = true
 				}
@@ -1639,7 +1642,7 @@ func (e *Engine) analyzeNextRundownTracks(ctx context.Context) {
 }
 
 func (e *Engine) ensureTrackAnalyzed(ctx context.Context, tr *DJTrackInfo) {
-	if tr == nil || tr.HasAnalysis || tr.ID == "" {
+	if tr == nil || (tr.HasAnalysis && tr.LoudnessDB != 0) || tr.ID == "" {
 		return
 	}
 	e.mu.RLock()
@@ -1660,6 +1663,9 @@ func (e *Engine) ensureTrackAnalyzed(ctx context.Context, tr *DJTrackInfo) {
 	tr.VocalStartSec = res.VocalStartSec
 	tr.VocalEndSec = res.VocalEndSec
 	tr.Energy = res.Energy
+	tr.LoudnessDB = res.LoudnessDB
+	tr.PeakLinear = res.PeakLinear
+	tr.NormGainDB = res.NormGainDB
 	tr.HasAnalysis = true
 	e.mu.Lock()
 	for i := range e.slots {
@@ -1668,6 +1674,9 @@ func (e *Engine) ensureTrackAnalyzed(ctx context.Context, tr *DJTrackInfo) {
 			e.slots[i].Track.VocalStartSec = res.VocalStartSec
 			e.slots[i].Track.VocalEndSec = res.VocalEndSec
 			e.slots[i].Track.Energy = res.Energy
+			e.slots[i].Track.LoudnessDB = res.LoudnessDB
+			e.slots[i].Track.PeakLinear = res.PeakLinear
+			e.slots[i].Track.NormGainDB = res.NormGainDB
 			e.slots[i].Track.HasAnalysis = true
 		}
 	}
@@ -2071,6 +2080,9 @@ func toDJTrackInfo(tr db.TrackRecord, analysisMap map[string]db.TrackAnalysis) D
 			info.VocalStartSec = an.VocalStartSec
 			info.VocalEndSec = an.VocalEndSec
 			info.Energy = an.Energy
+			info.LoudnessDB = an.LoudnessDB
+			info.PeakLinear = an.PeakLinear
+			info.NormGainDB = an.NormGainDB
 			info.Tags = an.Tags
 			info.HasAnalysis = true
 		}

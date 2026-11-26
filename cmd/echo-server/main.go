@@ -14,14 +14,18 @@ import (
 	"github.com/baardove/my-echo/server/internal/analysis"
 	"github.com/baardove/my-echo/server/internal/api"
 	"github.com/baardove/my-echo/server/internal/artwork"
+	"github.com/baardove/my-echo/server/internal/broadcast"
 	"github.com/baardove/my-echo/server/internal/config"
 	"github.com/baardove/my-echo/server/internal/db"
 	"github.com/baardove/my-echo/server/internal/dj"
+	"github.com/baardove/my-echo/server/internal/dlna"
 	"github.com/baardove/my-echo/server/internal/editorial"
 	"github.com/baardove/my-echo/server/internal/indexer"
 	"github.com/baardove/my-echo/server/internal/lidarr"
+	"github.com/baardove/my-echo/server/internal/netmap"
 	"github.com/baardove/my-echo/server/internal/party"
 	"github.com/baardove/my-echo/server/internal/snapshot"
+	"github.com/baardove/my-echo/server/internal/tunnel"
 )
 
 func main() {
@@ -90,6 +94,11 @@ func main() {
 	djEngine.SetLidarrChecker(lidarrMgr)
 	djEngine.SetAnalyzer(analyzer)
 
+	broadcastHub := broadcast.NewHub(cfg, store, djEngine, partyEngine)
+	dlnaMgr := dlna.NewManager(cfg)
+	netmapMgr := netmap.NewManager(cfg)
+	tunnelMgr := tunnel.NewManager(cfg)
+
 	idx.SetOnChanged(func() {
 		partyEngine.ReloadCatalog()
 		if cfg.AutoFetchEditorial {
@@ -106,6 +115,10 @@ func main() {
 	apiServer.SetDJEngine(djEngine)
 	apiServer.SetLidarrManager(lidarrMgr)
 	apiServer.SetAnalyzer(analyzer)
+	apiServer.SetBroadcastHub(broadcastHub)
+	apiServer.SetDLNAManager(dlnaMgr)
+	apiServer.SetNetmapManager(netmapMgr)
+	apiServer.SetTunnelManager(tunnelMgr)
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -116,6 +129,9 @@ func main() {
 	djEngine.StartWorker(ctx)
 	lidarrMgr.StartPoller(ctx)
 	analyzer.StartWorker(ctx)
+	dlnaMgr.Start(ctx)
+	netmapMgr.Start(ctx)
+	tunnelMgr.Start(ctx)
 
 	// Initial background scan + periodic schedule
 	go func() {

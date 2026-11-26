@@ -157,13 +157,16 @@ type ArtistEditorial struct {
 }
 
 // TrackAnalysis stores optional deep audio DSP telemetry for DJ Mode & smart stacking:
-// BPM, vocal/singing start & end cue points, energy, normalized genre, and smart tags.
+// BPM, vocal/singing start & end cue points, loudness/peak for live normalization, energy, normalized genre, and smart tags.
 type TrackAnalysis struct {
 	TrackKey      string    `json:"trackKey"`
 	BPM           float64   `json:"bpm"`
 	VocalStartSec float64   `json:"vocalStartSec"`
 	VocalEndSec   float64   `json:"vocalEndSec"`
 	Energy        float64   `json:"energy"`
+	LoudnessDB    float64   `json:"loudnessDB"`
+	PeakLinear    float64   `json:"peakLinear"`
+	NormGainDB    float64   `json:"normGainDB"`
 	Genre         string    `json:"genre,omitempty"`
 	Tags          []string  `json:"tags"`
 	AnalyzedAt    time.Time `json:"analyzedAt"`
@@ -294,6 +297,9 @@ func (s *Store) migrate() error {
 		vocal_start_sec REAL NOT NULL DEFAULT 0,
 		vocal_end_sec REAL NOT NULL DEFAULT 0,
 		energy REAL NOT NULL DEFAULT 0,
+		loudness_db REAL NOT NULL DEFAULT 0,
+		peak_linear REAL NOT NULL DEFAULT 0,
+		norm_gain_db REAL NOT NULL DEFAULT 0,
 		genre TEXT NOT NULL DEFAULT '',
 		tags_json TEXT NOT NULL DEFAULT '[]',
 		analyzed_at INTEGER NOT NULL,
@@ -306,7 +312,18 @@ func (s *Store) migrate() error {
 	);
 	`
 	_, err := s.sql.Exec(schema)
-	return err
+	if err != nil {
+		return err
+	}
+	// Idempotent column migrations for existing databases
+	for _, stmt := range []string{
+		`ALTER TABLE track_analysis ADD COLUMN loudness_db REAL NOT NULL DEFAULT 0`,
+		`ALTER TABLE track_analysis ADD COLUMN peak_linear REAL NOT NULL DEFAULT 0`,
+		`ALTER TABLE track_analysis ADD COLUMN norm_gain_db REAL NOT NULL DEFAULT 0`,
+	} {
+		_, _ = s.sql.Exec(stmt)
+	}
+	return nil
 }
 
 // UpsertLibrary ensures a library row exists.
@@ -1062,18 +1079,21 @@ func (s *Store) UpsertTrackAnalysis(a TrackAnalysis) error {
 	}
 	tagsRaw, _ := json.Marshal(a.Tags)
 	_, err := s.sql.Exec(`
-		INSERT INTO track_analysis (track_key, bpm, vocal_start_sec, vocal_end_sec, energy, genre, tags_json, analyzed_at, version)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO track_analysis (track_key, bpm, vocal_start_sec, vocal_end_sec, energy, loudness_db, peak_linear, norm_gain_db, genre, tags_json, analyzed_at, version)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(track_key) DO UPDATE SET
 			bpm=excluded.bpm,
 			vocal_start_sec=excluded.vocal_start_sec,
 			vocal_end_sec=excluded.vocal_end_sec,
 			energy=excluded.energy,
+			loudness_db=excluded.loudness_db,
+			peak_linear=excluded.peak_linear,
+			norm_gain_db=excluded.norm_gain_db,
 			genre=excluded.genre,
 			tags_json=excluded.tags_json,
 			analyzed_at=excluded.analyzed_at,
 			version=excluded.version
-	`, a.TrackKey, a.BPM, a.VocalStartSec, a.VocalEndSec, a.Energy, a.Genre, string(tagsRaw), a.AnalyzedAt.Unix(), a.Version)
+	`, a.TrackKey, a.BPM, a.VocalStartSec, a.VocalEndSec, a.Energy, a.LoudnessDB, a.PeakLinear, a.NormGainDB, a.Genre, string(tagsRaw), a.AnalyzedAt.Unix(), a.Version)
 	return err
 }
 
@@ -1083,8 +1103,8 @@ func (s *Store) GetTrackAnalysis(trackKey string) (TrackAnalysis, bool) {
 	var a TrackAnalysis
 	var tagsRaw string
 	var ts int64
-	err := s.sql.QueryRow(`SELECT track_key, bpm, vocal_start_sec, vocal_end_sec, energy, genre, tags_json, analyzed_at, version FROM track_analysis WHERE track_key=?`, trackKey).
-		Scan(&a.TrackKey, &a.BPM, &a.VocalStartSec, &a.VocalEndSec, &a.Energy, &a.Genre, &tagsRaw, &ts, &a.Version)
+	err := s.sql.QueryRow(`SELECT track_key, bpm, vocal_start_sec, vocal_end_sec, energy, loudness_db, peak_linear, norm_gain_db, genre, tags_json, analyzed_at, version FROM track_analysis WHERE track_key=?`, trackKey).
+		Scan(&a.TrackKey, &a.BPM, &a.VocalStartSec, &a.VocalEndSec, &a.Energy, &a.LoudnessDB, &a.PeakLinear, &a.NormGainDB, &a.Genre, &tagsRaw, &ts, &a.Version)
 	if err != nil {
 		return TrackAnalysis{}, false
 	}
@@ -1099,7 +1119,7 @@ func (s *Store) GetTrackAnalysis(trackKey string) (TrackAnalysis, bool) {
 func (s *Store) ListTrackAnalysisMap() (map[string]TrackAnalysis, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	rows, err := s.sql.Query(`SELECT track_key, bpm, vocal_start_sec, vocal_end_sec, energy, genre, tags_json, analyzed_at, version FROM track_analysis`)
+	rows, err := s.sql.Query(`SELECT track_key, bpm, vocal_start_sec, vocal_end_sec, energy, loudness_db, peak_linear, norm_gain_db, genre, tags_json, analyzed_at, version FROM track_analysis`)
 	if err != nil {
 		return nil, err
 	}
@@ -1109,7 +1129,7 @@ func (s *Store) ListTrackAnalysisMap() (map[string]TrackAnalysis, error) {
 		var a TrackAnalysis
 		var tagsRaw string
 		var ts int64
-		if err := rows.Scan(&a.TrackKey, &a.BPM, &a.VocalStartSec, &a.VocalEndSec, &a.Energy, &a.Genre, &tagsRaw, &ts, &a.Version); err != nil {
+		if err := rows.Scan(&a.TrackKey, &a.BPM, &a.VocalStartSec, &a.VocalEndSec, &a.Energy, &a.LoudnessDB, &a.PeakLinear, &a.NormGainDB, &a.Genre, &tagsRaw, &ts, &a.Version); err != nil {
 			return nil, err
 		}
 		_ = json.Unmarshal([]byte(tagsRaw), &a.Tags)

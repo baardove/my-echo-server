@@ -20,7 +20,8 @@ import (
 
 const (
 	AnalysisSampleRate = 11025
-	AnalysisVersion    = 1
+	AnalysisVersion    = 2
+	TargetLoudnessDB   = -14.0
 )
 
 type Status struct {
@@ -249,11 +250,11 @@ func (a *Analyzer) AnalyzeTrackOnDemand(ctx context.Context, trackID string) (db
 		a.status.AnalyzedCount = len(m)
 	}
 	a.mu.Unlock()
-	log.Printf("[analysis] on-the-go analyzed %q — %s: %.0f BPM, vocal %.1fs–%.1fs", tr.Title, tr.Artist, res.BPM, res.VocalStartSec, res.VocalEndSec)
+	log.Printf("[analysis] on-the-go analyzed %q — %s: %.0f BPM, %.1f dB (gain %+.1f dB), vocal %.1fs–%.1fs", tr.Title, tr.Artist, res.BPM, res.LoudnessDB, res.NormGainDB, res.VocalStartSec, res.VocalEndSec)
 	return res, nil
 }
 
-// AnalyzeTrackFile decodes stereo 11,025 Hz PCM via ffmpeg and runs BPM, vocal-entry/exit, energy, and tag analysis.
+// AnalyzeTrackFile decodes stereo 11,025 Hz PCM via ffmpeg and runs BPM, loudness/peak, vocal-entry/exit, energy, and tag analysis.
 func AnalyzeTrackFile(ctx context.Context, filePath string, tr db.TrackRecord, albEd *db.AlbumEditorial) (db.TrackAnalysis, error) {
 	ffBin, err := exec.LookPath("ffmpeg")
 	if err != nil {
@@ -285,6 +286,7 @@ func AnalyzeTrackFile(ctx context.Context, filePath string, tr db.TrackRecord, a
 	}
 
 	bpm, vocalStart, vocalEnd, energy := AnalyzeStereoPCM(left, right, AnalysisSampleRate, dur)
+	loudnessDB, peakLinear, normGainDB := ComputeLoudnessAndGain(left, right, AnalysisSampleRate)
 	canonGenre, tags := BuildGenreAndTags(tr, albEd, bpm, energy, vocalStart, vocalEnd, dur)
 
 	return db.TrackAnalysis{
@@ -293,11 +295,99 @@ func AnalyzeTrackFile(ctx context.Context, filePath string, tr db.TrackRecord, a
 		VocalStartSec: math.Round(vocalStart*10) / 10,
 		VocalEndSec:   math.Round(vocalEnd*10) / 10,
 		Energy:        math.Round(energy*100) / 100,
+		LoudnessDB:    math.Round(loudnessDB*10) / 10,
+		PeakLinear:    math.Round(peakLinear*1000) / 1000,
+		NormGainDB:    math.Round(normGainDB*10) / 10,
 		Genre:         canonGenre,
 		Tags:          tags,
 		AnalyzedAt:    time.Now().UTC(),
 		Version:       AnalysisVersion,
 	}, nil
+}
+
+// ComputeLoudnessAndGain measures EBU R128-style 400ms gated integrated stereo loudness (dBFS),
+// sample peak (0..1), and a peak-safe ReplayGain-style normalization adjustment targeting -14.0 dBFS.
+func ComputeLoudnessAndGain(left, right []float64, sr int) (loudnessDB, peakLinear, normGainDB float64) {
+	n := len(left)
+	if n == 0 || sr <= 0 {
+		return TargetLoudnessDB, 0, 0
+	}
+	if len(right) < n {
+		n = len(right)
+	}
+
+	// Track true sample peak across both channels
+	for i := 0; i < n; i++ {
+		al := math.Abs(left[i])
+		ar := math.Abs(right[i])
+		if al > peakLinear {
+			peakLinear = al
+		}
+		if ar > peakLinear {
+			peakLinear = ar
+		}
+	}
+
+	// 400ms overlapping (50% hop) stereo loudness blocks
+	win := (sr * 4) / 10
+	if win < 256 {
+		win = 256
+	}
+	hop := win / 2
+	var blockPowers []float64
+	var absSum float64
+	absCount := 0
+	const absGatePower = 3.16227766e-6 // -55 dBFS
+	for start := 0; start+win <= n; start += hop {
+		var p float64
+		for i := start; i < start+win; i++ {
+			p += 0.5 * (left[i]*left[i] + right[i]*right[i])
+		}
+		p /= float64(win)
+		if p >= absGatePower {
+			blockPowers = append(blockPowers, p)
+			absSum += p
+			absCount++
+		}
+	}
+	if absCount == 0 {
+		return -40.0, peakLinear, 0
+	}
+
+	// Relative gate: -10 dB below ungated average power (0.1x power)
+	relGate := (absSum / float64(absCount)) * 0.1
+	var gatedSum float64
+	gatedCount := 0
+	for _, p := range blockPowers {
+		if p >= relGate {
+			gatedSum += p
+			gatedCount++
+		}
+	}
+	meanPower := absSum / float64(absCount)
+	if gatedCount > 0 {
+		meanPower = gatedSum / float64(gatedCount)
+	}
+	if meanPower < 1e-9 {
+		return -45.0, peakLinear, 0
+	}
+
+	loudnessDB = 10.0 * math.Log10(meanPower)
+	normGainDB = TargetLoudnessDB - loudnessDB
+	if normGainDB < -10.0 {
+		normGainDB = -10.0
+	}
+	if normGainDB > 6.0 {
+		normGainDB = 6.0
+	}
+	// Peak-safe headroom clamp: ensure peakLinear * 10^(gain/20) <= 0.96
+	if peakLinear > 0.01 {
+		maxGainDB := 20.0 * math.Log10(0.96/peakLinear)
+		if normGainDB > maxGainDB {
+			normGainDB = maxGainDB
+		}
+	}
+	return loudnessDB, peakLinear, normGainDB
 }
 
 // AnalyzeStereoPCM performs pure-Go signal analysis on stereo PCM samples (11025 Hz):

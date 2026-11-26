@@ -161,6 +161,9 @@ type DJTrackInfo struct {
 	VocalStartSec float64  `json:"vocalStartSec,omitempty"`
 	VocalEndSec   float64  `json:"vocalEndSec,omitempty"`
 	Energy        float64  `json:"energy,omitempty"`
+	LoudnessDB    float64  `json:"loudnessDB,omitempty"`
+	PeakLinear    float64  `json:"peakLinear,omitempty"`
+	NormGainDB    float64  `json:"normGainDB,omitempty"`
 	Tags          []string `json:"tags,omitempty"`
 	HasAnalysis   bool     `json:"hasAnalysis,omitempty"`
 }

@@ -156,27 +156,71 @@ func DefaultDJConfig() DJConfig {
 	}
 }
 
+// RemoteConfig holds remote access settings (Cloudflare Tunnel + UPnP-IGD/NAT-PMP router auto-port-forwarding).
+type RemoteConfig struct {
+	// Cloudflare Tunnel (zero open router ports, automatic trusted HTTPS)
+	CloudflareEnabled     bool   `json:"cloudflareEnabled"`
+	CloudflareMode        string `json:"cloudflareMode"` // "quick" (trycloudflare.com) | "token" (named tunnel)
+	CloudflareToken       string `json:"cloudflareToken,omitempty"`
+	CloudflareExposeDJ    bool   `json:"cloudflareExposeDJ"`
+	CloudflareExposeParty bool   `json:"cloudflareExposeParty"`
+
+	// UPnP-IGD / NAT-PMP Router Auto-Port-Forwarding (off by default, guarded by remote PIN auth)
+	UPnPEnabled          bool   `json:"upnpEnabled"`
+	UPnPExposeParty      bool   `json:"upnpExposeParty"`
+	UPnPExposeDJ         bool   `json:"upnpExposeDJ"`
+	UPnPExternalParty    int    `json:"upnpExternalParty"` // 0 = same as PartyHTTPPort
+	UPnPExternalDJ       int    `json:"upnpExternalDJ"`    // 0 = same as APIPort
+	UPnPGatewayOverride  string `json:"upnpGatewayOverride,omitempty"`
+	RequirePINOnRemote   bool   `json:"requirePINOnRemote"` // Always true by default for WAN security
+}
+
+// DLNAConfig holds DLNA / UPnP MediaServer advertisement & LAN speaker/AVR casting settings.
+type DLNAConfig struct {
+	Enabled      bool   `json:"enabled"`
+	FriendlyName string `json:"friendlyName,omitempty"`
+}
+
+func DefaultRemoteConfig() RemoteConfig {
+	return RemoteConfig{
+		CloudflareMode:        "quick",
+		CloudflareExposeDJ:    true,
+		CloudflareExposeParty: true,
+		UPnPExposeParty:       true,
+		UPnPExposeDJ:          false,
+		RequirePINOnRemote:    true,
+	}
+}
+
+func DefaultDLNAConfig() DLNAConfig {
+	return DLNAConfig{
+		Enabled: true,
+	}
+}
+
 // Config holds persisted + environment-overridden server configuration.
 type Config struct {
-	ConfigDir          string          `json:"-"`
-	ServerName         string          `json:"serverName"`
-	PairingPIN         string          `json:"pairingPIN"`
-	APIPort            int             `json:"apiPort"`
-	PartyHTTPPort      int             `json:"partyHTTPPort"`
-	PartyHTTPSPort     int             `json:"partyHTTPSPort"`
-	AdvertiseHost      string          `json:"advertiseHost,omitempty"`
-	ScanInterval       time.Duration   `json:"-"`
-	ScanIntervalS      string          `json:"scanInterval"`
-	ShardCount         int             `json:"shardCount"`
-	MaxDeltaRevs       int             `json:"maxDeltaRevs"`
-	EnableMDNS         bool            `json:"enableMDNS"`
-	AutoFetchEditorial bool            `json:"autoFetchEditorial"`
-	MirrorToShare      bool            `json:"mirrorToShare"`
+	ConfigDir               string          `json:"-"`
+	ServerName              string          `json:"serverName"`
+	PairingPIN              string          `json:"pairingPIN"`
+	APIPort                 int             `json:"apiPort"`
+	PartyHTTPPort           int             `json:"partyHTTPPort"`
+	PartyHTTPSPort          int             `json:"partyHTTPSPort"`
+	AdvertiseHost           string          `json:"advertiseHost,omitempty"`
+	ScanInterval            time.Duration   `json:"-"`
+	ScanIntervalS           string          `json:"scanInterval"`
+	ShardCount              int             `json:"shardCount"`
+	MaxDeltaRevs            int             `json:"maxDeltaRevs"`
+	EnableMDNS              bool            `json:"enableMDNS"`
+	AutoFetchEditorial      bool            `json:"autoFetchEditorial"`
+	MirrorToShare           bool            `json:"mirrorToShare"`
 	LidarrURL               string          `json:"lidarrURL,omitempty"`
 	LidarrAPIKey            string          `json:"lidarrAPIKey,omitempty"`
 	LidarrPollEnabled       bool            `json:"lidarrPollEnabled"`
 	AdvancedAnalysisEnabled bool            `json:"advancedAnalysisEnabled"`
 	DJ                      DJConfig        `json:"dj"`
+	Remote                  RemoteConfig    `json:"remote"`
+	DLNA                    DLNAConfig      `json:"dlna"`
 	Libraries               []LibraryConfig `json:"libraries"`
 }
 
@@ -200,6 +244,8 @@ func Load() (*Config, error) {
 		MirrorToShare:      true,
 		LidarrPollEnabled:  true,
 		DJ:                 DefaultDJConfig(),
+		Remote:             DefaultRemoteConfig(),
+		DLNA:               DefaultDLNAConfig(),
 	}
 
 	cfgFile := filepath.Join(cfgDir, "config.json")

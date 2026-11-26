@@ -69,3 +69,28 @@ func TestAnalyzeStereoPCMDetectsBPMAndVocalBoundaries(t *testing.T) {
 		t.Fatalf("expected categorized tags, got %v", tags)
 	}
 }
+
+func TestComputeLoudnessAndGainNormalizesLoudAndQuietTracks(t *testing.T) {
+	const sr = AnalysisSampleRate
+	n := sr * 5
+	loudL, loudR := make([]float64, n), make([]float64, n)
+	quietL, quietR := make([]float64, n), make([]float64, n)
+	for i := 0; i < n; i++ {
+		s := math.Sin(2 * math.Pi * 440.0 * float64(i) / float64(sr))
+		loudL[i], loudR[i] = 0.70*s, 0.70*s
+		quietL[i], quietR[i] = 0.08*s, 0.08*s
+	}
+
+	loudDB, loudPk, loudGain := ComputeLoudnessAndGain(loudL, loudR, sr)
+	quietDB, quietPk, quietGain := ComputeLoudnessAndGain(quietL, quietR, sr)
+
+	if loudDB <= -10.0 || loudGain >= -3.0 {
+		t.Fatalf("expected loud signal to attenuate: loudDB=%.1f gain=%.1f", loudDB, loudGain)
+	}
+	if quietDB >= -20.0 || quietGain <= 2.0 {
+		t.Fatalf("expected quiet signal to boost: quietDB=%.1f gain=%.1f", quietDB, quietGain)
+	}
+	if loudPk < 0.65 || quietPk > 0.12 {
+		t.Fatalf("unexpected peaks: loudPk=%.3f quietPk=%.3f", loudPk, quietPk)
+	}
+}
