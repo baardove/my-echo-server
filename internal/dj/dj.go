@@ -692,6 +692,87 @@ func (e *Engine) AppendTracks(trackIDs []string) (SessionState, error) {
 	return e.State(), nil
 }
 
+// InsertTracksAfterCurrent splices one or more tracks directly after the currently playing slot
+// without disturbing the rest of the DJ playlist, returning the updated state and insertion index.
+func (e *Engine) InsertTracksAfterCurrent(trackIDs []string) (SessionState, int, error) {
+	if len(trackIDs) == 0 {
+		st := e.State()
+		return st, st.CurrentIndex, nil
+	}
+	allTracks, err := e.store.LoadAllTracks()
+	if err != nil {
+		return SessionState{}, -1, err
+	}
+	byID := indexTracksByID(allTracks)
+
+	edAlbList, _ := e.store.ListAlbumEditorial()
+	hasEd := make(map[string]bool, len(edAlbList))
+	for _, ed := range edAlbList {
+		if (ed.AlbumSummary != nil && *ed.AlbumSummary != "") || (ed.ArtistSummary != nil && *ed.ArtistSummary != "") || ed.Label != nil {
+			hasEd[strings.ToLower(ed.AlbumKey)] = true
+		}
+	}
+
+	analysisMap, _ := e.store.ListTrackAnalysisMap()
+
+	e.mu.Lock()
+	if e.sessionID == "" {
+		e.sessionID = randomID("dj")
+		e.sourceLabel = "Custom DJ Mix"
+		e.currentIndex = 0
+	}
+	lidarrChecker := e.lidarr
+	var newSlots []DJSlot
+	for _, id := range trackIDs {
+		tr, ok := byID[id]
+		if !ok {
+			continue
+		}
+		info := toDJTrackInfo(tr, analysisMap)
+		newSlots = append(newSlots, DJSlot{
+			ID:           randomID("slot"),
+			Track:        info,
+			Mode:         "auto",
+			HasEditorial: hasEd[info.AlbumKey],
+			FromLidarr:   lidarrChecker != nil && lidarrChecker.IsRecentLidarrAlbum(info.AlbumKey),
+		})
+	}
+	if len(newSlots) == 0 {
+		e.mu.Unlock()
+		st := e.State()
+		return st, st.CurrentIndex, fmt.Errorf("requested track not found in library")
+	}
+
+	oldPrev := snapshotPrevTrackIDs(e.slots)
+	insertIdx := 0
+	if len(e.slots) > 0 {
+		insertIdx = e.currentIndex + 1
+		if insertIdx < 0 {
+			insertIdx = 0
+		}
+		if insertIdx > len(e.slots) {
+			insertIdx = len(e.slots)
+		}
+	}
+
+	updated := make([]DJSlot, 0, len(e.slots)+len(newSlots))
+	updated = append(updated, e.slots[:insertIdx]...)
+	updated = append(updated, newSlots...)
+	updated = append(updated, e.slots[insertIdx:]...)
+	for i := range updated {
+		updated[i].Position = i
+	}
+	e.slots = updated
+
+	repairBridgesAfterReorder(e.slots, oldPrev, e.activeProfile.WantsIntroOutroEveryTrack())
+	e.updatedAt = time.Now().UTC()
+	e.persistSessionLocked()
+	e.mu.Unlock()
+
+	e.wakeGenerator()
+	return e.State(), insertIdx, nil
+}
+
 func (e *Engine) SetCurrentIndex(idx int) SessionState {
 	e.mu.Lock()
 	if idx >= 0 && idx < len(e.slots) {

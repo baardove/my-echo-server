@@ -2670,7 +2670,7 @@ async function loadLibrary(append) {
   }
 }
 
-function renderTrackRow(tr, onPlay) {
+function renderTrackRow(tr, onPlay, opts = {}) {
   const row = document.createElement("div");
   row.className = "track-row";
   row.dataset.trackId = tr.id;
@@ -2696,23 +2696,27 @@ function renderTrackRow(tr, onPlay) {
     <span class="mono track-hide-sm">${fmtDur(tr.duration)}</span>
     <div class="row-actions">
       <button class="icon-btn accent-mint row-play-btn" title="Play / Pause">${ico("play")}</button>
-      <button class="btn btn-dim btn-sm" title="Add to Browser Queue">+ Q</button>
+      <button class="btn btn-dim btn-sm" title="Add to Playing Queue">+ Q</button>
       <button class="btn btn-amber btn-sm" title="Add to AI Radio DJ">+ DJ</button>
       <button class="btn btn-mag btn-sm" title="Request in Party Mode">+ Party</button>
       <button class="icon-btn" title="Track properties &amp; metadata">${ico("info")}</button>
     </div>
   `;
   const [bPlay, bQ, bDJ, bParty, bProps] = row.querySelectorAll(".row-actions button");
+  const triggerPlay = () => {
+    if (currentTrackObj && currentTrackObj.id === tr.id) { togglePlay(); return; }
+    if (opts.isQueueRow) { onPlay(); return; }
+    playTrackPreservingQueue(tr, onPlay);
+  };
   bPlay.onclick = e => {
     e.stopPropagation();
-    if (currentTrackObj && currentTrackObj.id === tr.id) { togglePlay(); }
-    else { onPlay(); }
+    triggerPlay();
   };
   bQ.onclick = e => { e.stopPropagation(); enqueueTrack(tr); };
   bDJ.onclick = e => { e.stopPropagation(); addTrackToDJ(tr.id, tr.title); };
   bParty.onclick = e => { e.stopPropagation(); addTrackToParty(tr.id, tr.title); };
   bProps.onclick = e => { e.stopPropagation(); openTrackPropertiesModal(tr); };
-  row.ondblclick = onPlay;
+  row.ondblclick = triggerPlay;
   return row;
 }
 
@@ -3602,7 +3606,7 @@ async function openTrackPropertiesModal(trackOrId) {
       ` : ""}
     `;
 
-    document.getElementById("tpPlayBtn").onclick = () => { startQueue([tr], 0); };
+    document.getElementById("tpPlayBtn").onclick = () => { playTrackPreservingQueue(tr, () => startQueue([tr], 0)); };
     document.getElementById("tpQueueBtn").onclick = () => { enqueueTrack(tr); };
     document.getElementById("tpDJBtn").onclick = () => { addTrackToDJ(tr.id, tr.title); };
     document.getElementById("tpPartyBtn").onclick = () => { addTrackToParty(tr.id, tr.title); };
@@ -3659,9 +3663,9 @@ function openQueueModal() {
     ql.innerHTML = '<div class="mono">Queue is empty.</div>';
   } else {
     list.forEach((tr, i) => ql.appendChild(renderTrackRow(tr, () => {
-      if (playbackMode === "dj") playDJSlot(i, false);
-      else playAtIndex(i);
-    })));
+      if (playbackMode === "dj") playDJSlot(i, false, { crossfade: true });
+      else playAtIndex(i, { crossfade: true });
+    }, { isQueueRow: true })));
   }
   document.getElementById("modalBackdrop").classList.remove("hidden");
   syncPlayingRows();
@@ -3851,6 +3855,132 @@ function renderSidebarQueue() {
   }).join("");
 }
 
+function getConfiguredCrossfadeSeconds() {
+  if (djState && typeof djState.crossfadeSeconds === "number" && isFinite(djState.crossfadeSeconds)) {
+    return Math.max(0, Math.min(12, djState.crossfadeSeconds));
+  }
+  const el = document.getElementById("setDJCrossfade");
+  if (el) {
+    const v = parseFloat(el.value);
+    if (isFinite(v)) return Math.max(0, Math.min(12, v));
+  }
+  return 0;
+}
+
+function transitionDeckToTrack(tr, allowCrossfade = false) {
+  const xfadeSec = allowCrossfade ? getConfiguredCrossfadeSeconds() : 0;
+  const isAudioPlaying = !activeDeck.paused && !!activeDeck.src;
+  const fullVol = effectiveTrackVol(tr, false);
+
+  clearTimeout(djCrossfadeEndTimer);
+  djCrossfadeEndTimer = null;
+  cancelVolumeRamp(deckA);
+  cancelVolumeRamp(deckB);
+
+  if (allowCrossfade && isAudioPlaying && xfadeSec > 0) {
+    const xfadeMs = Math.max(600, Math.round(xfadeSec * 1000));
+    const outgoingDeck = activeDeck;
+    const incomingDeck = standbyDeck;
+    activeDeck = incomingDeck;
+    standbyDeck = outgoingDeck;
+
+    incomingDeck.dataset.trackId = tr.id;
+    incomingDeck.dataset.transcoded = "0";
+    incomingDeck.src = streamURL(tr.id, false);
+    setDeckVolume(incomingDeck, 0.02);
+
+    const p = incomingDeck.play();
+    if (p && typeof p.catch === "function") {
+      p.catch(err => {
+        if (err && err.name === "NotAllowedError") {
+          clearTimeout(djCrossfadeEndTimer);
+          djCrossfadeEndTimer = null;
+          cancelVolumeRamp(outgoingDeck);
+          cancelVolumeRamp(incomingDeck);
+          activeDeck = outgoingDeck;
+          standbyDeck = incomingDeck;
+          outgoingDeck.dataset.trackId = tr.id;
+          outgoingDeck.dataset.transcoded = "0";
+          outgoingDeck.src = streamURL(tr.id, false);
+          setDeckVolume(outgoingDeck, fullVol);
+          outgoingDeck.play().catch(e2 => handleDeckPlayRejection(outgoingDeck, tr, e2));
+        } else {
+          handleDeckPlayRejection(incomingDeck, tr, err);
+        }
+      });
+    }
+    rampAudioVolume(outgoingDeck, 0, xfadeMs);
+    rampAudioVolume(incomingDeck, fullVol, xfadeMs);
+    djCrossfadeEndTimer = setTimeout(() => {
+      djCrossfadeEndTimer = null;
+      if (outgoingDeck !== activeDeck) {
+        cancelVolumeRamp(outgoingDeck);
+        try { outgoingDeck.pause(); outgoingDeck.currentTime = 0; } catch (e) {}
+      }
+    }, xfadeMs + 150);
+    return;
+  }
+
+  standbyDeck.pause();
+  activeDeck.dataset.trackId = tr.id;
+  activeDeck.dataset.transcoded = "0";
+  setDeckVolume(activeDeck, fullVol);
+  activeDeck.src = streamURL(tr.id, false);
+  activeDeck.play().catch(err => handleDeckPlayRejection(activeDeck, tr, err));
+}
+
+async function playTrackPreservingQueue(tr, fallbackOnPlay) {
+  if (!tr || !tr.id) return;
+  primeAudioDecks();
+  const isAudioPlaying = !activeDeck.paused && !!activeDeck.src;
+
+  // 1. Live DJ Radio active: insert ONLY this track right after the currently playing track & switch immediately (preserving the rest of the DJ rundown)
+  if (playbackMode === "dj" && djState?.slots?.length && (isAudioPlaying || djActive || djSpeakingBreak)) {
+    try {
+      const res = await fetch("/api/v2/dj/queue/add", {
+        method: "POST",
+        headers: { ...HEADERS, "Content-Type": "application/json" },
+        body: JSON.stringify({ trackId: tr.id, insertAfterCurrent: true })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showToast(data.error || "Could not insert track into DJ queue");
+        return;
+      }
+      const nextState = data.state || data;
+      const insertedIdx = typeof data.insertedIndex === "number"
+        ? data.insertedIndex
+        : Math.min((djState.currentIndex || 0) + 1, Math.max(0, (nextState.slots?.length || 1) - 1));
+      djState = nextState;
+      renderDJHeader();
+      renderDJSlots();
+      playDJSlot(insertedIdx, false, { crossfade: true });
+      showToast(`Playing "${tr.title}" next in DJ queue`);
+      return;
+    } catch (e) {
+      showToast("Failed to insert track: " + (e?.message || e));
+      return;
+    }
+  }
+
+  // 2. Normal playing queue active (playing or paused mid-playlist): insert ONLY this track right after playIndex & switch immediately with crossfade if playing
+  if (playbackMode === "normal" && playQueue.length > 0 && playIndex >= 0 && (isAudioPlaying || currentTrackObj)) {
+    const insertIdx = Math.min(playIndex + 1, playQueue.length);
+    playQueue.splice(insertIdx, 0, tr);
+    updateQueueCount();
+    playAtIndex(insertIdx, { crossfade: isAudioPlaying });
+    showToast(`Playing "${tr.title}" (inserted next in queue)`);
+    return;
+  }
+
+  // 3. Nothing playing and no active playlist: start playing just this song (or fallback if queue empty)
+  if (typeof fallbackOnPlay === "function" && playQueue.length === 0) {
+    startQueue([tr], 0);
+    return;
+  }
+  startQueue([tr], 0);
+}
+
 function startQueue(list, startIndex) {
   stopDJLiveStream();
   playbackMode = "normal";
@@ -3861,40 +3991,51 @@ function startQueue(list, startIndex) {
   playQueue = [...list];
   playAtIndex(startIndex);
 }
-function enqueueTrack(tr) {
+async function enqueueTrack(tr) {
+  if (!tr || !tr.id) return;
+  // +Q adds ONLY the selected song to the active playing queue — never starts or interrupts playback
+  if (playbackMode === "dj" && djState?.slots?.length) {
+    try {
+      const res = await fetch("/api/v2/dj/queue/add", {
+        method: "POST",
+        headers: { ...HEADERS, "Content-Type": "application/json" },
+        body: JSON.stringify({ trackId: tr.id })
+      });
+      if (res.ok) {
+        djState = await res.json();
+        updateQueueCount();
+        renderDJHeader();
+        renderDJSlots();
+        renderSidebarQueue();
+        showToast(`Added "${tr.title}" to playing queue`);
+      }
+    } catch (e) {}
+    return;
+  }
   playQueue.push(tr);
   updateQueueCount();
   renderSidebarQueue();
-  showToast(`Queued "${tr.title}"`);
-  if (playIndex < 0 && playbackMode === "normal") playAtIndex(0);
+  savePersistentState(true);
+  showToast(`Added "${tr.title}" to queue`);
 }
 function updateQueueCount() {
   const n = playbackMode === "dj" ? (djState?.slots?.length || 0) : playQueue.length;
   document.getElementById("queueLen").textContent = n;
 }
-function playAtIndex(idx) {
+function playAtIndex(idx, opts = {}) {
   if (idx < 0 || idx >= playQueue.length) return;
   primeAudioDecks();
   userPaused = false;
   playbackMode = "normal";
   djActive = false;
-  clearTimeout(djCrossfadeEndTimer);
-  djCrossfadeEndTimer = null;
   djTransitionLock = false;
-  cancelVolumeRamp(deckA);
-  cancelVolumeRamp(deckB);
   updateDJNavIndicator();
-  standbyDeck.pause();
   djVoice.pause();
   djSpeakingBreak = null;
   updateDJTeleprompterUI(null);
   playIndex = idx;
   const tr = playQueue[idx];
-  activeDeck.dataset.trackId = tr.id;
-  activeDeck.dataset.transcoded = "0";
-  setDeckVolume(activeDeck, effectiveTrackVol(tr, false));
-  activeDeck.src = streamURL(tr.id, false);
-  activeDeck.play().catch(err => handleDeckPlayRejection(activeDeck, tr, err));
+  transitionDeckToTrack(tr, !!opts.crossfade);
   updateNowPlayingDisplay(tr);
 }
 function isStreamLockedMode() {
@@ -5219,17 +5360,13 @@ async function playDJFromBreak(prevIdx, nextIdx, ownerIdx, kind) {
   fireDJVoiceBreak(brk, targetDuckVol);
 }
 
-async function playDJSlot(idx, playIntroIfReady) {
+async function playDJSlot(idx, playIntroIfReady, opts = {}) {
   if (!djState?.slots?.length || idx < 0 || idx >= djState.slots.length) return;
   primeAudioDecks();
   userPaused = false;
   const myGen = ++djActionGen;
-  clearTimeout(djCrossfadeEndTimer);
-  djCrossfadeEndTimer = null;
   clearTimeout(djBridgeMusicTimer);
   djBridgeMusicTimer = null;
-  cancelVolumeRamp(deckA);
-  cancelVolumeRamp(deckB);
   djWaitingForBreak = null;
   djPendingTrackAfterIntro = null;
   playbackMode = "dj";
@@ -5245,7 +5382,6 @@ async function playDJSlot(idx, playIntroIfReady) {
     body: JSON.stringify({ action: "advance", index: idx })
   }).then(r => r.json()).then(d => { if (myGen === djActionGen) { djState = d; renderDJHeader(); renderDJSlots(); } }).catch(() => {});
 
-  standbyDeck.pause();
   djVoice.pause();
   djSpeakingBreak = null;
   updateDJTeleprompterUI(null);
@@ -5258,6 +5394,17 @@ async function playDJSlot(idx, playIntroIfReady) {
   updateNowPlayingDisplay(slot.track);
   renderDJHeader();
   renderDJSlots();
+
+  if (opts.crossfade && !introBreak) {
+    transitionDeckToTrack(slot.track, true);
+    return;
+  }
+
+  clearTimeout(djCrossfadeEndTimer);
+  djCrossfadeEndTimer = null;
+  cancelVolumeRamp(deckA);
+  cancelVolumeRamp(deckB);
+  standbyDeck.pause();
 
   // Vocal-aware Intro: if singing starts immediately (<3.5s), let the DJ finish talking BEFORE dropping the song!
   const immediateVocals = slot.track.hasAnalysis && Number(slot.track.vocalStartSec || 0) < 3.5;
