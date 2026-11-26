@@ -776,6 +776,7 @@
             <option value="">Select DJ Profile…</option>
           </select>
           <button class="btn btn-dim btn-sm" id="djEditProfileBtn" onclick="editActiveDJProfile()" title="Edit the active profile's genres, era, BPM, stars &amp; vibe"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> Edit Profile</button>
+          <button class="btn btn-dim btn-sm" id="djDuplicateProfileBtn" onclick="duplicateActiveDJProfile()" title="Duplicate the active DJ profile into a new editable copy"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Duplicate</button>
           <button class="btn btn-mint btn-sm" id="djNewProfileBtn" onclick="openProfileEditorModal(null)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New Profile</button>
           <button class="btn btn-dim btn-sm" id="djProfilesToggleBtn" onclick="toggleDJProfilesPanel()">All Profiles</button>
           <span style="flex:1;"></span>
@@ -2045,6 +2046,7 @@ function applyUserPermissionsUI() {
   document.getElementById("djLidarrFreshBtn")?.classList.toggle("hidden", !IS_ADMIN);
   const canEditProf = IS_ADMIN || !!SESSION.canEditProfiles;
   document.getElementById("djEditProfileBtn")?.classList.toggle("hidden", !canEditProf);
+  document.getElementById("djDuplicateProfileBtn")?.classList.toggle("hidden", !canEditProf);
   document.getElementById("djNewProfileBtn")?.classList.toggle("hidden", !canEditProf);
   if (!IS_ADMIN) {
     const warn = document.getElementById("djKeyWarning");
@@ -3180,7 +3182,7 @@ function renderDJProfiles() {
       <div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:auto;padding-top:4px;">
         <button class="btn btn-amber btn-sm" onclick="launchDJProfile('${safeID}')">${ico("play")} On Air</button>
         <button class="btn btn-dim btn-sm" onclick="switchTab('library');applyProfileToLibraryFilter('${safeID}')" title="Browse matching songs in Library">Filter Library</button>
-        <button class="btn btn-dim btn-sm" onclick="editDJProfileByID('${safeID}')">Edit</button>
+        ${(IS_ADMIN || SESSION.canEditProfiles) ? `<button class="btn btn-dim btn-sm" onclick="editDJProfileByID('${safeID}')">Edit</button><button class="btn btn-dim btn-sm" onclick="duplicateDJProfileByID('${safeID}')" title="Create a new profile copied from this one">Duplicate</button>` : ""}
       </div>
     </div>`;
   }).join("");
@@ -3210,6 +3212,20 @@ function launchDJProfile(profileId, confirmed = false) {
 function editDJProfileByID(profileId) {
   const p = djProfiles.find(x => x.id === profileId);
   openProfileEditorModal(p || null);
+}
+function duplicateDJProfileByID(profileId) {
+  const p = djProfiles.find(x => x.id === profileId);
+  if (!p) { openProfileEditorModal(null); return; }
+  const copy = JSON.parse(JSON.stringify(p));
+  copy.id = "";
+  copy.name = (p.name || "Profile") + " (Copy)";
+  openProfileEditorModal(copy);
+}
+function duplicateActiveDJProfile() {
+  const id = document.getElementById("djQuickProfileSelect")?.value || djState?.profileId || "";
+  if (id) { duplicateDJProfileByID(id); return; }
+  if (djProfiles.length) { duplicateDJProfileByID(djProfiles[0].id); return; }
+  openProfileEditorModal(null);
 }
 
 function openProfileEditorModal(prof) {
