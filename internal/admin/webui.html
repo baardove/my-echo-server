@@ -4695,7 +4695,7 @@ async function loadSettingsForm() {
     document.getElementById("setDJPersona").value = dj.persona || "late-night-fm";
     document.getElementById("setDJStation").value = dj.radioStationName || "Echo FM";
     const savedLang = dj.language || "English";
-    const moreLangs = djOptionsCache?.moreLanguages || ["Icelandic","Irish","Polish","Czech","Greek","Turkish","Ukrainian","Brazilian Portuguese","Latin American Spanish","Japanese","Korean","Mandarin Chinese","Arabic","Hindi"];
+    const moreLangs = djOptions?.moreLanguages || ["Icelandic","Irish","Polish","Czech","Greek","Turkish","Ukrainian","Brazilian Portuguese","Latin American Spanish","Japanese","Korean","Mandarin Chinese","Arabic","Hindi"];
     const moreChk = document.getElementById("setDJMoreLanguages");
     if (moreChk && moreLangs.includes(savedLang)) moreChk.checked = true;
     populateDJLanguageDropdown(savedLang);
@@ -5243,8 +5243,8 @@ function populateDJLanguageDropdown(preferredVal = "") {
   const sel = document.getElementById("setDJLanguage");
   if (!sel) return;
   const cur = preferredVal || sel.value || "English";
-  const baseLangs = djOptionsCache?.languages || ["English","Norwegian","Swedish","Danish","Finnish","German","Dutch","French","Spanish","Italian","Portuguese","Auto"];
-  const moreLangs = djOptionsCache?.moreLanguages || ["Icelandic","Irish","Polish","Czech","Greek","Turkish","Ukrainian","Brazilian Portuguese","Latin American Spanish","Japanese","Korean","Mandarin Chinese","Arabic","Hindi"];
+  const baseLangs = djOptions?.languages || ["English","Norwegian","Swedish","Danish","Finnish","German","Dutch","French","Spanish","Italian","Portuguese","Auto"];
+  const moreLangs = djOptions?.moreLanguages || ["Icelandic","Irish","Polish","Czech","Greek","Turkish","Ukrainian","Brazilian Portuguese","Latin American Spanish","Japanese","Korean","Mandarin Chinese","Arabic","Hindi"];
   const showMore = !!document.getElementById("setDJMoreLanguages")?.checked;
   const labels = {
     English: "English",
