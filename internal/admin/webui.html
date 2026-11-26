@@ -1888,7 +1888,49 @@ function buildAdHocFilterProfile() {
   };
 }
 
-async function startDJFromCurrentFilter() {
+let _pendingConfirmCallback = null;
+function activeBroadcastDescription() {
+  const active = [];
+  if (djActive || djLiveStreamActive || (playbackMode === "dj" && (djState?.slots?.length || 0) > 0)) {
+    const curName = djState?.profileName || djState?.sourceLabel || "AI DJ Radio";
+    active.push(`<strong>DJ Radio (${esc(curName)})</strong>`);
+  }
+  if (partyLive) {
+    active.push(`<strong>Party Mode</strong>`);
+  }
+  return active;
+}
+function openLiveModeConfirmModal(kicker, heading, detailHTML, confirmLabel, onConfirm) {
+  _pendingConfirmCallback = onConfirm;
+  const body = document.getElementById("modalBody");
+  body.innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:4px;color:var(--amber);">${esc(kicker)}</div>
+        <h2 style="margin:0 0 6px;">${esc(heading)}</h2>
+        <p style="margin:0;font-size:13px;color:var(--text-2);line-height:1.5;">${detailHTML}</p>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
+        <button class="btn btn-dim" onclick="closeModal();_pendingConfirmCallback=null;">Cancel — Keep Current</button>
+        <button class="btn btn-amber" onclick="const fn=_pendingConfirmCallback;_pendingConfirmCallback=null;closeModal();if(fn)fn();">${esc(confirmLabel)}</button>
+      </div>
+    </div>
+  `;
+  document.getElementById("modalBackdrop").classList.remove("hidden");
+}
+
+async function startDJFromCurrentFilter(confirmed = false) {
+  const activeModes = activeBroadcastDescription();
+  if (activeModes.length && !confirmed) {
+    openLiveModeConfirmModal(
+      "CONFIRM NEW DJ RADIO",
+      "Replace active session with Filter Radio?",
+      `${activeModes.join(" and ")} ${activeModes.length > 1 ? "are" : "is"} currently active. Starting <strong>DJ Radio From Filter</strong> will replace the current DJ rundown and begin a new broadcast.`,
+      "Yes, Start DJ From Filter",
+      () => startDJFromCurrentFilter(true)
+    );
+    return;
+  }
   const filterProf = buildAdHocFilterProfile();
   showToast("Starting infinite DJ Radio from current Library filter...");
   const res = await fetch("/api/v2/dj/session/create", {
@@ -3146,35 +3188,24 @@ function renderDJProfiles() {
 
 function launchDJProfile(profileId, confirmed = false) {
   if (!profileId) return;
-  const isPlayingLive = djActive && (djState?.slots?.length || 0) > 0 && profileId !== (djState?.profileId || "");
-  if (isPlayingLive && !confirmed) {
+  const isPlayingDifferentDJ = (djActive || djLiveStreamActive) && (djState?.slots?.length || 0) > 0 && profileId !== (djState?.profileId || "");
+  if ((isPlayingDifferentDJ || partyLive) && !confirmed) {
     // Revert selector to currently playing profile until user confirms
     const qSel = document.getElementById("djQuickProfileSelect");
     if (qSel && djState?.profileId) qSel.value = djState.profileId;
     const nextProf = djProfiles.find(p => p.id === profileId);
-    const curName = djState?.profileName || djState?.sourceLabel || "current broadcast";
     const nextName = nextProf ? nextProf.name : profileId;
-    const safeID = esc(profileId).replace(/'/g, "\\'");
-    const body = document.getElementById("modalBody");
-    body.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:12px;">
-        <div>
-          <div class="card-title" style="margin-bottom:4px;color:var(--amber);">CONFIRM PROFILE SWITCH</div>
-          <h2 style="margin:0 0 6px;">Switch DJ Radio Profile while On Air?</h2>
-          <p style="margin:0;font-size:13px;color:var(--text-2);line-height:1.5;">
-            You are currently playing <strong>${esc(curName)}</strong>. Switching to <strong>${esc(nextName)}</strong> will replace the active DJ queue and start a new broadcast.
-          </p>
-        </div>
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
-          <button class="btn btn-dim" onclick="closeModal()">Cancel — Keep Playing</button>
-          <button class="btn btn-amber" onclick="closeModal();launchDJProfile('${safeID}', true)">Yes, Switch Profile</button>
-        </div>
-      </div>
-    `;
-    document.getElementById("modalBackdrop").classList.remove("hidden");
+    const activeModes = activeBroadcastDescription();
+    openLiveModeConfirmModal(
+      "CONFIRM PROFILE SWITCH",
+      "Switch DJ Radio Profile while active?",
+      `${activeModes.join(" and ")} ${activeModes.length > 1 ? "are" : "is"} currently active. Switching to <strong>${esc(nextName)}</strong> will replace the active DJ queue and start a new broadcast.`,
+      "Yes, Switch Profile",
+      () => launchDJProfile(profileId, true)
+    );
     return;
   }
-  createDJSession("profile", profileId);
+  createDJSession("profile", profileId, [], true);
 }
 function editDJProfileByID(profileId) {
   const p = djProfiles.find(x => x.id === profileId);
@@ -3652,7 +3683,18 @@ function renderDJSlots() {
   });
 }
 
-async function createDJSession(source, value = "", trackIds = []) {
+async function createDJSession(source, value = "", trackIds = [], confirmed = false) {
+  const activeModes = activeBroadcastDescription();
+  if (activeModes.length && !confirmed) {
+    openLiveModeConfirmModal(
+      "CONFIRM NEW DJ SESSION",
+      "Replace active broadcast?",
+      `${activeModes.join(" and ")} ${activeModes.length > 1 ? "are" : "is"} currently active. Creating a new DJ set will replace the current DJ rundown.`,
+      "Yes, Start New Set",
+      () => createDJSession(source, value, trackIds, true)
+    );
+    return;
+  }
   showToast("Building live AI Radio DJ set...");
   const res = await fetch("/api/v2/dj/session/create", {
     method: "POST",
@@ -4324,7 +4366,17 @@ async function refreshParty() {
   } catch (e) {}
 }
 
-async function togglePartySession() {
+async function togglePartySession(confirmed = false) {
+  if (!partyLive && (djActive || djLiveStreamActive) && !confirmed) {
+    openLiveModeConfirmModal(
+      "CONFIRM START PARTY MODE",
+      "Start Party Mode while DJ Radio is active?",
+      `<strong>DJ Radio</strong> is currently On Air. Do you want to launch <strong>Party Mode</strong> as well?`,
+      "Yes, Start Party Mode",
+      () => togglePartySession(true)
+    );
+    return;
+  }
   await fetch(partyLive ? "/api/party/session/stop" : "/api/party/session/start", {
     method: "POST", headers: { ...HEADERS, "Content-Type": "application/json" }, body: "{}"
   });
