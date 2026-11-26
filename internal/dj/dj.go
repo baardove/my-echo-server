@@ -2039,11 +2039,17 @@ func (e *Engine) BuildFactualPrompt(
 	isOpening bool,
 	fromLidarr bool,
 ) (systemPrompt, userPrompt string, factsSummary []string) {
-	langRule := fmt.Sprintf("Speak exclusively in natural, idiomatic %s — write like a native %s FM radio host.", djCfg.Language, djCfg.Language)
-	if strings.EqualFold(djCfg.Language, "Norwegian") {
-		langRule = "Speak exclusively in natural, idiomatic Norwegian (Bokmål) — write like a native Norwegian radio host (NRK P13/P3 style)."
-	} else if strings.EqualFold(djCfg.Language, "Auto") {
-		langRule = "Match the primary language of the track/artist if obvious (e.g. Norwegian for Norwegian songs, Swedish for Swedish songs, German for German songs, otherwise English)."
+	langNorm := strings.ToLower(strings.TrimSpace(djCfg.Language))
+	langRule := fmt.Sprintf("STRICT LANGUAGE RULE: Write 100%% exclusively in natural, idiomatic %s — like a native %s FM radio host. NEVER mix in English filler words, slang, or English sentences; keep only proper nouns (artist names and original song/album titles) as-is. ALWAYS begin every script with at least 3–5 unmistakably %s words (never open with an English song title, artist name, or station name) so speech synthesis locks onto authentic %s pronunciation from the first syllable.", djCfg.Language, djCfg.Language, djCfg.Language, djCfg.Language)
+	hostRef := "BBC Radio 6 Music / KEXP"
+	switch langNorm {
+	case "", "english":
+		langRule = "Speak exclusively in natural, idiomatic English — write like a native FM radio host."
+	case "norwegian":
+		langRule = "STRENGT SPRÅKKRAV (NORSK BOKMÅL): Skriv 100 % på ekte, muntlig og idiomatisk norsk bokmål — som en innfødt norsk radioprogramleder på NRK P13 eller NRK P3. Bruk ALDRI engelske fyllord, slang eller anglisismer (ikke «vibe», «banger», «track», «next up», «stay tuned» — bruk naturlige norske ord som «låt», «plate», «album», «stemning», «produsert av», «neste låt ut»). Behold KUN egennavn (artistnavn og originale låt-/albumtitler) på originalspråket. VIKTIG FOR UTTALE: Start ALLTID hvert eneste innslag med minst 3–5 tydelig norske ord (f.eks. «Det var…», «Nå skal vi tilbake til…», «Vi går rett videre til…», «Her får du…») — start ALDRI en setning med en engelsk låttittel, et engelsk artistnavn eller et engelsk stasjonsnavn."
+		hostRef = "NRK P13 / NRK P3"
+	case "auto":
+		langRule = "Match the primary language of the track/artist if obvious (e.g. Norwegian for Norwegian songs, Swedish for Swedish songs, German for German songs, otherwise English), and keep the entire break cleanly in that single language."
 	}
 
 	personaDesc := personaLLMGuidance(djCfg.Persona)
@@ -2085,8 +2091,8 @@ CRITICAL RULES FOR RICH, NON-GENERIC SPOKEN RADIO SCRIPTS:
 5. BROADCAST PACING:
    - INTRO or OUTRO: 2 vivid, flowing sentences (up to ~%d words, 8–15 seconds spoken) weaving at least 1–2 specific song/album/artist facts naturally.
    - OUT/INTRO: 2 to 3 connected sentences (up to ~%d words, 12–19 seconds spoken) naming a specific fact about the outgoing track first, then smoothly linking into a concrete fact about the incoming track.
-6. Vary your structure every break so it sounds like an authentic, deeply knowledgeable human FM host (like BBC Radio 6 Music / KEXP).`,
-		djCfg.RadioStationName, todayStr, timeStr, partOfDay, todayYear, personaDesc, langRule, custom, todayStr, timeStr, partOfDay, todayYear, todayStr, todayStr, maxWords, bridgeMax)
+6. Vary your structure every break so it sounds like an authentic, deeply knowledgeable human FM host (like %s).`,
+		djCfg.RadioStationName, todayStr, timeStr, partOfDay, todayYear, personaDesc, langRule, custom, todayStr, timeStr, partOfDay, todayYear, todayStr, todayStr, maxWords, bridgeMax, hostRef)
 
 	var sb strings.Builder
 	switch kind {
@@ -2135,6 +2141,12 @@ CRITICAL RULES FOR RICH, NON-GENERIC SPOKEN RADIO SCRIPTS:
 		for _, line := range recent {
 			sb.WriteString("- " + line + "\n")
 		}
+	}
+
+	if langNorm == "norwegian" {
+		sb.WriteString("\nSPRÅKKRAV: Skriv hele innslaget utelukkende på naturlig, muntlig norsk bokmål (NRK-radiostil). Start ALLTID setningen med tydelig norske ord — aldri åpne med engelske låttitler, artistnavn eller engelske uttrykk.\n")
+	} else if langNorm != "" && langNorm != "english" && langNorm != "auto" {
+		sb.WriteString(fmt.Sprintf("\nLANGUAGE REQUIREMENT: Write the entire spoken break exclusively in natural, idiomatic %s, and ALWAYS begin with unmistakably %s words rather than an English title or phrase.\n", djCfg.Language, djCfg.Language))
 	}
 
 	return systemPrompt, sb.String(), factsSummary
@@ -2405,8 +2417,8 @@ func testVoiceSample(language, station string) string {
 
 func personaTTSStyle(persona, language string) string {
 	lang := strings.ToLower(strings.TrimSpace(language))
-	// Write TTS delivery directions natively in the target language so Gemini TTS locks onto
-	// authentic native phonology and never slips into an English accent!
+	// Write TTS delivery directions natively in the target language using POSITIVE native-phonology cues
+	// (avoiding negative mentions of "English accent" which can accidentally prime English phonology!).
 	switch lang {
 	case "norwegian":
 		tone := "varm, rolig og naturlig norsk FM-radioprogramleder i studio"
@@ -2420,25 +2432,29 @@ func personaTTSStyle(persona, language string) string {
 		case "nordic-chill":
 			tone = "rolig, lun og dempet norsk nattradiovert med behagelig tempo"
 		}
-		return "Leveringsinstruks (IKKE les denne instruksen høyt — les BARE brukerens tekst ordrett): Snakk på ekte, flytende norsk bokmål med autentisk norsk uttale og tonefall (aldri med engelsk aksent), som en " + tone + "."
+		return "Leveringsinstruks (les BARE brukerens tekst ordrett, aldri denne instruksen): " +
+			"Du er en innfødt norsk radioprogramleder fra Østlandet (standard østlandsk bokmål, NRK P13/P3-stil). " +
+			"Snakk 100 % autentisk, flytende norsk bokmål med ekte norsk tonelag, tydelig norsk rulle-r/flapp-r og rene norske vokaler (æ, ø, å). " +
+			"Hold stødig norsk setningsmelodi og norsk uttale gjennom hele innslaget, også rett før og etter internasjonale artistnavn og låttitler. " +
+			"Stil: " + tone + "."
 	case "swedish":
-		return "Leveransinstruktion (LÄS INTE denna instruktion högt — läs ENDAST användarens text ordagrant): Tala på äkta, flytande svenska med autentiskt svenskt uttal och radiotonfall (aldrig engelsk brytning), som en varm och kunnig svensk radiopratare i studio."
+		return "Leveransinstruktion (läs ENDAST användarens text ordagrant, aldrig denna instruktion): Du är en infödd svensk radiopratare (Sveriges Radio P3/P4-stil). Tala helt autentisk, flytande rikssvenska med äkta svensk språkmelodi, tonaccent och svenska vokaler (å, ä, ö) genom hela inslaget, som en varm och kunnig radiovärd i studio."
 	case "danish":
-		return "Leveringsinstruktion (LÆS IKKE denne instruktion højt — læs KUN brugerens tekst ordret): Tal på ægte, flydende dansk med autentisk dansk udtale (aldrig engelsk accent), som en varm og vidende dansk radiovært i studiet."
+		return "Leveringsinstruktion (læs KUN brugerens tekst ordret, aldrig denne instruktion): Du er en indfødt dansk radiovært (DR P3/P6 Beat-stil). Tal helt autentisk, flydende rigsdansk med ægte dansk sprogmelodi, stød og danske vokaler (æ, ø, å) gennem hele indslaget, som en varm og vidende radiovært i studiet."
 	case "finnish":
-		return "Esitysohje (ÄLÄ lue tätä ohjetta ääneen — lue VAIN käyttäjän teksti sanasta sanaan): Puhu luonnollista, sujuvaa suomea aidolla suomalaisella ääntämyksellä (ei englanninkielistä aksenttia), lämpimänä ja asiantuntevana radiojuontajana."
+		return "Esitysohje (lue VAIN käyttäjän teksti sanasta sanaan, älä koskaan tätä ohjetta): Olet syntyperäinen suomalainen radiojuontaja (Yle-tyyli). Puhu täysin luonnollista, sujuvaa yleissuomea aidolla suomalaisella ääntämyksellä, rytmillä ja vokaaleilla läpi koko juonnon, lämpimänä ja asiantuntevana radiojuontajana."
 	case "german":
-		return "Sprechanweisung (Lies diese Anweisung NICHT laut vor — sprich NUR den Text des Nutzers wortwörtlich): Sprich in natürlichem, fließendem Deutsch mit authentischer deutscher Aussprache (kein englischer Akzent), wie ein warmer, kenntnisreicher Radiomoderator im Studio."
+		return "Sprechanweisung (sprich NUR den Text des Nutzers wortwörtlich, niemals diese Anweisung): Du bist ein muttersprachlicher deutscher Radiomoderator. Sprich völlig authentisches, fließendes Hochdeutsch mit echter deutscher Aussprache und natürlicher deutscher Sprachmelodie durch den gesamten Beitrag, wie ein warmer, kenntnisreicher Moderator im Studio."
 	case "dutch":
-		return "Spreekinstructie (Lees deze instructie NIET hardop voor — spreek ALLEEN de tekst van de gebruiker letterlijk uit): Spreek in natuurlijk, vloeiend Nederlands met authentieke Nederlandse uitspraak (geen Engels accent), als een warme, deskundige radiopresentator."
+		return "Spreekinstructie (spreek ALLEEN de tekst van de gebruiker letterlijk uit, nooit deze instructie): Je bent een moedertaalspreker Nederlands (NPO Radio-stijl). Spreek volledig authentiek, vloeiend Nederlands met echte Nederlandse uitspraak en zinsmelodie door het hele fragment heen, als een warme, deskundige radiopresentator."
 	case "french":
-		return "Consigne vocale (NE LIS PAS cette consigne à voix haute — prononce UNIQUEMENT le texte de l'utilisateur mot pour mot) : Parle en français naturel et fluide avec un accent français authentique (jamais d'accent anglais), comme un animateur radio FM chaleureux et passionné."
+		return "Consigne vocale (prononce UNIQUEMENT le texte de l'utilisateur mot pour mot, jamais cette consigne) : Tu es un animateur radio francophone natif (style FIP / France Inter). Parle un français 100 % authentique et fluide avec une prononciation et une intonation françaises naturelles tout au long de l'intervention."
 	case "spanish", "latin american spanish":
-		return "Indicación de voz (NO leas esta indicación en voz alta — lee SOLO el texto del usuario literalmente): Habla en español natural y fluido con pronunciación nativa auténtica (nunca con acento inglés), como un locutor de radio FM cálido y conocedor."
+		return "Indicación de voz (lee SOLO el texto del usuario literalmente, nunca esta indicación): Eres un locutor de radio nativo hispanohablante. Habla un español 100 % auténtico y fluido con pronunciación y entonación nativas naturales durante toda la locución, como un locutor de radio FM cálido y conocedor."
 	case "italian":
-		return "Indicazione vocale (NON leggere questa istruzione ad alta voce — pronuncia SOLO il testo dell'utente parola per parola): Parla in italiano naturale e fluente con pronuncia nativa autentica (mai accento inglese), come uno speaker radiofonico FM caldo e appassionato."
+		return "Indicazione vocale (pronuncia SOLO il testo dell'utente parola per parola, mai questa indicazione): Sei uno speaker radiofonico madrelingua italiano. Parla un italiano 100 % autentico e fluente con pronuncia e intonazione italiane naturali per tutta la durata dell'intervento, come uno speaker FM caldo e appassionato."
 	case "portuguese", "brazilian portuguese":
-		return "Instrução vocal (NÃO leia esta instrução em voz alta — fale APENAS o texto do usuário literalmente): Fale em português natural e fluente com pronúncia nativa autêntica (nunca sotaque inglês), como um locutor de rádio FM caloroso e experiente."
+		return "Instrução vocal (fale APENAS o texto do usuário literalmente, nunca esta instrução): Você é um locutor de rádio nativo de língua portuguesa. Fale português 100 % autêntico e fluente com pronúncia e entonação nativas naturais durante toda a fala, como um locutor de rádio FM caloroso e experiente."
 	}
 
 	var base string
@@ -2455,12 +2471,68 @@ func personaTTSStyle(persona, language string) string {
 		base = "Speak as a warm, smooth, magnetic late-night FM radio DJ in a studio booth"
 	}
 	if lang != "" && lang != "english" && lang != "auto" {
-		return fmt.Sprintf("Voice delivery direction (DO NOT read this instruction aloud; speak ONLY the user's transcript verbatim): Speak exclusively in fluent, native %s with an authentic native %s accent (never an English accent). %s.", language, language, base)
+		return fmt.Sprintf("Voice delivery direction (speak ONLY the user's transcript verbatim; never read this instruction): Speak exclusively as a native %s radio broadcaster with 100%% authentic native %s phonology, rhythm, and cadence throughout the entire utterance. %s.", language, language, base)
 	}
 	if lang == "auto" {
-		return fmt.Sprintf("Voice delivery direction (DO NOT read this instruction aloud; speak ONLY the user's transcript verbatim): Detect the language of the transcript and speak it with a 100%% authentic native accent for that language. %s.", base)
+		return fmt.Sprintf("Voice delivery direction (speak ONLY the user's transcript verbatim; never read this instruction): Match the transcript's language with 100%% authentic native phonology and cadence for that language. %s.", base)
 	}
-	return fmt.Sprintf("Voice delivery direction (DO NOT read this instruction aloud; speak ONLY the user's transcript verbatim): %s.", base)
+	return fmt.Sprintf("Voice delivery direction (speak ONLY the user's transcript verbatim; never read this instruction): %s.", base)
+}
+
+// personaTTSSpeechStyle returns a concise, native-language turn-level style descriptor for
+// Gemini 3.8 TTS part.speechMetadata.style so regional accent and cadence lock reliably.
+func personaTTSSpeechStyle(persona, language string) string {
+	lang := strings.ToLower(strings.TrimSpace(language))
+	switch lang {
+	case "norwegian":
+		tone := "varm, rolig og naturlig studioflyt"
+		switch persona {
+		case "upbeat-radio":
+			tone = "opplagt, karismatisk og energisk dagsradio"
+		case "vinyl-nerd":
+			tone = "kunnskapsrik og entusiastisk musikkjournalist"
+		case "party-hype":
+			tone = "livlig og smilende helge-DJ"
+		case "nordic-chill":
+			tone = "rolig, lun og dempet nattradio"
+		}
+		return "Innfødt norsk radioprogramleder fra Østlandet (standard østlandsk bokmål, NRK P13/P3), ekte norsk tonelag og uttale; " + tone
+	case "swedish":
+		return "Infödd svensk radiopratare (rikssvenska, SR P3/P4), äkta svensk språkmelodi och varm studioröst"
+	case "danish":
+		return "Indfødt dansk radiovært (rigsdansk, DR P3/P6), ægte dansk udtale og varm studiestemme"
+	case "finnish":
+		return "Syntyperäinen suomalainen radiojuontaja (yleissuomi), aito suomalainen ääntämys ja lämmin studiotyyli"
+	case "german":
+		return "Muttersprachlicher deutscher Radiomoderator (Hochdeutsch), authentische deutsche Aussprache und warme Studiostimme"
+	case "dutch":
+		return "Moedertaalspreker Nederlandse radiopresentator (NPO-stijl), authentieke Nederlandse uitspraak en warme studiostem"
+	case "french":
+		return "Animateur radio francophone natif (style FIP), prononciation française authentique et voix studio chaleureuse"
+	case "spanish", "latin american spanish":
+		return "Locutor de radio nativo hispanohablante, pronunciación y entonación nativas auténticas, tono cálido de estudio FM"
+	case "italian":
+		return "Speaker radiofonico madrelingua italiano, pronuncia italiana autentica e voce calda da studio FM"
+	case "portuguese", "brazilian portuguese":
+		return "Locutor de rádio nativo de língua portuguesa, pronúncia nativa autêntica e voz calorosa de estúdio FM"
+	case "", "english":
+		switch persona {
+		case "upbeat-radio":
+			return "Charismatic, upbeat prime-time FM radio host with crisp broadcast energy"
+		case "vinyl-nerd":
+			return "Warm, passionate audiophile radio host sharing liner notes"
+		case "party-hype":
+			return "Lively weekend radio mix DJ with infectious rhythm"
+		case "nordic-chill":
+			return "Calm, velvet-voiced late-night radio host with relaxed pacing"
+		default:
+			return "Warm, smooth late-night FM radio host in a studio booth"
+		}
+	case "auto":
+		return "Native FM radio host speaking with authentic native phonology for the transcript's language"
+	default:
+		return fmt.Sprintf("Native %s FM radio broadcaster with authentic %s pronunciation and warm studio delivery", language, language)
+	}
 }
 
 func newPendingBreak(kind BreakKind) *DJBreak {

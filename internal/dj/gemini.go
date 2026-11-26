@@ -177,20 +177,54 @@ func (g *GeminiClient) callGenerateScript(ctx context.Context, djCfg config.DJCo
 // SynthesizeSpeech calls the configured Gemini TTS model and processes raw 24kHz PCM through
 // our studio FM broadcast vocal DSP chain into a fast-start M4A file.
 // IMPORTANT: Delivery directions are ALWAYS kept strictly separate from the spoken transcript
-// (passed via systemInstruction, NEVER prepended to contents text) so directions are NEVER read aloud.
+// (passed via part.speechMetadata.style and systemInstruction, NEVER prepended to contents text)
+// so directions are NEVER read aloud.
 func (g *GeminiClient) SynthesizeSpeech(ctx context.Context, djCfg config.DJConfig, styleDirective, scriptText, outputPath string) (float64, error) {
 	langCode := LanguageBCP47(djCfg.Language)
-	rawAudio, mimeType, err := g.callTTS(ctx, djCfg, styleDirective, langCode, scriptText, true)
-	if err != nil && langCode != "" &&
-		(strings.Contains(strings.ToLower(err.Error()), "language") || strings.Contains(strings.ToLower(err.Error()), "speechconfig") || strings.Contains(strings.ToLower(err.Error()), "invalid") || strings.Contains(strings.ToLower(err.Error()), "400")) {
-		// Graceful fallback if a specific preview TTS model rejects speechConfig.languageCode:
-		// keep the native-language systemInstruction!
-		rawAudio, mimeType, err = g.callTTS(ctx, djCfg, styleDirective, "", scriptText, true)
+	partStyle := personaTTSSpeechStyle(djCfg.Persona, djCfg.Language)
+
+	type ttsAttempt struct {
+		label         string
+		langCode      string
+		partStyle     string
+		includeSystem bool
 	}
-	if err != nil && strings.TrimSpace(styleDirective) != "" &&
-		(strings.Contains(strings.ToLower(err.Error()), "system") || strings.Contains(strings.ToLower(err.Error()), "invalid") || strings.Contains(strings.ToLower(err.Error()), "400")) {
-		// Graceful fallback if a specific TTS endpoint rejects systemInstruction: send ONLY pure verbatim text
-		rawAudio, mimeType, err = g.callTTS(ctx, djCfg, "", "", scriptText, false)
+	attempts := []ttsAttempt{
+		{label: "lang+partMeta+system", langCode: langCode, partStyle: partStyle, includeSystem: true},
+	}
+	if partStyle != "" {
+		attempts = append(attempts, ttsAttempt{label: "lang+system", langCode: langCode, partStyle: "", includeSystem: true})
+	}
+	if langCode != "" && partStyle != "" {
+		attempts = append(attempts, ttsAttempt{label: "partMeta+system", langCode: "", partStyle: partStyle, includeSystem: true})
+	}
+	if langCode != "" {
+		attempts = append(attempts, ttsAttempt{label: "system-only", langCode: "", partStyle: "", includeSystem: true})
+	}
+	if strings.TrimSpace(styleDirective) != "" {
+		attempts = append(attempts, ttsAttempt{label: "plain-text", langCode: "", partStyle: "", includeSystem: false})
+	}
+
+	var rawAudio []byte
+	var mimeType string
+	var err error
+	for i, att := range attempts {
+		rawAudio, mimeType, err = g.callTTS(ctx, djCfg, styleDirective, att.partStyle, att.langCode, scriptText, att.includeSystem)
+		if err == nil {
+			break
+		}
+		// Only fall back on schema / parameter-rejection 400 errors; never retry auth/quota/network failures.
+		lowErr := strings.ToLower(err.Error())
+		isParamErr := strings.Contains(lowErr, "400") ||
+			strings.Contains(lowErr, "invalid") ||
+			strings.Contains(lowErr, "unknown name") ||
+			strings.Contains(lowErr, "speechmetadata") ||
+			strings.Contains(lowErr, "speechconfig") ||
+			strings.Contains(lowErr, "language") ||
+			strings.Contains(lowErr, "system")
+		if !isParamErr || i == len(attempts)-1 {
+			break
+		}
 	}
 	if err != nil {
 		return 0, err
@@ -212,7 +246,7 @@ func (g *GeminiClient) SynthesizeSpeech(ctx context.Context, djCfg config.DJConf
 	return ProcessBroadcastDJVoiceWithChannels(ctx, pcm, sampleRate, channels, outputPath)
 }
 
-func (g *GeminiClient) callTTS(ctx context.Context, djCfg config.DJConfig, styleDirective, languageCode, scriptText string, includeSystem bool) ([]byte, string, error) {
+func (g *GeminiClient) callTTS(ctx context.Context, djCfg config.DJConfig, styleDirective, partStyle, languageCode, scriptText string, includeSystem bool) ([]byte, string, error) {
 	apiKey := strings.TrimSpace(djCfg.GeminiAPIKey)
 	if apiKey == "" {
 		return nil, "", fmt.Errorf("Gemini API key is not configured (set it in Settings → AI Radio DJ)")
@@ -232,6 +266,13 @@ func (g *GeminiClient) callTTS(ctx context.Context, djCfg config.DJConfig, style
 		return nil, "", fmt.Errorf("empty transcript for TTS")
 	}
 
+	part := map[string]any{"text": cleanTranscript}
+	if strings.TrimSpace(partStyle) != "" {
+		part["speechMetadata"] = map[string]any{
+			"style": strings.TrimSpace(partStyle),
+		}
+	}
+
 	speechCfg := map[string]any{
 		"voiceConfig": map[string]any{
 			"prebuiltVoiceConfig": map[string]string{
@@ -248,7 +289,7 @@ func (g *GeminiClient) callTTS(ctx context.Context, djCfg config.DJConfig, style
 		"contents": []map[string]any{
 			{
 				"role":  "user",
-				"parts": []map[string]string{{"text": cleanTranscript}},
+				"parts": []map[string]any{part},
 			},
 		},
 		"generationConfig": map[string]any{

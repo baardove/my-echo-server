@@ -168,6 +168,46 @@ func TestBuildFactualPromptUsesRealMetadataAndVocalCues(t *testing.T) {
 	}
 }
 
+func TestNorwegianDJPromptsAndTTSDirectivesLockNativeLanguage(t *testing.T) {
+	cfg := &config.Config{
+		ConfigDir: t.TempDir(),
+		DJ:        config.DefaultDJConfig(),
+	}
+	cfg.DJ.Language = "Norwegian"
+	eng := NewEngine(cfg, nil, nil)
+	yr := 2015
+	tr := DJTrackInfo{
+		ID:       "t-no",
+		Title:    "Piece by Piece",
+		Artist:   "Kelly Clarkson",
+		Album:    "Piece by Piece",
+		AlbumKey: "piece by piece",
+		Year:     &yr,
+	}
+
+	sys, usr, _ := eng.BuildFactualPrompt(context.Background(), cfg.DJ, BreakIntro, nil, tr, false, false)
+	if !strings.Contains(sys, "STRENGT SPRÅKKRAV (NORSK BOKMÅL)") || !strings.Contains(sys, "NRK P13") {
+		t.Fatalf("expected strengthened Norwegian rules and NRK reference in system prompt, got:\n%s", sys)
+	}
+	if !strings.Contains(usr, "SPRÅKKRAV:") || !strings.Contains(usr, "norsk bokmål") {
+		t.Fatalf("expected closing Norwegian language lock in user prompt, got:\n%s", usr)
+	}
+
+	ttsSys := personaTTSStyle("vinyl-nerd", "Norwegian")
+	ttsMeta := personaTTSSpeechStyle("vinyl-nerd", "Norwegian")
+	for _, dir := range []string{ttsSys, ttsMeta} {
+		if !strings.Contains(strings.ToLower(dir), "østland") || !strings.Contains(strings.ToLower(dir), "tonelag") {
+			t.Fatalf("expected positive Norwegian phonology cues in TTS directive, got: %q", dir)
+		}
+		if strings.Contains(strings.ToLower(dir), "engelsk aksent") || strings.Contains(strings.ToLower(dir), "english accent") {
+			t.Fatalf("TTS directive must avoid negative English-accent priming, got: %q", dir)
+		}
+	}
+	if got := LanguageBCP47("Norwegian"); got != "nb-NO" {
+		t.Fatalf("expected nb-NO for Norwegian, got %q", got)
+	}
+}
+
 func TestProcessBroadcastDJVoiceProducesValidAudio(t *testing.T) {
 	// Generate 0.6s of synthetic 24kHz 16-bit mono PCM sine wave
 	const sr = 24000
