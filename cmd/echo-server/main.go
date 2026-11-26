@@ -14,6 +14,7 @@ import (
 	"github.com/baardove/my-echo-server/internal/analysis"
 	"github.com/baardove/my-echo-server/internal/api"
 	"github.com/baardove/my-echo-server/internal/artwork"
+	"github.com/baardove/my-echo-server/internal/backfill"
 	"github.com/baardove/my-echo-server/internal/broadcast"
 	"github.com/baardove/my-echo-server/internal/config"
 	"github.com/baardove/my-echo-server/internal/db"
@@ -88,6 +89,7 @@ func main() {
 	}
 
 	edFetcher := editorial.NewFetcher(store, rebuildAndMirrorEditorial)
+	backfillWorker := backfill.NewWorker(cfg, store, rebuildAndMirrorEditorial)
 	lidarrMgr := lidarr.NewManager(cfg, idx, edFetcher)
 	analyzer := analysis.NewAnalyzer(cfg, store)
 	djEngine := dj.NewEngine(cfg, store, edFetcher)
@@ -104,6 +106,9 @@ func main() {
 		if cfg.AutoFetchEditorial {
 			edFetcher.TriggerEnrichment()
 		}
+		if cfg.AutoMetadataBackfill {
+			backfillWorker.TriggerRun(false)
+		}
 		if cfg.AdvancedAnalysisEnabled {
 			analyzer.TriggerRun()
 		}
@@ -112,6 +117,7 @@ func main() {
 	adminUI := admin.NewHandler(cfg, store, idx, partyEngine)
 	apiServer := api.New(cfg, store, artCache, snapBuilder, idx, partyEngine, adminUI)
 	apiServer.SetEditorialFetcher(edFetcher)
+	apiServer.SetBackfillWorker(backfillWorker)
 	apiServer.SetDJEngine(djEngine)
 	apiServer.SetLidarrManager(lidarrMgr)
 	apiServer.SetAnalyzer(analyzer)
@@ -126,6 +132,7 @@ func main() {
 	if cfg.AutoFetchEditorial {
 		edFetcher.StartBackgroundWorker(ctx)
 	}
+	backfillWorker.StartBackgroundWorker(ctx)
 	djEngine.StartWorker(ctx)
 	lidarrMgr.StartPoller(ctx)
 	analyzer.StartWorker(ctx)

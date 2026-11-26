@@ -167,6 +167,46 @@ func (s *Server) handleAdminAnalysisStop(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "Analysis paused"})
 }
 
+func (s *Server) handleAdminBackfillRun(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "POST required"})
+		return
+	}
+	if s.backfill == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "Metadata backfill worker unavailable"})
+		return
+	}
+	if strings.TrimSpace(s.cfg.DJ.GeminiAPIKey) == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Configure your Gemini API Key in Settings → AI Radio DJ first"})
+		return
+	}
+	var req struct {
+		Force bool `json:"force"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	s.backfill.TriggerRun(req.Force)
+	msg := "AI metadata backfill started using " + s.backfill.EffectiveModel()
+	if req.Force {
+		msg = "Full AI metadata re-backfill started using " + s.backfill.EffectiveModel()
+	}
+	writeJSON(w, http.StatusAccepted, map[string]any{
+		"ok":      true,
+		"message": msg,
+		"status":  s.backfill.Status(),
+	})
+}
+
+func (s *Server) handleAdminBackfillStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "POST required"})
+		return
+	}
+	if s.backfill != nil {
+		s.backfill.StopCurrentRun()
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": "AI metadata backfill paused"})
+}
+
 func (s *Server) topLibraryTags(limit int) []string {
 	analysisMap, err := s.store.ListTrackAnalysisMap()
 	if err != nil {

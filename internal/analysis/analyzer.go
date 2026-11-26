@@ -136,7 +136,12 @@ func (a *Analyzer) runPass(parentCtx context.Context) {
 		}
 	}
 
-	analyzedCnt := len(existing)
+	analyzedCnt := 0
+	for _, ex := range existing {
+		if ex.Version >= AnalysisVersion {
+			analyzedCnt++
+		}
+	}
 	a.mu.Lock()
 	a.status = Status{
 		Enabled:       a.cfg.AdvancedAnalysisEnabled,
@@ -191,6 +196,7 @@ func (a *Analyzer) runPass(parentCtx context.Context) {
 			// Skip unreadable file without aborting pass
 			continue
 		}
+		a.mergePreservedMetadata(&res)
 		if err := a.store.UpsertTrackAnalysis(res); err == nil {
 			analyzedCnt++
 		}
@@ -242,16 +248,48 @@ func (a *Analyzer) AnalyzeTrackOnDemand(ctx context.Context, trackID string) (db
 	if err != nil {
 		return db.TrackAnalysis{}, err
 	}
+	a.mergePreservedMetadata(&res)
 	if err := a.store.UpsertTrackAnalysis(res); err != nil {
 		return res, err
 	}
 	a.mu.Lock()
 	if m, err := a.store.ListTrackAnalysisMap(); err == nil {
-		a.status.AnalyzedCount = len(m)
+		cnt := 0
+		for _, ex := range m {
+			if ex.Version >= AnalysisVersion {
+				cnt++
+			}
+		}
+		a.status.AnalyzedCount = cnt
 	}
 	a.mu.Unlock()
 	log.Printf("[analysis] on-the-go analyzed %q — %s: %.0f BPM, %.1f dB (gain %+.1f dB), vocal %.1fs–%.1fs", tr.Title, tr.Artist, res.BPM, res.LoudnessDB, res.NormGainDB, res.VocalStartSec, res.VocalEndSec)
 	return res, nil
+}
+
+// mergePreservedMetadata keeps any AI-backfilled genre/tags intact when DSP audio analysis writes BPM/loudness/cues.
+func (a *Analyzer) mergePreservedMetadata(res *db.TrackAnalysis) {
+	if res == nil || a.store == nil {
+		return
+	}
+	prev, ok := a.store.GetTrackAnalysis(res.TrackKey)
+	if !ok {
+		return
+	}
+	if strings.TrimSpace(res.Genre) == "" && strings.TrimSpace(prev.Genre) != "" {
+		res.Genre = strings.TrimSpace(prev.Genre)
+	}
+	seen := make(map[string]bool, len(res.Tags))
+	for _, t := range res.Tags {
+		seen[strings.ToLower(strings.TrimSpace(t))] = true
+	}
+	for _, pt := range prev.Tags {
+		k := strings.ToLower(strings.TrimSpace(pt))
+		if k != "" && !seen[k] && len(res.Tags) < 8 {
+			seen[k] = true
+			res.Tags = append(res.Tags, strings.TrimSpace(pt))
+		}
+	}
 }
 
 // AnalyzeTrackFile decodes stereo 11,025 Hz PCM via ffmpeg and runs BPM, loudness/peak, vocal-entry/exit, energy, and tag analysis.

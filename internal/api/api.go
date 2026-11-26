@@ -21,6 +21,7 @@ import (
 	"github.com/baardove/my-echo-server/internal/admin"
 	"github.com/baardove/my-echo-server/internal/analysis"
 	"github.com/baardove/my-echo-server/internal/artwork"
+	"github.com/baardove/my-echo-server/internal/backfill"
 	"github.com/baardove/my-echo-server/internal/broadcast"
 	"github.com/baardove/my-echo-server/internal/config"
 	"github.com/baardove/my-echo-server/internal/db"
@@ -43,6 +44,7 @@ type Server struct {
 	idx       *indexer.Indexer
 	party     *party.Engine
 	editorial *editorial.Fetcher
+	backfill  *backfill.Worker
 	dj        *dj.Engine
 	lidarr    *lidarr.Manager
 	analyzer  *analysis.Analyzer
@@ -75,6 +77,10 @@ func New(
 
 func (s *Server) SetEditorialFetcher(f *editorial.Fetcher) {
 	s.editorial = f
+}
+
+func (s *Server) SetBackfillWorker(w *backfill.Worker) {
+	s.backfill = w
 }
 
 func (s *Server) SetDJEngine(d *dj.Engine) {
@@ -166,6 +172,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/v2/admin/settings", s.requireAdmin(s.handleAdminSettings))
 	mux.HandleFunc("/api/v2/admin/users", s.requireAdmin(s.handleAdminUsers))
 	mux.HandleFunc("/api/v2/admin/editorial/enrich", s.requireAdmin(s.handleAdminEditorialEnrich))
+	mux.HandleFunc("/api/v2/admin/backfill/run", s.requireAdmin(s.handleAdminBackfillRun))
+	mux.HandleFunc("/api/v2/admin/backfill/stop", s.requireAdmin(s.handleAdminBackfillStop))
 	mux.HandleFunc("/api/v2/admin/analysis/run", s.requireAdmin(s.handleAdminAnalysisRun))
 	mux.HandleFunc("/api/v2/admin/analysis/stop", s.requireAdmin(s.handleAdminAnalysisStop))
 	mux.HandleFunc("/api/v2/admin/lidarr/status", s.requireAdmin(s.handleLidarrStatus))
@@ -893,6 +901,10 @@ func (s *Server) handleAdminStatus(w http.ResponseWriter, r *http.Request) {
 	if s.analyzer != nil {
 		analysisStatus = s.analyzer.Status()
 	}
+	var backfillStatus any
+	if s.backfill != nil {
+		backfillStatus = s.backfill.Status()
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"serverName":      s.cfg.ServerName,
 		"pairingPIN":      s.cfg.PairingPIN,
@@ -904,6 +916,7 @@ func (s *Server) handleAdminStatus(w http.ResponseWriter, r *http.Request) {
 		"editorialStatus": edStatus,
 		"editorialMeta":   edMeta,
 		"analysisStatus":  analysisStatus,
+		"backfillStatus":  backfillStatus,
 		"lidarrStatus":    lidarrStatus,
 		"partyStatus":     s.party.Status(),
 		"libraries":       out,
@@ -924,6 +937,8 @@ func (s *Server) handleAdminSettings(w http.ResponseWriter, r *http.Request) {
 			LidarrAPIKey            *string  `json:"lidarrAPIKey"`
 			LidarrPollEnabled       *bool    `json:"lidarrPollEnabled"`
 			AdvancedAnalysisEnabled *bool    `json:"advancedAnalysisEnabled"`
+			MetadataBackfillModel   *string  `json:"metadataBackfillModel"`
+			AutoMetadataBackfill    *bool    `json:"autoMetadataBackfill"`
 			NormEnabled             *bool    `json:"normEnabled"`
 			NormTargetDB            *float64 `json:"normTargetDB"`
 			LegacyMacPrefix         *string  `json:"legacyMacPrefix"`
@@ -1018,6 +1033,12 @@ func (s *Server) handleAdminSettings(w http.ResponseWriter, r *http.Request) {
 					s.analyzer.StopCurrentRun()
 				}
 			}
+		}
+		if req.MetadataBackfillModel != nil {
+			s.cfg.MetadataBackfillModel = strings.TrimSpace(*req.MetadataBackfillModel)
+		}
+		if req.AutoMetadataBackfill != nil {
+			s.cfg.AutoMetadataBackfill = *req.AutoMetadataBackfill
 		}
 		if req.NormEnabled != nil {
 			v := *req.NormEnabled
@@ -1164,6 +1185,8 @@ func (s *Server) handleAdminSettings(w http.ResponseWriter, r *http.Request) {
 		"lidarrAPIKeyMask":        maskSecret(s.cfg.LidarrAPIKey),
 		"lidarrPollEnabled":       s.cfg.LidarrPollEnabled,
 		"advancedAnalysisEnabled": s.cfg.AdvancedAnalysisEnabled,
+		"metadataBackfillModel":   s.cfg.MetadataBackfillModel,
+		"autoMetadataBackfill":    s.cfg.AutoMetadataBackfill,
 		"normEnabled":             normEnabled,
 		"normTargetDB":            normTargetDB,
 		"legacyMacPrefix":         legacyPrefix,

@@ -264,6 +264,8 @@ type Config struct {
 	LidarrAPIKey            string          `json:"lidarrAPIKey,omitempty"`
 	LidarrPollEnabled       bool            `json:"lidarrPollEnabled"`
 	AdvancedAnalysisEnabled bool            `json:"advancedAnalysisEnabled"`
+	MetadataBackfillModel   string          `json:"metadataBackfillModel,omitempty"`
+	AutoMetadataBackfill    bool            `json:"autoMetadataBackfill,omitempty"`
 	NormEnabled             *bool           `json:"normEnabled,omitempty"`
 	NormTargetDB            float64         `json:"normTargetDB,omitempty"`
 	AuthRequireLoginOnLAN   bool            `json:"authRequireLoginOnLAN,omitempty"`

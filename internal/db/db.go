@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -1064,6 +1065,58 @@ func (s *Store) SetKV(key, value string) error {
 }
 
 // --- Advanced Track Analysis (BPM, Vocal Boundaries, Smart Tags) ---
+
+// BackfillTrackMetadata fills missing year and/or genre on a track's JSON record without overwriting existing valid tags.
+func (s *Store) BackfillTrackMetadata(trackKey string, year *int, genre *string) (bool, error) {
+	if year == nil && genre == nil {
+		return false, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var raw string
+	if err := s.sql.QueryRow(`SELECT json FROM tracks WHERE track_key = ?`, trackKey).Scan(&raw); err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+	var tr TrackRecord
+	if err := json.Unmarshal([]byte(raw), &tr); err != nil {
+		return false, err
+	}
+
+	changed := false
+	if year != nil && *year > 0 && (tr.Year == nil || *tr.Year == 0) {
+		y := *year
+		tr.Year = &y
+		changed = true
+	}
+	if genre != nil {
+		g := strings.TrimSpace(*genre)
+		if g != "" {
+			cur := ""
+			if tr.Genre != nil {
+				cur = strings.ToLower(strings.TrimSpace(*tr.Genre))
+			}
+			if cur == "" || cur == "unknown" || cur == "other" || cur == "misc" || cur == "none" {
+				tr.Genre = &g
+				changed = true
+			}
+		}
+	}
+	if !changed {
+		return false, nil
+	}
+	updatedRaw, err := json.Marshal(tr)
+	if err != nil {
+		return false, err
+	}
+	if _, err := s.sql.Exec(`UPDATE tracks SET json = ? WHERE track_key = ?`, string(updatedRaw), trackKey); err != nil {
+		return false, err
+	}
+	return true, nil
+}
 
 func (s *Store) UpsertTrackAnalysis(a TrackAnalysis) error {
 	s.mu.Lock()
