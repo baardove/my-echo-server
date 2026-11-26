@@ -89,6 +89,41 @@ func TestPlanOrganicCadenceInvariant(t *testing.T) {
 		if hasIntro && hasOutro {
 			t.Fatalf("relaxed mode slot=%d violated no-double-talk invariant", i)
 		}
+		if i > 0 && relaxed[i-1].Outro != nil && relaxed[i].Intro != nil {
+			t.Fatalf("relaxed mode stacked separate Outro + Intro between slots %d and %d", i-1, i)
+		}
+	}
+}
+
+func TestPlanTailCadenceAutoRefillNeverStacksOutroAndIntro(t *testing.T) {
+	rng := mathrand.New(mathrand.NewSource(123))
+	slots := make([]DJSlot, 4)
+	for i := range slots {
+		slots[i] = DJSlot{ID: randomID("slot"), Position: i, Track: DJTrackInfo{ID: randomID("tr"), Title: "T", Artist: "A", Album: "B"}}
+	}
+	PlanOrganicCadence(slots, 0.65, true, rng)
+	// Simulate 25 auto-refill single-track appends
+	for step := 0; step < 25; step++ {
+		startIdx := len(slots)
+		slots = append(slots, DJSlot{
+			ID:       randomID("slot"),
+			Position: startIdx,
+			Track:    DJTrackInfo{ID: randomID("tr"), Title: "Refill", Artist: "A", Album: "B"},
+		})
+		planTailCadence(slots, startIdx, 0.65, true, rng)
+	}
+	for i := range slots {
+		hasIntro := slots[i].Intro != nil || slots[i].Bridge != nil
+		hasOutro := slots[i].Outro != nil || (i+1 < len(slots) && slots[i+1].Bridge != nil)
+		if hasIntro && hasOutro {
+			t.Fatalf("slot=%d violated no-double-talk invariant after auto-refill", i)
+		}
+		if !hasIntro && !hasOutro {
+			t.Fatalf("slot=%d missing intro/outro with everyTrack=true after auto-refill", i)
+		}
+		if i > 0 && slots[i-1].Outro != nil && slots[i].Intro != nil {
+			t.Fatalf("stacked separate Outro + Intro between slots %d and %d — must be a single combined Bridge", i-1, i)
+		}
 	}
 }
 

@@ -147,6 +147,9 @@ func (e *Engine) restorePersistedSession() {
 		e.currentIndex = 0
 	}
 	e.slots = snap.Slots
+	if mergeAdjacentOutroIntro(e.slots, e.currentIndex+1) {
+		e.persistSessionLocked()
+	}
 	e.updatedAt = snap.UpdatedAt
 	log.Printf("[dj] restored persisted DJ session (%d slots, profile=%s, index=%d)", len(e.slots), e.sourceLabel, e.currentIndex)
 }
@@ -851,6 +854,7 @@ func repairBridgesAfterReorder(slots []DJSlot, oldPrev map[string]string, everyT
 		}
 	}
 
+	mergeAdjacentOutroIntro(slots, 1)
 	refreshTransitionLabels(slots)
 }
 
@@ -1202,6 +1206,10 @@ func (e *Engine) UpdateSlotBreak(slotIndex int, newMode string, regenerate bool)
 			slot.Intro = newPendingBreak(BreakIntro)
 			slot.Outro = nil
 			slot.Bridge = nil
+			// Avoid stacking a standalone Outro immediately before this Intro
+			if slotIndex > 0 && e.slots[slotIndex-1].Outro != nil {
+				e.slots[slotIndex-1].Outro = nil
+			}
 			// If next slot was a bridge (which outro'd this slot), downgrade next slot's bridge to an intro
 			if slotIndex+1 < len(e.slots) && e.slots[slotIndex+1].Bridge != nil {
 				e.slots[slotIndex+1].Bridge = nil
@@ -1211,9 +1219,12 @@ func (e *Engine) UpdateSlotBreak(slotIndex int, newMode string, regenerate bool)
 			slot.Intro = nil
 			slot.Bridge = nil
 			slot.Outro = newPendingBreak(BreakOutro)
-			// If next slot was a bridge (already outro'ing this slot), clear next bridge
+			// Avoid stacking a standalone Intro or Bridge immediately after this Outro
 			if slotIndex+1 < len(e.slots) && e.slots[slotIndex+1].Bridge != nil {
 				e.slots[slotIndex+1].Bridge = nil
+			}
+			if slotIndex+1 < len(e.slots) && e.slots[slotIndex+1].Intro != nil {
+				e.slots[slotIndex+1].Intro = nil
 			}
 		case "bridge":
 			if slotIndex == 0 {
@@ -1331,8 +1342,15 @@ func planTailCadence(slots []DJSlot, startIdx int, talkFreq float64, everyTrack 
 		}
 		silentStreak = 0
 
-		if prevWasIntrod || prevAlreadyHasOutro {
-			// Previous song was already intro'd or outro'd -> NEVER also outro it!
+		if prevAlreadyHasOutro {
+			// Previous song already has a standalone Outro (e.g. added while it was temporarily the last track).
+			// NEVER stack a separate Intro right after it — merge them into one combined Out/Intro Bridge!
+			prev.Outro = nil
+			curr.Bridge = newPendingBreak(BreakBridge)
+			continue
+		}
+		if prevWasIntrod {
+			// Previous song was already intro'd -> NEVER also outro it!
 			// So if we talk here, we intro the incoming song only.
 			curr.Intro = newPendingBreak(BreakIntro)
 			continue
@@ -1361,7 +1379,32 @@ func planTailCadence(slots []DJSlot, startIdx int, talkFreq float64, everyTrack 
 		}
 	}
 
+	mergeAdjacentOutroIntro(slots, startIdx)
 	refreshTransitionLabels(slots)
+}
+
+// mergeAdjacentOutroIntro enforces that two adjacent tracks NEVER stack a standalone Outro
+// immediately followed by a standalone Intro — instead combining them into one Out/Intro Bridge.
+func mergeAdjacentOutroIntro(slots []DJSlot, minIndex int) bool {
+	if minIndex < 1 {
+		minIndex = 1
+	}
+	changed := false
+	for i := minIndex; i < len(slots); i++ {
+		if slots[i-1].Outro != nil && slots[i].Bridge != nil {
+			slots[i-1].Outro = nil
+			changed = true
+		} else if slots[i-1].Outro != nil && slots[i].Intro != nil {
+			slots[i-1].Outro = nil
+			slots[i].Intro = nil
+			slots[i].Bridge = newPendingBreak(BreakBridge)
+			changed = true
+		}
+	}
+	if changed {
+		refreshTransitionLabels(slots)
+	}
+	return changed
 }
 
 func refreshTransitionLabels(slots []DJSlot) {
