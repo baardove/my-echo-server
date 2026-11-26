@@ -756,7 +756,7 @@
             <button class="btn btn-dim btn-sm" onclick="copyDJStreamURL()" title="Copy live /stream/dj.mp3 radio stream URL for VLC, Sonos, WiiM, or car apps">Copy Stream URL</button>
             <a class="btn btn-dim btn-sm" href="/stream/dj.m3u" download="my-echo-dj-radio.m3u" style="text-decoration:none;" title="Download .m3u internet radio playlist">M3U</a>
             <button class="btn btn-dim" id="djCastBtn" onclick="openDLNACastModal('dj')" title="Cast Live DJ Radio to DLNA speakers, AVRs &amp; TVs"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg> Cast / DLNA</button>
-            <button class="btn btn-dim" id="djVoiceSettingsBtn" onclick="switchTab('settings')"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> DJ Voice &amp; Settings</button>
+            <button class="btn btn-dim" id="djVoiceSettingsBtn" onclick="switchTab('settings');switchSettingsSubTab('dj')"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> DJ Voice &amp; Settings</button>
           </div>
         </div>
 
@@ -935,16 +935,34 @@
       </div>
     </section>
 
-    <!-- TAB 5: SERVER SETTINGS -->
+    <!-- TAB 5: SERVER SETTINGS (TABBED BY SECTION) -->
     <section id="tab-settings" class="hidden">
-      <!-- APPEARANCE & COLOR THEMES CARD -->
-      <div class="card" style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border);">
+        <div class="chip-group" id="settingsSubTabs">
+          <button type="button" class="chip active" data-stab="dj" onclick="switchSettingsSubTab('dj')">AI Radio DJ</button>
+          <button type="button" class="chip" data-stab="server" onclick="switchSettingsSubTab('server')">Server &amp; Indexing</button>
+          <button type="button" class="chip" data-stab="remote" onclick="switchSettingsSubTab('remote')">Remote Access</button>
+          <button type="button" class="chip" data-stab="dlna" onclick="switchSettingsSubTab('dlna')">DLNA &amp; Streams</button>
+          <button type="button" class="chip" data-stab="users" onclick="switchSettingsSubTab('users')">Users</button>
+          <button type="button" class="chip" data-stab="appearance" onclick="switchSettingsSubTab('appearance')">Appearance</button>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-dim btn-sm" onclick="loadSettingsForm()">Reset</button>
+          <button class="btn btn-mint btn-sm" onclick="saveServerSettings()">Save All Settings</button>
+        </div>
+      </div>
+
+      <!-- SUB-TAB: APPEARANCE -->
+      <div id="stab-appearance" class="settings-pane hidden">
+      <div class="card">
         <div class="card-title">APPEARANCE &amp; COLOR THEMES</div>
         <div class="theme-grid" id="themeGallery"></div>
       </div>
+      </div>
 
-      <!-- AI RADIO DJ SETTINGS CARD (FULL WIDTH) -->
-      <div class="card" style="margin-bottom:16px;border-color:rgba(255,148,46,0.38);">
+      <!-- SUB-TAB: AI RADIO DJ -->
+      <div id="stab-dj" class="settings-pane">
+      <div class="card" style="border-color:rgba(255,148,46,0.38);">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
           <div>
             <div class="card-title" style="margin:0;color:var(--amber);">AI RADIO DJ · GEMINI LLM &amp; TTS VOICE STUDIO</div>
@@ -1037,7 +1055,10 @@
           <textarea id="setDJCustomPrompt" class="search-input" placeholder="e.g., Mention vinyl/hi-res mastering details when relevant, keep a warm late-night Oslo vibe..."></textarea>
         </div>
       </div>
+      </div>
 
+      <!-- SUB-TAB: SERVER & INDEXING -->
+      <div id="stab-server" class="settings-pane hidden">
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;">
         <div class="card">
           <div class="card-title">SERVER IDENTITY &amp; NETWORK</div>
@@ -1135,9 +1156,10 @@
           </div>
         </div>
       </div>
+      </div>
 
-      <!-- REMOTE ACCESS (CLOUDFLARE TUNNEL & UPnP/NAT-PMP) + DLNA CASTING -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:16px;margin-top:16px;">
+      <!-- SUB-TAB: REMOTE ACCESS -->
+      <div id="stab-remote" class="settings-pane hidden">
         <div class="card" style="border-color:rgba(0,229,255,0.32);">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
             <div class="card-title" style="margin:0;color:var(--cyan);">REMOTE ACCESS · CLOUDFLARE TUNNEL &amp; UPnP ROUTING</div>
@@ -1200,7 +1222,10 @@
             </div>
           </div>
         </div>
+      </div>
 
+      <!-- SUB-TAB: DLNA & STREAMS -->
+      <div id="stab-dlna" class="settings-pane hidden">
         <div class="card" style="border-color:rgba(20,241,149,0.32);">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
             <div class="card-title" style="margin:0;color:var(--mint);">DLNA / UPnP CASTING &amp; LIVE RADIO STREAMS</div>
@@ -1236,8 +1261,9 @@
         </div>
       </div>
 
-      <!-- USER MANAGEMENT (PER-USER ACCESS · GLOBAL GEMINI API KEY) -->
-      <div class="card" style="margin-top:16px;border-color:rgba(20,241,149,0.32);">
+      <!-- SUB-TAB: USERS -->
+      <div id="stab-users" class="settings-pane hidden">
+      <div class="card" style="border-color:rgba(20,241,149,0.32);">
         <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
           <div class="card-title" style="margin:0;color:var(--mint);">USER MANAGEMENT · RADIO DJ &amp; REMOTE ACCESS</div>
           <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
@@ -1296,8 +1322,9 @@
           </div>
         </div>
       </div>
+      </div>
 
-      <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:10px;">
+      <div style="margin-top:14px;display:flex;justify-content:flex-end;gap:10px;">
         <button class="btn btn-dim" onclick="loadSettingsForm()">Reset</button>
         <button class="btn btn-mint" onclick="saveServerSettings()">Save All Settings</button>
       </div>
@@ -2029,6 +2056,19 @@ async function generateRandomQueue() {
 }
 
 // --- Tabs ---
+let currentSettingsSubTab = localStorage.getItem("echo_settings_subtab") || "dj";
+function switchSettingsSubTab(sub) {
+  const valid = ["dj", "server", "remote", "dlna", "users", "appearance"];
+  if (!valid.includes(sub)) sub = "dj";
+  currentSettingsSubTab = sub;
+  try { localStorage.setItem("echo_settings_subtab", sub); } catch (e) {}
+  document.querySelectorAll("#settingsSubTabs .chip").forEach(b => b.classList.toggle("active", b.dataset.stab === sub));
+  valid.forEach(s => document.getElementById("stab-" + s)?.classList.toggle("hidden", s !== sub));
+  if (sub === "remote" || sub === "dlna") refreshRemoteStatus();
+  if (sub === "users") loadManagedUsers();
+  if (sub === "appearance") renderThemeGallery();
+}
+
 function switchTab(tab) {
   if ((tab === "server" || tab === "settings") && !IS_ADMIN) tab = firstAllowedTab();
   if ((tab === "library" || tab === "dj" || tab === "party") && !hasPerm(tab)) tab = firstAllowedTab();
@@ -2038,7 +2078,7 @@ function switchTab(tab) {
   if (tab === "dj" && hasPerm("dj")) { ensureDJOptions().then(refreshDJState); }
   if (tab === "party" && hasPerm("party")) refreshParty();
   if (tab === "server" && IS_ADMIN) refreshServerStatus();
-  if (tab === "settings" && IS_ADMIN) { ensureDJOptions().then(loadSettingsForm); loadManagedUsers(); }
+  if (tab === "settings" && IS_ADMIN) { switchSettingsSubTab(currentSettingsSubTab); ensureDJOptions().then(loadSettingsForm); loadManagedUsers(); }
   savePersistentState(true);
 }
 
