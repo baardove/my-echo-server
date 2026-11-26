@@ -206,11 +206,12 @@ func (m *Manager) CastStream(ctx context.Context, rendererID, channel string) (R
 	}
 
 	base := fmt.Sprintf("http://%s:%d", m.cfg.EffectiveAdvertiseHost(), m.cfg.APIPort)
-	var streamURL, title string
+	var streamURL, title, creator string
 	if strings.EqualFold(channel, "party") {
 		channel = "party"
 		streamURL = base + "/stream/party.mp3"
-		title = m.cfg.ServerName + " · Party Mode Live"
+		title = m.cfg.ServerName + " - Party Mode Live"
+		creator = "My Echo Party"
 	} else {
 		channel = "dj"
 		streamURL = base + "/stream/dj.mp3"
@@ -218,16 +219,52 @@ func (m *Manager) CastStream(ctx context.Context, rendererID, channel string) (R
 		if station == "" {
 			station = "Echo FM"
 		}
-		title = station + " · Live AI DJ Radio"
+		title = station + " - Live AI DJ Radio"
+		creator = "My Echo DJ"
 	}
 
-	didl := fmt.Sprintf(`<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"><item id="echo-%s" parentID="0" restricted="1"><dc:title>%s</dc:title><upnp:class>object.item.audioItem.audioBroadcast</upnp:class><res protocolInfo="http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=00;DLNA.ORG_CI=1;DLNA.ORG_FLAGS=01700000000000000000000000000000">%s</res></item></DIDL-Lite>`,
+	// Best-effort Stop first: strict DMRs (e.g. Samsung Tizen) can reject SetAVTransportURI while transitioning.
+	_ = m.soapAction(ctx, r.AVTransportURL, "urn:schemas-upnp-org:service:AVTransport:1", "Stop",
+		`<u:Stop xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID></u:Stop>`)
+
+	artURL := base + "/icon.png"
+	didlFull := fmt.Sprintf(
+		`<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/">`+
+			`<item id="echo-%s" parentID="0" restricted="1">`+
+			`<dc:title>%s</dc:title>`+
+			`<dc:creator>%s</dc:creator>`+
+			`<upnp:artist>%s</upnp:artist>`+
+			`<upnp:albumArtURI>%s</upnp:albumArtURI>`+
+			`<upnp:class>object.item.audioItem.musicTrack</upnp:class>`+
+			`<res protocolInfo="http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=01;DLNA.ORG_FLAGS=01700000000000000000000000000000">%s</res>`+
+			`</item></DIDL-Lite>`,
+		channel, xmlEsc(title), xmlEsc(creator), xmlEsc(creator), xmlEsc(artURL), xmlEsc(streamURL))
+
+	didlSimple := fmt.Sprintf(
+		`<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/">`+
+			`<item id="echo-%s" parentID="0" restricted="1">`+
+			`<dc:title>%s</dc:title>`+
+			`<upnp:class>object.item.audioItem.musicTrack</upnp:class>`+
+			`<res protocolInfo="http-get:*:audio/mpeg:*">%s</res>`+
+			`</item></DIDL-Lite>`,
 		channel, xmlEsc(title), xmlEsc(streamURL))
 
-	setURI := fmt.Sprintf(`<u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><CurrentURI>%s</CurrentURI><CurrentURIMetaData>%s</CurrentURIMetaData></u:SetAVTransportURI>`,
-		xmlEsc(streamURL), xmlEsc(didl))
-	if err := m.soapAction(ctx, r.AVTransportURL, "urn:schemas-upnp-org:service:AVTransport:1", "SetAVTransportURI", setURI); err != nil {
-		return Renderer{}, fmt.Errorf("SetAVTransportURI failed on %s: %w", r.Name, err)
+	// Try full DLNA metadata first, then simple protocolInfo, then empty metadata for strict TVs/speakers.
+	metaAttempts := []string{didlFull, didlSimple, ""}
+	var lastErr error
+	for idx, meta := range metaAttempts {
+		setURI := fmt.Sprintf(`<u:SetAVTransportURI xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><CurrentURI>%s</CurrentURI><CurrentURIMetaData>%s</CurrentURIMetaData></u:SetAVTransportURI>`,
+			xmlEsc(streamURL), xmlEsc(meta))
+		lastErr = m.soapAction(ctx, r.AVTransportURL, "urn:schemas-upnp-org:service:AVTransport:1", "SetAVTransportURI", setURI)
+		if lastErr == nil {
+			if idx > 0 {
+				log.Printf("[dlna] SetAVTransportURI succeeded on %s via fallback #%d", r.Name, idx)
+			}
+			break
+		}
+	}
+	if lastErr != nil {
+		return Renderer{}, fmt.Errorf("SetAVTransportURI failed on %s: %w", r.Name, lastErr)
 	}
 
 	playBody := `<u:Play xmlns:u="urn:schemas-upnp-org:service:AVTransport:1"><InstanceID>0</InstanceID><Speed>1</Speed></u:Play>`
@@ -362,13 +399,13 @@ func (m *Manager) ServeControl(w http.ResponseWriter, r *http.Request) {
 		count = 1
 		didl = `<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/"><container id="0" parentID="-1" restricted="1" childCount="2"><dc:title>` + xmlEsc(m.FriendlyName()) + `</dc:title><upnp:class>object.container</upnp:class></container></DIDL-Lite>`
 	} else {
-		proto := "http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=00;DLNA.ORG_CI=1;DLNA.ORG_FLAGS=01700000000000000000000000000000"
-		didl = fmt.Sprintf(`<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/">`+
-			`<item id="dj" parentID="0" restricted="1"><dc:title>%s · Live AI DJ Radio</dc:title><dc:creator>My Echo DJ</dc:creator><upnp:class>object.item.audioItem.audioBroadcast</upnp:class><res protocolInfo="%s">%s/stream/dj.mp3</res></item>`+
-			`<item id="party" parentID="0" restricted="1"><dc:title>%s · Party Mode Live</dc:title><dc:creator>My Echo Party</dc:creator><upnp:class>object.item.audioItem.audioBroadcast</upnp:class><res protocolInfo="%s">%s/stream/party.mp3</res></item>`+
+		proto := "http-get:*:audio/mpeg:DLNA.ORG_PN=MP3;DLNA.ORG_OP=01;DLNA.ORG_FLAGS=01700000000000000000000000000000"
+		didl = fmt.Sprintf(`<DIDL-Lite xmlns="urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:upnp="urn:schemas-upnp-org:metadata-1-0/upnp/" xmlns:dlna="urn:schemas-dlna-org:metadata-1-0/">`+
+			`<item id="dj" parentID="0" restricted="1"><dc:title>%s - Live AI DJ Radio</dc:title><dc:creator>My Echo DJ</dc:creator><upnp:artist>My Echo DJ</upnp:artist><upnp:albumArtURI>%s/icon.png</upnp:albumArtURI><upnp:class>object.item.audioItem.musicTrack</upnp:class><res protocolInfo="%s">%s/stream/dj.mp3</res></item>`+
+			`<item id="party" parentID="0" restricted="1"><dc:title>%s - Party Mode Live</dc:title><dc:creator>My Echo Party</dc:creator><upnp:artist>My Echo Party</upnp:artist><upnp:albumArtURI>%s/icon.png</upnp:albumArtURI><upnp:class>object.item.audioItem.musicTrack</upnp:class><res protocolInfo="%s">%s/stream/party.mp3</res></item>`+
 			`</DIDL-Lite>`,
-			xmlEsc(station), proto, xmlEsc(base),
-			xmlEsc(m.cfg.ServerName), proto, xmlEsc(base))
+			xmlEsc(station), xmlEsc(base), proto, xmlEsc(base),
+			xmlEsc(m.cfg.ServerName), xmlEsc(base), proto, xmlEsc(base))
 	}
 
 	resp := fmt.Sprintf(`<?xml version="1.0" encoding="utf-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body><u:BrowseResponse xmlns:u="urn:schemas-upnp-org:service:ContentDirectory:1"><Result>%s</Result><NumberReturned>%d</NumberReturned><TotalMatches>%d</TotalMatches><UpdateID>1</UpdateID></u:BrowseResponse></s:Body></s:Envelope>`,
@@ -588,8 +625,14 @@ func extractSSDPHeader(pkt, key string) string {
 	return ""
 }
 
+var upnpXMLEscaper = strings.NewReplacer(
+	"&", "&amp;",
+	"<", "&lt;",
+	">", "&gt;",
+	`"`, "&quot;",
+	"'", "&apos;",
+)
+
 func xmlEsc(s string) string {
-	var buf bytes.Buffer
-	_ = xml.EscapeText(&buf, []byte(s))
-	return buf.String()
+	return upnpXMLEscaper.Replace(s)
 }

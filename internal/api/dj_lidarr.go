@@ -34,7 +34,8 @@ func (s *Server) handleDJOptions(w http.ResponseWriter, r *http.Request) {
 		"llmModels": dj.AvailableLLMModels(),
 		"voices":    dj.AvailableVoices(),
 		"personas":  dj.AvailablePersonas(),
-		"languages": []string{"English", "Norwegian", "Auto"},
+		"languages":     dj.WesternEuropeanLanguages(),
+		"moreLanguages": dj.ExtendedWorldLanguages(),
 		"eras":      []string{"1950s", "1960s", "1970s", "1980s", "1990s", "2000s", "2010s", "2020s"},
 		"genres":    genres,
 		"tags":      tags,
@@ -51,6 +52,11 @@ func (s *Server) handleDJProfiles(w http.ResponseWriter, r *http.Request) {
 			"activeProfileId": s.cfg.DJ.ActiveProfileID,
 		})
 	case http.MethodPost:
+		claims := s.sessionFromRequest(r)
+		if claims.Role != "admin" && !claims.CanEditProfiles {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Profile editing is disabled for your account"})
+			return
+		}
 		var prof config.DJProfile
 		if err := json.NewDecoder(io.LimitReader(r.Body, 65536)).Decode(&prof); err != nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid profile JSON"})
@@ -82,6 +88,11 @@ func (s *Server) handleDJProfiles(w http.ResponseWriter, r *http.Request) {
 			"profiles": s.cfg.DJ.Profiles,
 		})
 	case http.MethodDelete:
+		claims := s.sessionFromRequest(r)
+		if claims.Role != "admin" && !claims.CanEditProfiles {
+			writeJSON(w, http.StatusForbidden, map[string]string{"error": "Profile editing is disabled for your account"})
+			return
+		}
 		id := strings.TrimSpace(r.URL.Query().Get("id"))
 		if id == "" {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Missing profile id"})
@@ -140,7 +151,7 @@ func (s *Server) handleAdminAnalysisRun(w http.ResponseWriter, r *http.Request) 
 	s.analyzer.TriggerRun()
 	writeJSON(w, http.StatusAccepted, map[string]any{
 		"ok":      true,
-		"message": "Advanced audio analysis started (BPM, vocal cue points & smart tags)",
+		"message": "Advanced audio analysis started (BPM, volume loudness normalization, vocal cue points & smart tags)",
 		"status":  s.analyzer.Status(),
 	})
 }

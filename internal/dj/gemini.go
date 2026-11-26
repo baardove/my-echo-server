@@ -179,11 +179,18 @@ func (g *GeminiClient) callGenerateScript(ctx context.Context, djCfg config.DJCo
 // IMPORTANT: Delivery directions are ALWAYS kept strictly separate from the spoken transcript
 // (passed via systemInstruction, NEVER prepended to contents text) so directions are NEVER read aloud.
 func (g *GeminiClient) SynthesizeSpeech(ctx context.Context, djCfg config.DJConfig, styleDirective, scriptText, outputPath string) (float64, error) {
-	rawAudio, mimeType, err := g.callTTS(ctx, djCfg, styleDirective, scriptText, true)
+	langCode := LanguageBCP47(djCfg.Language)
+	rawAudio, mimeType, err := g.callTTS(ctx, djCfg, styleDirective, langCode, scriptText, true)
+	if err != nil && langCode != "" &&
+		(strings.Contains(strings.ToLower(err.Error()), "language") || strings.Contains(strings.ToLower(err.Error()), "speechconfig") || strings.Contains(strings.ToLower(err.Error()), "invalid") || strings.Contains(strings.ToLower(err.Error()), "400")) {
+		// Graceful fallback if a specific preview TTS model rejects speechConfig.languageCode:
+		// keep the native-language systemInstruction!
+		rawAudio, mimeType, err = g.callTTS(ctx, djCfg, styleDirective, "", scriptText, true)
+	}
 	if err != nil && strings.TrimSpace(styleDirective) != "" &&
 		(strings.Contains(strings.ToLower(err.Error()), "system") || strings.Contains(strings.ToLower(err.Error()), "invalid") || strings.Contains(strings.ToLower(err.Error()), "400")) {
 		// Graceful fallback if a specific TTS endpoint rejects systemInstruction: send ONLY pure verbatim text
-		rawAudio, mimeType, err = g.callTTS(ctx, djCfg, "", scriptText, false)
+		rawAudio, mimeType, err = g.callTTS(ctx, djCfg, "", "", scriptText, false)
 	}
 	if err != nil {
 		return 0, err
@@ -205,7 +212,7 @@ func (g *GeminiClient) SynthesizeSpeech(ctx context.Context, djCfg config.DJConf
 	return ProcessBroadcastDJVoiceWithChannels(ctx, pcm, sampleRate, channels, outputPath)
 }
 
-func (g *GeminiClient) callTTS(ctx context.Context, djCfg config.DJConfig, styleDirective, scriptText string, includeSystem bool) ([]byte, string, error) {
+func (g *GeminiClient) callTTS(ctx context.Context, djCfg config.DJConfig, styleDirective, languageCode, scriptText string, includeSystem bool) ([]byte, string, error) {
 	apiKey := strings.TrimSpace(djCfg.GeminiAPIKey)
 	if apiKey == "" {
 		return nil, "", fmt.Errorf("Gemini API key is not configured (set it in Settings → AI Radio DJ)")
@@ -225,6 +232,17 @@ func (g *GeminiClient) callTTS(ctx context.Context, djCfg config.DJConfig, style
 		return nil, "", fmt.Errorf("empty transcript for TTS")
 	}
 
+	speechCfg := map[string]any{
+		"voiceConfig": map[string]any{
+			"prebuiltVoiceConfig": map[string]string{
+				"voiceName": voice,
+			},
+		},
+	}
+	if strings.TrimSpace(languageCode) != "" {
+		speechCfg["languageCode"] = strings.TrimSpace(languageCode)
+	}
+
 	endpoint := fmt.Sprintf("%s/%s:generateContent?key=%s", geminiBaseURL, url.PathEscape(model), url.QueryEscape(apiKey))
 	payload := map[string]any{
 		"contents": []map[string]any{
@@ -235,19 +253,13 @@ func (g *GeminiClient) callTTS(ctx context.Context, djCfg config.DJConfig, style
 		},
 		"generationConfig": map[string]any{
 			"responseModalities": []string{"AUDIO"},
-			"speechConfig": map[string]any{
-				"voiceConfig": map[string]any{
-					"prebuiltVoiceConfig": map[string]string{
-						"voiceName": voice,
-					},
-				},
-			},
+			"speechConfig":       speechCfg,
 		},
 	}
 	if includeSystem && strings.TrimSpace(styleDirective) != "" {
 		payload["systemInstruction"] = map[string]any{
 			"parts": []map[string]string{{
-				"text": fmt.Sprintf("Voice delivery direction (DO NOT read this instruction aloud; speak ONLY the user's transcript verbatim): %s", strings.TrimSpace(styleDirective)),
+				"text": strings.TrimSpace(styleDirective),
 			}},
 		}
 	}

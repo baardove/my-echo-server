@@ -635,6 +635,7 @@
       <button class="btn btn-dim btn-sm" id="sidebarToggleBtn" onclick="toggleNowPlayingSidebar()" title="Toggle Now Playing Sidebar">
         <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="15" y1="3" x2="15" y2="21"/></svg> Now Playing
       </button>
+      <div id="userSessionChip" style="display:flex;align-items:center;gap:6px;"></div>
     </div>
   </div>
 </header>
@@ -753,10 +754,13 @@
             </div>
             <div class="mono" style="margin-top:4px;" id="djConfigSummary">Organic Intros · Outros · In/Outro Bridges · Seamless Crossfades · Min <strong id="djMinAheadLbl">3</strong> ahead</div>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <button class="btn btn-amber" id="djPlayToggleBtn" onclick="toggleDJBroadcast()"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg> Go On Air</button>
-            <button class="btn btn-dim" onclick="openDLNACastModal('dj')" title="Cast Live DJ Radio to DLNA speakers, AVRs &amp; TVs"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg> Cast / DLNA</button>
-            <button class="btn btn-dim" onclick="switchTab('settings')"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> DJ Voice &amp; Settings</button>
+            <button class="btn btn-cyan" id="djStreamToggleBtn" onclick="toggleDJLiveStream()" title="Listen via continuous live 192 kbps MP3 radio stream (/stream/dj.mp3) — ideal for remote/mobile &amp; synchronized listeners"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg> Live Stream</button>
+            <button class="btn btn-dim btn-sm" onclick="copyDJStreamURL()" title="Copy live /stream/dj.mp3 radio stream URL for VLC, Sonos, WiiM, or car apps">Copy Stream URL</button>
+            <a class="btn btn-dim btn-sm" href="/stream/dj.m3u" download="my-echo-dj-radio.m3u" style="text-decoration:none;" title="Download .m3u internet radio playlist">M3U</a>
+            <button class="btn btn-dim" id="djCastBtn" onclick="openDLNACastModal('dj')" title="Cast Live DJ Radio to DLNA speakers, AVRs &amp; TVs"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg> Cast / DLNA</button>
+            <button class="btn btn-dim" id="djVoiceSettingsBtn" onclick="switchTab('settings')"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.26.604.852.997 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> DJ Voice &amp; Settings</button>
           </div>
         </div>
 
@@ -771,11 +775,11 @@
           <select id="djQuickProfileSelect" class="search-input" style="width:auto;min-width:210px;padding:6px 10px;font-size:12.5px;font-weight:700;" onchange="if(this.value)launchDJProfile(this.value)" title="Select &amp; launch a DJ Radio Profile (defines genres, era, BPM, stars &amp; vibe)">
             <option value="">Select DJ Profile…</option>
           </select>
-          <button class="btn btn-dim btn-sm" onclick="editActiveDJProfile()" title="Edit the active profile's genres, era, BPM, stars &amp; vibe"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> Edit Profile</button>
-          <button class="btn btn-mint btn-sm" onclick="openProfileEditorModal(null)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New Profile</button>
+          <button class="btn btn-dim btn-sm" id="djEditProfileBtn" onclick="editActiveDJProfile()" title="Edit the active profile's genres, era, BPM, stars &amp; vibe"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg> Edit Profile</button>
+          <button class="btn btn-mint btn-sm" id="djNewProfileBtn" onclick="openProfileEditorModal(null)"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New Profile</button>
           <button class="btn btn-dim btn-sm" id="djProfilesToggleBtn" onclick="toggleDJProfilesPanel()">All Profiles</button>
           <span style="flex:1;"></span>
-          <button class="btn btn-dim btn-sm" onclick="createDJSession('lidarr')"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/></svg> Fresh from Lidarr</button>
+          <button class="btn btn-dim btn-sm" id="djLidarrFreshBtn" onclick="createDJSession('lidarr')"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.8L20 11l-6.1 2.2L12 19l-1.9-5.8L4 11l6.1-2.2z"/></svg> Fresh from Lidarr</button>
           <button class="btn btn-dim btn-sm" onclick="createDJFromCurrentQueue()"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15V6"/><path d="M18.5 18a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/><path d="M12 12H3"/><path d="M16 6H3"/><path d="M12 18H3"/></svg> From Browser Queue</button>
           <button class="btn btn-danger btn-sm" onclick="clearDJSession()">Clear</button>
         </div>
@@ -984,12 +988,25 @@
             <input id="setDJStation" class="search-input" placeholder="Echo FM" />
           </div>
           <div>
-            <div class="stat-k" style="margin-bottom:4px;">Spoken Language</div>
+            <div class="stat-k" style="margin-bottom:4px;">Spoken Language (Script + Native TTS Accent)</div>
             <select id="setDJLanguage" class="search-input">
               <option value="English">English</option>
-              <option value="Norwegian">Norwegian</option>
+              <option value="Norwegian">Norwegian (Norsk)</option>
+              <option value="Swedish">Swedish (Svenska)</option>
+              <option value="Danish">Danish (Dansk)</option>
+              <option value="Finnish">Finnish (Suomi)</option>
+              <option value="German">German (Deutsch)</option>
+              <option value="Dutch">Dutch (Nederlands)</option>
+              <option value="French">French (Français)</option>
+              <option value="Spanish">Spanish (Español)</option>
+              <option value="Italian">Italian (Italiano)</option>
+              <option value="Portuguese">Portuguese (Português)</option>
               <option value="Auto">Auto (match track/artist)</option>
             </select>
+            <label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text-2);margin-top:5px;cursor:pointer;">
+              <input type="checkbox" id="setDJMoreLanguages" onchange="populateDJLanguageDropdown()" />
+              Show more world languages (Polish, Icelandic, Japanese, Korean, Arabic…)
+            </label>
           </div>
           <div>
             <div class="stat-k" style="margin-bottom:4px;">Talk Cadence (<span id="lblTalkFreq">65%</span> transitions)</div>
@@ -1087,8 +1104,18 @@
             </label>
             <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
               <input type="checkbox" id="setAdvancedAnalysis" />
-              <strong>Optional Advanced Indexing:</strong> analyze tracks for vocal start/end cues (never talk over singing), BPM stacking &amp; smart vibe tags
+              <strong>Optional Advanced Indexing:</strong> analyze tracks for vocal start/end cues (never talk over singing), BPM stacking, volume level for loudness normalization &amp; smart vibe tags
             </label>
+            <div>
+              <div class="stat-k" style="margin-bottom:4px;">Loudness Normalization Volume Level (Web Player &amp; DLNA Radio)</div>
+              <select id="setNormTargetDB" class="search-input" onchange="onNormTargetPreviewChange()">
+                <option value="off">Off (Original Track Volume)</option>
+                <option value="-18">-18 dBFS (Quiet · Wide Dynamic Range)</option>
+                <option value="-16">-16 dBFS (Apple Sound Check)</option>
+                <option value="-14" selected>-14 dBFS (Streaming Standard · Default)</option>
+                <option value="-12">-12 dBFS (Loud · Party / Club)</option>
+              </select>
+            </div>
             <div>
               <div class="stat-k" style="margin-bottom:4px;">Lidarr URL (for instant new-music nudges)</div>
               <input id="setLidarrURL" class="search-input" placeholder="http://192.168.0.12:8686" />
@@ -1212,6 +1239,67 @@
         </div>
       </div>
 
+      <!-- USER MANAGEMENT (PER-USER ACCESS · GLOBAL GEMINI API KEY) -->
+      <div class="card" style="margin-top:16px;border-color:rgba(20,241,149,0.32);">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+          <div class="card-title" style="margin:0;color:var(--mint);">USER MANAGEMENT · RADIO DJ &amp; REMOTE ACCESS</div>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;">
+            <input type="checkbox" id="setAuthRequireLAN" onchange="toggleRequireLoginOnLAN(this.checked)" />
+            Require Sign-In on local LAN too
+          </label>
+        </div>
+        <div class="mono" style="font-size:11.5px;color:var(--text-2);margin-bottom:12px;">
+          Create limited user accounts for family &amp; remote listeners. Control access per user (<strong>Library &amp; Player</strong>, <strong>DJ Radio</strong>, <strong>Party Mode</strong>). All users automatically share your server's <strong>global Gemini API key</strong> — no listener ever needs to bring their own key or see Admin Settings.
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px;">
+          <div style="padding:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;gap:9px;">
+            <div style="font-weight:800;font-size:12.5px;color:var(--cyan);" id="usrFormTitle">Add New User</div>
+            <input type="hidden" id="usrEditId" value="" />
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div>
+                <div class="stat-k" style="margin-bottom:3px;">Username</div>
+                <input id="usrUsername" class="search-input" placeholder="e.g. anna" autocomplete="off" />
+              </div>
+              <div>
+                <div class="stat-k" style="margin-bottom:3px;">Display Name</div>
+                <input id="usrDisplayName" class="search-input" placeholder="e.g. Anna" autocomplete="off" />
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div>
+                <div class="stat-k" style="margin-bottom:3px;">Password / Passcode</div>
+                <input id="usrPassword" class="search-input" type="password" placeholder="Min 3 chars (blank = keep)" autocomplete="new-password" />
+              </div>
+              <div>
+                <div class="stat-k" style="margin-bottom:3px;">Role</div>
+                <select id="usrRole" class="search-input" onchange="onUserRoleSelectChange()">
+                  <option value="user" selected>Listener (Limited Access)</option>
+                  <option value="admin">Admin (Full Server Access)</option>
+                </select>
+              </div>
+            </div>
+            <div id="usrPermChecks" style="display:flex;gap:12px;flex-wrap:wrap;padding:6px 8px;background:var(--surface);border:1px solid var(--border);border-radius:5px;font-size:12px;">
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="usrAllowLib" checked /> Library &amp; Player</label>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="usrAllowDJ" checked /> DJ Radio</label>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="usrAllowParty" checked /> Party Mode</label>
+              <label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="usrCanEditProf" /> Edit DJ Profiles</label>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-mint btn-sm" onclick="saveManagedUser()">Save User</button>
+              <button class="btn btn-dim btn-sm hidden" id="usrCancelEditBtn" onclick="resetUserForm()">Cancel Edit</button>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <div class="stat-k">REGISTERED USERS</div>
+            <div id="managedUsersList" style="display:flex;flex-direction:column;gap:6px;">
+              <div class="mono" style="font-size:11.5px;">No user accounts yet. Add one on the left to give friends or remote listeners controlled access.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:10px;">
         <button class="btn btn-dim" onclick="loadSettingsForm()">Reset</button>
         <button class="btn btn-mint" onclick="saveServerSettings()">Save All Settings</button>
@@ -1328,6 +1416,15 @@
 <script>
 const PIN = "__ECHO_PAIRING_PIN__";
 const HEADERS = PIN ? { "X-Echo-Token": PIN } : {};
+const SESSION = __ECHO_SESSION_JSON__;
+const IS_ADMIN = !SESSION || SESSION.role === "admin";
+function hasPerm(perm) {
+  if (IS_ADMIN) return true;
+  if (perm === "library") return !!SESSION.allowLibrary;
+  if (perm === "dj") return !!SESSION.allowDJ;
+  if (perm === "party") return !!SESSION.allowParty;
+  return false;
+}
 
 // Flat borderless monochrome inline SVG icon set
 const ICONS = {
@@ -1531,8 +1628,36 @@ function showToast(msg) {
   toastTimer = setTimeout(() => el.classList.add("hidden"), 3000);
 }
 function copyText(text) {
-  navigator.clipboard?.writeText(text);
-  showToast("Copied: " + text);
+  const val = String(text || "");
+  const fallbackCopy = () => {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = val;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "-9999px";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) {
+      return false;
+    }
+  };
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(val).then(() => {
+      showToast("Copied: " + val);
+    }).catch(() => {
+      if (fallbackCopy()) showToast("Copied: " + val);
+      else showToast("Copy failed — select and press Cmd/Ctrl+C");
+    });
+  } else {
+    if (fallbackCopy()) showToast("Copied: " + val);
+    else showToast("Copy failed — select and press Cmd/Ctrl+C");
+  }
 }
 
 // --- Now Playing Sidebar Toggle ---
@@ -1839,14 +1964,69 @@ async function generateRandomQueue() {
 
 // --- Tabs ---
 function switchTab(tab) {
+  if ((tab === "server" || tab === "settings") && !IS_ADMIN) tab = firstAllowedTab();
+  if ((tab === "library" || tab === "dj" || tab === "party") && !hasPerm(tab)) tab = firstAllowedTab();
   currentTab = tab;
   document.querySelectorAll(".nav-tab").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
   ["library", "dj", "party", "server", "settings"].forEach(t => document.getElementById("tab-" + t).classList.toggle("hidden", t !== tab));
-  if (tab === "dj") { ensureDJOptions().then(refreshDJState); }
-  if (tab === "party") refreshParty();
-  if (tab === "server") refreshServerStatus();
-  if (tab === "settings") { ensureDJOptions().then(loadSettingsForm); }
+  if (tab === "dj" && hasPerm("dj")) { ensureDJOptions().then(refreshDJState); }
+  if (tab === "party" && hasPerm("party")) refreshParty();
+  if (tab === "server" && IS_ADMIN) refreshServerStatus();
+  if (tab === "settings" && IS_ADMIN) { ensureDJOptions().then(loadSettingsForm); loadManagedUsers(); }
   savePersistentState(true);
+}
+
+function firstAllowedTab() {
+  if (hasPerm("library")) return "library";
+  if (hasPerm("dj")) return "dj";
+  if (hasPerm("party")) return "party";
+  return "library";
+}
+
+function applyUserPermissionsUI() {
+  const topMeta = document.getElementById("topMeta");
+  if (topMeta && !IS_ADMIN) {
+    topMeta.textContent = `${SESSION.displayName || "Listener"} · ${location.host}`;
+  }
+  const setTabVis = (t, show) => {
+    const btn = document.querySelector(`.nav-tab[data-tab="${t}"]`);
+    if (btn) btn.classList.toggle("hidden", !show);
+  };
+  setTabVis("library", hasPerm("library"));
+  setTabVis("dj", hasPerm("dj"));
+  setTabVis("party", hasPerm("party"));
+  setTabVis("server", IS_ADMIN);
+  setTabVis("settings", IS_ADMIN);
+
+  // Non-admins share the server's global Gemini key and don't see Admin Settings / Lidarr
+  document.getElementById("djVoiceSettingsBtn")?.classList.toggle("hidden", !IS_ADMIN);
+  document.getElementById("djLidarrFreshBtn")?.classList.toggle("hidden", !IS_ADMIN);
+  const canEditProf = IS_ADMIN || !!SESSION.canEditProfiles;
+  document.getElementById("djEditProfileBtn")?.classList.toggle("hidden", !canEditProf);
+  document.getElementById("djNewProfileBtn")?.classList.toggle("hidden", !canEditProf);
+  if (!IS_ADMIN) {
+    const warn = document.getElementById("djKeyWarning");
+    if (warn) {
+      warn.innerHTML = `<strong style="color:var(--amber);">AI DJ voice is not enabled by the server administrator yet.</strong> You can still listen to the music playlist and crossfades now.`;
+    }
+  }
+
+  // Render signed-in user badge + Sign Out / Switch User button
+  const chip = document.getElementById("userSessionChip");
+  if (chip) {
+    const name = esc(SESSION.displayName || SESSION.username || "Admin");
+    const roleBadge = IS_ADMIN ? `<span class="badge mint" style="font-size:9.5px;">ADMIN</span>` : `<span class="badge cyan" style="font-size:9.5px;">${SESSION.role === "guest" ? "GUEST" : "USER"}</span>`;
+    if (!SESSION.isLAN || SESSION.role !== "admin" || SESSION.hasUsers) {
+      chip.innerHTML = `<span class="mono" style="font-size:11px;display:inline-flex;align-items:center;gap:5px;">${roleBadge}<span>${name}</span></span><button class="btn btn-dim btn-sm" style="padding:4px 8px;font-size:11px;" onclick="signOutUser()">${SESSION.role === "guest" ? "Sign In" : "Sign Out"}</button>`;
+    } else {
+      chip.innerHTML = "";
+    }
+  }
+}
+
+async function signOutUser() {
+  try { await fetch("/api/v2/auth/logout", { method: "POST" }); } catch (e) {}
+  location.href = "/?login=1";
 }
 
 // --- Group Header Bucketing for Library ---
@@ -2561,10 +2741,27 @@ function seekToPct(val) {
     activeDeck.currentTime = (val / 100) * activeDeck.duration;
   }
 }
-// On-the-fly loudness normalization multiplier (targets -14 dBFS using analyzed normGainDB)
+let normEnabledSetting = true;
+let normTargetDBSetting = -14.0;
+function onNormTargetPreviewChange() {
+  const el = document.getElementById("setNormTargetDB");
+  if (!el) return;
+  if (el.value === "off") {
+    normEnabledSetting = false;
+  } else {
+    normEnabledSetting = true;
+    normTargetDBSetting = parseFloat(el.value) || -14.0;
+  }
+  if (currentTrackObj && !djSpeakingBreak) {
+    setDeckVolume(activeDeck, effectiveTrackVol(currentTrackObj));
+  }
+}
+// On-the-fly loudness normalization multiplier (targets configured normTargetDBSetting using analyzed normGainDB)
 function trackNormMultiplier(tr) {
+  if (!normEnabledSetting) return 1.0;
   if (!tr || typeof tr.normGainDB !== "number" || !isFinite(tr.normGainDB) || tr.normGainDB === 0) return webAudioReady ? 1.0 : 0.85;
-  const clamped = Math.max(-12, Math.min(6, tr.normGainDB));
+  const shifted = tr.normGainDB + (normTargetDBSetting + 14.0);
+  const clamped = Math.max(-12, Math.min(6, shifted));
   if (webAudioReady) {
     // Web Audio GainNode + soft limiter supports true boost (+6 dB) and attenuation (-12 dB)!
     return Math.max(0.25, Math.min(2.0, Math.pow(10, clamped / 20)));
@@ -4310,6 +4507,17 @@ async function loadSettingsForm() {
     document.getElementById("setAutoEditorial").checked = !!s.autoFetchEditorial;
     document.getElementById("setMirrorShare").checked = !!s.mirrorToShare;
     document.getElementById("setAdvancedAnalysis").checked = !!s.advancedAnalysisEnabled;
+    normEnabledSetting = s.normEnabled !== false;
+    normTargetDBSetting = (typeof s.normTargetDB === "number" && s.normTargetDB < 0) ? s.normTargetDB : -14.0;
+    const normSel = document.getElementById("setNormTargetDB");
+    if (normSel) {
+      if (!normEnabledSetting) {
+        normSel.value = "off";
+      } else {
+        const rounded = String(Math.round(normTargetDBSetting));
+        normSel.value = ["-18", "-16", "-14", "-12"].includes(rounded) ? rounded : "-14";
+      }
+    }
     document.getElementById("setLidarrURL").value = s.lidarrURL || "";
     document.getElementById("setLidarrKey").value = "";
     document.getElementById("lidarrKeyMask").textContent = s.hasLidarrAPIKey ? `(saved: ${s.lidarrAPIKeyMask})` : "";
@@ -4330,7 +4538,11 @@ async function loadSettingsForm() {
     document.getElementById("setDJVoice").value = dj.voiceName || "Kore";
     document.getElementById("setDJPersona").value = dj.persona || "late-night-fm";
     document.getElementById("setDJStation").value = dj.radioStationName || "Echo FM";
-    document.getElementById("setDJLanguage").value = dj.language || "English";
+    const savedLang = dj.language || "English";
+    const moreLangs = djOptionsCache?.moreLanguages || ["Icelandic","Irish","Polish","Czech","Greek","Turkish","Ukrainian","Brazilian Portuguese","Latin American Spanish","Japanese","Korean","Mandarin Chinese","Arabic","Hindi"];
+    const moreChk = document.getElementById("setDJMoreLanguages");
+    if (moreChk && moreLangs.includes(savedLang)) moreChk.checked = true;
+    populateDJLanguageDropdown(savedLang);
     const tf = dj.talkFrequency ?? 0.65;
     document.getElementById("setDJTalkFreq").value = tf;
     document.getElementById("lblTalkFreq").textContent = Math.round(tf * 100) + "%";
@@ -4416,6 +4628,11 @@ async function refreshRemoteStatus() {
       if (cf.lastError) lines.push(`<div style="color:var(--coral);">${esc(cf.lastError)}</div>`);
       if (!lines.length && cf.running && cf.mode === "token") lines.push(`<div style="color:var(--mint);">Named Cloudflare Tunnel active — routed to your configured Cloudflare domain.</div>`);
       cfURLs.innerHTML = lines.join("");
+    }
+    // Auto-poll while Cloudflare Quick Tunnel is still negotiating its public URLs
+    if (window._cfPollTimer) { clearTimeout(window._cfPollTimer); window._cfPollTimer = null; }
+    if (cf.enabled && cf.mode !== "token" && !cf.publicDJURL && !cf.publicPartyURL && !cf.lastError) {
+      window._cfPollTimer = setTimeout(() => { refreshRemoteStatus(); }, 2500);
     }
 
     // UPnP / NAT-PMP status
@@ -4601,6 +4818,8 @@ async function saveServerSettings() {
     autoFetchEditorial: document.getElementById("setAutoEditorial").checked,
     mirrorToShare: document.getElementById("setMirrorShare").checked,
     advancedAnalysisEnabled: document.getElementById("setAdvancedAnalysis").checked,
+    normEnabled: (document.getElementById("setNormTargetDB")?.value || "-14") !== "off",
+    normTargetDB: (document.getElementById("setNormTargetDB")?.value || "-14") === "off" ? -14 : (parseFloat(document.getElementById("setNormTargetDB").value) || -14),
     lidarrURL: document.getElementById("setLidarrURL").value.trim(),
     lidarrPollEnabled: document.getElementById("setLidarrPoll").checked,
     dj: djPayload,
@@ -4816,17 +5035,225 @@ function renderThemeGallery() {
   `).join("");
 }
 
+// --- Live DJ MP3 Radio Stream Option (/stream/dj.mp3) ---
+let djLiveStreamActive = false;
+function copyDJStreamURL() {
+  copyText(`${location.origin}/stream/dj.mp3`);
+}
+function stopDJLiveStream() {
+  if (!djLiveStreamActive) return;
+  djLiveStreamActive = false;
+  const btn = document.getElementById("djStreamToggleBtn");
+  if (btn) btn.innerHTML = `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg> Live Stream`;
+}
+function toggleDJLiveStream() {
+  if (djLiveStreamActive) {
+    stopDJLiveStream();
+    userPaused = true;
+    activeDeck.pause();
+    activeDeck.src = "";
+    document.getElementById("djOnAirBadge").textContent = djActive ? "ON AIR" : "STANDBY";
+    showToast("Stopped Live DJ Radio Stream");
+    return;
+  }
+  initWebAudio();
+  userPaused = false;
+  djActive = false;
+  playbackMode = "stream";
+  stopAllAudio();
+  djLiveStreamActive = true;
+  const streamSrc = `${location.origin}/stream/dj.mp3?t=${Date.now()}`;
+  activeDeck.src = streamSrc;
+  setDeckVolume(activeDeck, masterVolume);
+  activeDeck.play().then(() => {
+    const btn = document.getElementById("djStreamToggleBtn");
+    if (btn) btn.innerHTML = `${ico("stop")} Stop Stream`;
+    const station = djState?.stationName || "Echo FM";
+    document.getElementById("djOnAirBadge").textContent = "LIVE STREAM";
+    document.getElementById("sideModeBadge").textContent = "LIVE MP3 STREAM";
+    document.getElementById("npTitle").textContent = `${station} · Live MP3 Stream`;
+    document.getElementById("npArtist").textContent = "Continuous 192 kbps AI DJ Radio";
+    document.getElementById("sideTitle").textContent = `${station} · Live Stream`;
+    document.getElementById("sideArtist").textContent = "Continuous AI DJ Radio (/stream/dj.mp3)";
+    updatePlayBtn();
+    showToast("Tuned into Live DJ Radio MP3 Stream!");
+  }).catch(err => {
+    djLiveStreamActive = false;
+    showToast("Could not start live stream: " + (err?.message || "check DJ rundown"));
+  });
+}
+
+function populateDJLanguageDropdown(preferredVal = "") {
+  const sel = document.getElementById("setDJLanguage");
+  if (!sel) return;
+  const cur = preferredVal || sel.value || "English";
+  const baseLangs = djOptionsCache?.languages || ["English","Norwegian","Swedish","Danish","Finnish","German","Dutch","French","Spanish","Italian","Portuguese","Auto"];
+  const moreLangs = djOptionsCache?.moreLanguages || ["Icelandic","Irish","Polish","Czech","Greek","Turkish","Ukrainian","Brazilian Portuguese","Latin American Spanish","Japanese","Korean","Mandarin Chinese","Arabic","Hindi"];
+  const showMore = !!document.getElementById("setDJMoreLanguages")?.checked;
+  const labels = {
+    English: "English",
+    Norwegian: "Norwegian (Norsk)",
+    Swedish: "Swedish (Svenska)",
+    Danish: "Danish (Dansk)",
+    Finnish: "Finnish (Suomi)",
+    German: "German (Deutsch)",
+    Dutch: "Dutch (Nederlands)",
+    French: "French (Français)",
+    Spanish: "Spanish (Español)",
+    Italian: "Italian (Italiano)",
+    Portuguese: "Portuguese (Português)",
+    Auto: "Auto (match track/artist)"
+  };
+  let html = baseLangs.map(l => `<option value="${esc(l)}">${esc(labels[l] || l)}</option>`).join("");
+  if (showMore || moreLangs.includes(cur)) {
+    html += `<optgroup label="More World Languages">` + moreLangs.map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join("") + `</optgroup>`;
+  }
+  sel.innerHTML = html;
+  sel.value = cur;
+}
+
+// --- Managed User Accounts (Admin Settings) ---
+let managedUsersCache = [];
+async function loadManagedUsers() {
+  if (!IS_ADMIN) return;
+  try {
+    const res = await fetch("/api/v2/admin/users", { headers: HEADERS });
+    if (!res.ok) return;
+    const d = await res.json();
+    managedUsersCache = d.users || [];
+    const lanChk = document.getElementById("setAuthRequireLAN");
+    if (lanChk) lanChk.checked = !!d.authRequireLoginOnLAN;
+    renderManagedUsersList();
+  } catch (e) {}
+}
+
+function renderManagedUsersList() {
+  const el = document.getElementById("managedUsersList");
+  if (!el) return;
+  if (!managedUsersCache.length) {
+    el.innerHTML = '<div class="mono" style="font-size:11.5px;">No user accounts yet. Add one on the left to give friends or remote listeners controlled access.</div>';
+    return;
+  }
+  el.innerHTML = managedUsersCache.map(u => {
+    const safeID = esc(u.id).replace(/'/g, "\\'");
+    const pills = u.role === "admin"
+      ? `<span class="badge mint">ADMIN · FULL ACCESS</span>`
+      : [
+          u.allowLibrary ? `<span class="badge cyan">LIBRARY</span>` : "",
+          u.allowDJ ? `<span class="badge amber">DJ RADIO</span>` : "",
+          u.allowParty ? `<span class="badge mag">PARTY</span>` : "",
+          u.canEditProfiles ? `<span class="badge dim">EDIT PROFILES</span>` : ""
+        ].filter(Boolean).join(" ");
+    return `<div class="track-row" style="grid-template-columns:1fr auto;padding:8px 10px;">
+      <div class="track-main">
+        <div class="track-name" style="font-size:13px;">${esc(u.displayName || u.username)} <span class="mono" style="font-size:11px;color:var(--text-3);">@${esc(u.username)}</span></div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;">${pills || '<span class="badge dim">NO TABS ENABLED</span>'}</div>
+      </div>
+      <div style="display:flex;gap:5px;">
+        <button class="btn btn-dim btn-sm" onclick="editManagedUser('${safeID}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteManagedUser('${safeID}')">Delete</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function onUserRoleSelectChange() {
+  const isAdm = document.getElementById("usrRole")?.value === "admin";
+  document.getElementById("usrPermChecks")?.classList.toggle("hidden", isAdm);
+}
+
+function editManagedUser(id) {
+  const u = managedUsersCache.find(x => x.id === id);
+  if (!u) return;
+  document.getElementById("usrEditId").value = u.id;
+  document.getElementById("usrFormTitle").textContent = "Edit User: @" + u.username;
+  document.getElementById("usrUsername").value = u.username;
+  document.getElementById("usrDisplayName").value = u.displayName || "";
+  document.getElementById("usrPassword").value = "";
+  document.getElementById("usrRole").value = u.role || "user";
+  document.getElementById("usrAllowLib").checked = !!u.allowLibrary;
+  document.getElementById("usrAllowDJ").checked = !!u.allowDJ;
+  document.getElementById("usrAllowParty").checked = !!u.allowParty;
+  document.getElementById("usrCanEditProf").checked = !!u.canEditProfiles;
+  document.getElementById("usrCancelEditBtn").classList.remove("hidden");
+  onUserRoleSelectChange();
+}
+
+function resetUserForm() {
+  document.getElementById("usrEditId").value = "";
+  document.getElementById("usrFormTitle").textContent = "Add New User";
+  document.getElementById("usrUsername").value = "";
+  document.getElementById("usrDisplayName").value = "";
+  document.getElementById("usrPassword").value = "";
+  document.getElementById("usrRole").value = "user";
+  document.getElementById("usrAllowLib").checked = true;
+  document.getElementById("usrAllowDJ").checked = true;
+  document.getElementById("usrAllowParty").checked = true;
+  document.getElementById("usrCanEditProf").checked = false;
+  document.getElementById("usrCancelEditBtn").classList.add("hidden");
+  onUserRoleSelectChange();
+}
+
+async function saveManagedUser() {
+  const payload = {
+    id: document.getElementById("usrEditId").value.trim(),
+    username: document.getElementById("usrUsername").value.trim(),
+    displayName: document.getElementById("usrDisplayName").value.trim(),
+    password: document.getElementById("usrPassword").value,
+    role: document.getElementById("usrRole").value,
+    allowLibrary: document.getElementById("usrAllowLib").checked,
+    allowDJ: document.getElementById("usrAllowDJ").checked,
+    allowParty: document.getElementById("usrAllowParty").checked,
+    canEditProfiles: document.getElementById("usrCanEditProf").checked
+  };
+  const res = await fetch("/api/v2/admin/users", {
+    method: "POST",
+    headers: { ...HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(d.error || "Could not save user"); return; }
+  managedUsersCache = d.users || [];
+  renderManagedUsersList();
+  resetUserForm();
+  showToast("User saved!");
+}
+
+async function deleteManagedUser(id) {
+  if (!confirm("Delete this user account? Their active sessions will be signed out immediately.")) return;
+  const res = await fetch(`/api/v2/admin/users?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: HEADERS
+  });
+  const d = await res.json().catch(() => ({}));
+  if (!res.ok) { showToast(d.error || "Could not delete user"); return; }
+  managedUsersCache = d.users || [];
+  renderManagedUsersList();
+  showToast("User deleted");
+}
+
+async function toggleRequireLoginOnLAN(val) {
+  const res = await fetch("/api/v2/admin/users", {
+    method: "POST",
+    headers: { ...HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ authRequireLoginOnLAN: !!val })
+  });
+  if (res.ok) showToast(val ? "LAN Sign-In enabled" : "LAN direct admin access restored");
+}
+
 // Boot
 applyTheme(currentTheme, true);
+applyUserPermissionsUI();
+if (!hasPerm(currentTab)) switchTab(firstAllowedTab());
 restorePersistentState();
-loadWebFacets();
-refreshParty();
-refreshServerStatus();
-ensureDJOptions().then(refreshDJState);
+if (hasPerm("library")) loadWebFacets();
+if (hasPerm("party")) refreshParty();
+if (IS_ADMIN) refreshServerStatus();
+if (hasPerm("dj")) ensureDJOptions().then(refreshDJState);
 setInterval(() => {
-  refreshParty();
-  if (currentTab === "server") refreshServerStatus();
-  if (currentTab === "dj" || djActive) refreshDJState();
+  if (hasPerm("party")) refreshParty();
+  if (IS_ADMIN && currentTab === "server") refreshServerStatus();
+  if (hasPerm("dj") && (currentTab === "dj" || djActive)) refreshDJState();
 }, 3000);
 </script>
 </body>

@@ -287,7 +287,7 @@ func (c *channel) nextDJItem() (trackPath, voicePath, label string, normGainDB f
 	}
 
 	label = fmt.Sprintf("%s — %s", slot.Track.Artist, slot.Track.Title)
-	normGainDB = slot.Track.NormGainDB
+	normGainDB = c.hub.adjustedNormGain(slot.Track.NormGainDB)
 	advance = func() {
 		// If current slot has a trailing standalone outro, play it right after the track!
 		curState := c.hub.djEng.State()
@@ -338,7 +338,7 @@ func (c *channel) nextPartyItem() (trackPath, voicePath, label string, normGainD
 	if c.hub.store != nil {
 		if tr, err := c.hub.store.FindTrackByID(cur.Track.ID); err == nil {
 			if an, ok := c.hub.store.GetTrackAnalysis(tr.TrackKey); ok {
-				normGainDB = an.NormGainDB
+				normGainDB = c.hub.adjustedNormGain(an.NormGainDB)
 			}
 		}
 	}
@@ -363,6 +363,22 @@ func (h *Hub) resolveTrackPath(trackID string) string {
 		return ""
 	}
 	return full
+}
+
+func (h *Hub) adjustedNormGain(baseGainDB float64) float64 {
+	targetDB, enabled := h.cfg.EffectiveNormTargetDB()
+	if !enabled || baseGainDB == 0 {
+		return 0
+	}
+	// Stored NormGainDB targets -14.0 dBFS; shift by (targetDB - (-14.0)) on the fly!
+	g := baseGainDB + (targetDB + 14.0)
+	if g < -12.0 {
+		g = -12.0
+	}
+	if g > 6.0 {
+		g = 6.0
+	}
+	return g
 }
 
 func (c *channel) streamFileAsMP3(ctx context.Context, path string, normGainDB float64) error {

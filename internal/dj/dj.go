@@ -1463,16 +1463,7 @@ func (e *Engine) TestVoice(ctx context.Context, override *config.DJConfig) (DJBr
 		return DJBreak{}, fmt.Errorf("Enter your Gemini API key first to test the DJ voice")
 	}
 
-	sampleScript := fmt.Sprintf(
-		"You're locked into %s, streaming lossless straight from your home library. Sit back, turn up the monitors, and let's dive into the next record.",
-		djCfg.RadioStationName,
-	)
-	if strings.EqualFold(djCfg.Language, "Norwegian") {
-		sampleScript = fmt.Sprintf(
-			"Du lytter til %s, rett fra ditt eget musikkbibliotek. Len deg tilbake, skru opp lyden, så setter vi i gang neste låt.",
-			djCfg.RadioStationName,
-		)
-	}
+	sampleScript := testVoiceSample(djCfg.Language, djCfg.RadioStationName)
 
 	breakID := randomID("testvoice")
 	outPath := filepath.Join(e.cfg.DJCacheDir(), breakID+".m4a")
@@ -1823,9 +1814,11 @@ func (e *Engine) BuildFactualPrompt(
 	isOpening bool,
 	fromLidarr bool,
 ) (systemPrompt, userPrompt string, factsSummary []string) {
-	langRule := fmt.Sprintf("Speak in %s.", djCfg.Language)
-	if strings.EqualFold(djCfg.Language, "Auto") {
-		langRule = "Match the primary language of the track/artist if obvious (e.g. Norwegian for Norwegian songs, otherwise English)."
+	langRule := fmt.Sprintf("Speak exclusively in natural, idiomatic %s — write like a native %s FM radio host.", djCfg.Language, djCfg.Language)
+	if strings.EqualFold(djCfg.Language, "Norwegian") {
+		langRule = "Speak exclusively in natural, idiomatic Norwegian (Bokmål) — write like a native Norwegian radio host (NRK P13/P3 style)."
+	} else if strings.EqualFold(djCfg.Language, "Auto") {
+		langRule = "Match the primary language of the track/artist if obvious (e.g. Norwegian for Norwegian songs, Swedish for Swedish songs, German for German songs, otherwise English)."
 	}
 
 	personaDesc := personaLLMGuidance(djCfg.Persona)
@@ -2050,23 +2043,187 @@ func personaLLMGuidance(persona string) string {
 	}
 }
 
-func personaTTSStyle(persona, language string) string {
-	langNote := ""
-	if strings.EqualFold(language, "Norwegian") {
-		langNote = " in natural Norwegian"
+// WesternEuropeanLanguages returns the default Western European + Auto language options for DJ Radio.
+func WesternEuropeanLanguages() []string {
+	return []string{
+		"English",
+		"Norwegian",
+		"Swedish",
+		"Danish",
+		"Finnish",
+		"German",
+		"Dutch",
+		"French",
+		"Spanish",
+		"Italian",
+		"Portuguese",
+		"Auto",
 	}
+}
+
+// ExtendedWorldLanguages returns additional world languages shown when "Show more languages" is enabled.
+func ExtendedWorldLanguages() []string {
+	return []string{
+		"Icelandic",
+		"Irish",
+		"Polish",
+		"Czech",
+		"Greek",
+		"Turkish",
+		"Ukrainian",
+		"Brazilian Portuguese",
+		"Latin American Spanish",
+		"Japanese",
+		"Korean",
+		"Mandarin Chinese",
+		"Arabic",
+		"Hindi",
+	}
+}
+
+// LanguageBCP47 maps a DJ language display name to its BCP-47 locale for Gemini TTS speechConfig.languageCode.
+func LanguageBCP47(language string) string {
+	switch strings.ToLower(strings.TrimSpace(language)) {
+	case "english":
+		return "en-US"
+	case "norwegian":
+		return "nb-NO"
+	case "swedish":
+		return "sv-SE"
+	case "danish":
+		return "da-DK"
+	case "finnish":
+		return "fi-FI"
+	case "german":
+		return "de-DE"
+	case "dutch":
+		return "nl-NL"
+	case "french":
+		return "fr-FR"
+	case "spanish":
+		return "es-ES"
+	case "italian":
+		return "it-IT"
+	case "portuguese":
+		return "pt-PT"
+	case "brazilian portuguese":
+		return "pt-BR"
+	case "latin american spanish":
+		return "es-419"
+	case "icelandic":
+		return "is-IS"
+	case "irish":
+		return "ga-IE"
+	case "polish":
+		return "pl-PL"
+	case "czech":
+		return "cs-CZ"
+	case "greek":
+		return "el-GR"
+	case "turkish":
+		return "tr-TR"
+	case "ukrainian":
+		return "uk-UA"
+	case "japanese":
+		return "ja-JP"
+	case "korean":
+		return "ko-KR"
+	case "mandarin chinese":
+		return "zh-CN"
+	case "arabic":
+		return "ar-XA"
+	case "hindi":
+		return "hi-IN"
+	default:
+		return ""
+	}
+}
+
+func testVoiceSample(language, station string) string {
+	switch strings.ToLower(strings.TrimSpace(language)) {
+	case "norwegian":
+		return fmt.Sprintf("Du lytter til %s, rett fra ditt eget musikkbibliotek. Len deg tilbake, skru opp lyden, så setter vi i gang neste låt.", station)
+	case "swedish":
+		return fmt.Sprintf("Du lyssnar på %s, direkt från ditt eget musikbibliotek. Luta dig tillbaka, höj volymen, så drar vi igång nästa låt.", station)
+	case "danish":
+		return fmt.Sprintf("Du lytter til %s, direkte fra dit eget musikbibliotek. Læn dig tilbage, skru op for lyden, og lad os tage næste nummer.", station)
+	case "finnish":
+		return fmt.Sprintf("Kuuntelet asemaa %s suoraan omasta musiikkikirjastostasi. Nojaa taaksepäin, nosta äänenvoimakkuutta ja sukelletaan seuraavaan kappaleeseen.", station)
+	case "german":
+		return fmt.Sprintf("Du hörst %s, verlustfrei direkt aus deiner eigenen Musikbibliothek. Lehn dich zurück, dreh auf und los geht es mit dem nächsten Titel.", station)
+	case "dutch":
+		return fmt.Sprintf("Je luistert naar %s, rechtstreeks vanuit je eigen muziekbibliotheek. Leun achterover, zet het volume wat harder en we gaan door naar het volgende nummer.", station)
+	case "french":
+		return fmt.Sprintf("Vous écoutez %s, diffusé directement depuis votre propre audiothèque. Installez-vous confortablement et plongeons dans le prochain morceau.", station)
+	case "spanish", "latin american spanish":
+		return fmt.Sprintf("Estás escuchando %s, transmitiendo directamente desde tu biblioteca musical. Ponte cómodo, sube el volumen y vamos con la siguiente canción.", station)
+	case "italian":
+		return fmt.Sprintf("Stai ascoltando %s, direttamente dalla tua libreria musicale. Mettiti comodo, alza il volume e partiamo con il prossimo brano.", station)
+	case "portuguese", "brazilian portuguese":
+		return fmt.Sprintf("Você está ouvindo a %s, direto da sua própria biblioteca musical. Relaxe, aumente o som e vamos para a próxima faixa.", station)
+	default:
+		return fmt.Sprintf("You're locked into %s, streaming lossless straight from your home library. Sit back, turn up the monitors, and let's dive into the next record.", station)
+	}
+}
+
+func personaTTSStyle(persona, language string) string {
+	lang := strings.ToLower(strings.TrimSpace(language))
+	// Write TTS delivery directions natively in the target language so Gemini TTS locks onto
+	// authentic native phonology and never slips into an English accent!
+	switch lang {
+	case "norwegian":
+		tone := "varm, rolig og naturlig norsk FM-radioprogramleder i studio"
+		switch persona {
+		case "upbeat-radio":
+			tone = "karismatisk, opplagt og energisk norsk radioprogramleder på dagtid"
+		case "vinyl-nerd":
+			tone = "kunnskapsrik og entusiastisk norsk musikkjournalist og vinylentusiast"
+		case "party-hype":
+			tone = "livlig og smilende norsk helge-DJ med god flyt"
+		case "nordic-chill":
+			tone = "rolig, lun og dempet norsk nattradiovert med behagelig tempo"
+		}
+		return "Leveringsinstruks (IKKE les denne instruksen høyt — les BARE brukerens tekst ordrett): Snakk på ekte, flytende norsk bokmål med autentisk norsk uttale og tonefall (aldri med engelsk aksent), som en " + tone + "."
+	case "swedish":
+		return "Leveransinstruktion (LÄS INTE denna instruktion högt — läs ENDAST användarens text ordagrant): Tala på äkta, flytande svenska med autentiskt svenskt uttal och radiotonfall (aldrig engelsk brytning), som en varm och kunnig svensk radiopratare i studio."
+	case "danish":
+		return "Leveringsinstruktion (LÆS IKKE denne instruktion højt — læs KUN brugerens tekst ordret): Tal på ægte, flydende dansk med autentisk dansk udtale (aldrig engelsk accent), som en varm og vidende dansk radiovært i studiet."
+	case "finnish":
+		return "Esitysohje (ÄLÄ lue tätä ohjetta ääneen — lue VAIN käyttäjän teksti sanasta sanaan): Puhu luonnollista, sujuvaa suomea aidolla suomalaisella ääntämyksellä (ei englanninkielistä aksenttia), lämpimänä ja asiantuntevana radiojuontajana."
+	case "german":
+		return "Sprechanweisung (Lies diese Anweisung NICHT laut vor — sprich NUR den Text des Nutzers wortwörtlich): Sprich in natürlichem, fließendem Deutsch mit authentischer deutscher Aussprache (kein englischer Akzent), wie ein warmer, kenntnisreicher Radiomoderator im Studio."
+	case "dutch":
+		return "Spreekinstructie (Lees deze instructie NIET hardop voor — spreek ALLEEN de tekst van de gebruiker letterlijk uit): Spreek in natuurlijk, vloeiend Nederlands met authentieke Nederlandse uitspraak (geen Engels accent), als een warme, deskundige radiopresentator."
+	case "french":
+		return "Consigne vocale (NE LIS PAS cette consigne à voix haute — prononce UNIQUEMENT le texte de l'utilisateur mot pour mot) : Parle en français naturel et fluide avec un accent français authentique (jamais d'accent anglais), comme un animateur radio FM chaleureux et passionné."
+	case "spanish", "latin american spanish":
+		return "Indicación de voz (NO leas esta indicación en voz alta — lee SOLO el texto del usuario literalmente): Habla en español natural y fluido con pronunciación nativa auténtica (nunca con acento inglés), como un locutor de radio FM cálido y conocedor."
+	case "italian":
+		return "Indicazione vocale (NON leggere questa istruzione ad alta voce — pronuncia SOLO il testo dell'utente parola per parola): Parla in italiano naturale e fluente con pronuncia nativa autentica (mai accento inglese), come uno speaker radiofonico FM caldo e appassionato."
+	case "portuguese", "brazilian portuguese":
+		return "Instrução vocal (NÃO leia esta instrução em voz alta — fale APENAS o texto do usuário literalmente): Fale em português natural e fluente com pronúncia nativa autêntica (nunca sotaque inglês), como um locutor de rádio FM caloroso e experiente."
+	}
+
+	var base string
 	switch persona {
 	case "upbeat-radio":
-		return "Speak as a charismatic, upbeat prime-time FM radio DJ with crisp broadcast energy" + langNote
+		base = "Speak as a charismatic, upbeat prime-time FM radio DJ with crisp broadcast energy"
 	case "vinyl-nerd":
-		return "Speak as a warm, passionate audiophile vinyl radio host sharing liner notes with genuine enthusiasm" + langNote
+		base = "Speak as a warm, passionate audiophile vinyl radio host sharing liner notes with genuine enthusiasm"
 	case "party-hype":
-		return "Speak as a lively weekend radio mix DJ with infectious smile and rhythm" + langNote
+		base = "Speak as a lively weekend radio mix DJ with infectious smile and rhythm"
 	case "nordic-chill":
-		return "Speak as a calm, velvet-voiced late-night Nordic radio host with relaxed, intimate pacing" + langNote
+		base = "Speak as a calm, velvet-voiced late-night Nordic radio host with relaxed, intimate pacing"
 	default:
-		return "Speak as a warm, smooth, magnetic late-night FM radio DJ in a studio booth" + langNote
+		base = "Speak as a warm, smooth, magnetic late-night FM radio DJ in a studio booth"
 	}
+	if lang != "" && lang != "english" && lang != "auto" {
+		return fmt.Sprintf("Voice delivery direction (DO NOT read this instruction aloud; speak ONLY the user's transcript verbatim): Speak exclusively in fluent, native %s with an authentic native %s accent (never an English accent). %s.", language, language, base)
+	}
+	if lang == "auto" {
+		return fmt.Sprintf("Voice delivery direction (DO NOT read this instruction aloud; speak ONLY the user's transcript verbatim): Detect the language of the transcript and speak it with a 100%% authentic native accent for that language. %s.", base)
+	}
+	return fmt.Sprintf("Voice delivery direction (DO NOT read this instruction aloud; speak ONLY the user's transcript verbatim): %s.", base)
 }
 
 func newPendingBreak(kind BreakKind) *DJBreak {

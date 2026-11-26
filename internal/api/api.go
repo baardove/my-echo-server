@@ -109,13 +109,16 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	partyHandler := s.party.Handler()
 
-	// Public health, Docker/Web app icon, remote PIN login & DLNA/live stream endpoints
+	// Public health, Docker/Web app icon, remote PIN/user login & DLNA/live stream endpoints
 	mux.HandleFunc("/healthz", s.handleHealthz)
 	mux.HandleFunc("/api/v1/info", s.handleInfo)
 	mux.HandleFunc("/api/party/qr.png", s.handlePartyQR)
 	mux.HandleFunc("/api/v2/auth/login", s.handleAuthLogin)
+	mux.HandleFunc("/api/v2/auth/logout", s.handleAuthLogout)
+	mux.HandleFunc("/api/v2/auth/me", s.requireAuth(s.handleAuthMe))
 	if s.broadcast != nil {
 		mux.HandleFunc("/stream/dj.mp3", s.broadcast.ServeDJStream)
+		mux.HandleFunc("/stream/dj.m3u", s.handleDJStreamM3U)
 		mux.HandleFunc("/stream/party.mp3", s.broadcast.ServePartyStream)
 	}
 	if s.dlna != nil {
@@ -158,40 +161,41 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/v2/index/editorial", s.requireAuth(s.handleIndexEditorial))
 	mux.HandleFunc("/api/v2/artwork/batch", s.requireAuth(s.handleArtworkBatch))
 	mux.HandleFunc("/api/v2/sync/state", s.requireAuth(s.handleSyncState))
-	mux.HandleFunc("/api/v2/admin/status", s.requireAuth(s.handleAdminStatus))
-	mux.HandleFunc("/api/v2/admin/scan", s.requireAuth(s.handleAdminScan))
-	mux.HandleFunc("/api/v2/admin/settings", s.requireAuth(s.handleAdminSettings))
-	mux.HandleFunc("/api/v2/admin/editorial/enrich", s.requireAuth(s.handleAdminEditorialEnrich))
-	mux.HandleFunc("/api/v2/admin/analysis/run", s.requireAuth(s.handleAdminAnalysisRun))
-	mux.HandleFunc("/api/v2/admin/analysis/stop", s.requireAuth(s.handleAdminAnalysisStop))
-	mux.HandleFunc("/api/v2/admin/lidarr/status", s.requireAuth(s.handleLidarrStatus))
-	mux.HandleFunc("/api/v2/admin/lidarr/register-webhook", s.requireAuth(s.handleLidarrRegisterWebhook))
+	mux.HandleFunc("/api/v2/admin/status", s.requireAdmin(s.handleAdminStatus))
+	mux.HandleFunc("/api/v2/admin/scan", s.requireAdmin(s.handleAdminScan))
+	mux.HandleFunc("/api/v2/admin/settings", s.requireAdmin(s.handleAdminSettings))
+	mux.HandleFunc("/api/v2/admin/users", s.requireAdmin(s.handleAdminUsers))
+	mux.HandleFunc("/api/v2/admin/editorial/enrich", s.requireAdmin(s.handleAdminEditorialEnrich))
+	mux.HandleFunc("/api/v2/admin/analysis/run", s.requireAdmin(s.handleAdminAnalysisRun))
+	mux.HandleFunc("/api/v2/admin/analysis/stop", s.requireAdmin(s.handleAdminAnalysisStop))
+	mux.HandleFunc("/api/v2/admin/lidarr/status", s.requireAdmin(s.handleLidarrStatus))
+	mux.HandleFunc("/api/v2/admin/lidarr/register-webhook", s.requireAdmin(s.handleLidarrRegisterWebhook))
 	mux.HandleFunc("/api/v2/webhooks/lidarr", s.requireAuth(s.handleLidarrWebhook))
 
-	// AI Radio DJ Mode endpoints
-	mux.HandleFunc("/api/v2/dj/state", s.requireAuth(s.handleDJState))
-	mux.HandleFunc("/api/v2/dj/options", s.requireAuth(s.handleDJOptions))
-	mux.HandleFunc("/api/v2/dj/session/create", s.requireAuth(s.handleDJSessionCreate))
-	mux.HandleFunc("/api/v2/dj/queue/add", s.requireAuth(s.handleDJQueueAdd))
-	mux.HandleFunc("/api/v2/dj/queue/action", s.requireAuth(s.handleDJQueueAction))
-	mux.HandleFunc("/api/v2/dj/audio/", s.requireAuth(s.handleDJAudio))
-	mux.HandleFunc("/api/v2/dj/test-voice", s.requireAuth(s.handleDJTestVoice))
-	mux.HandleFunc("/api/v2/dj/models/live", s.requireAuth(s.handleDJLiveModels))
-	mux.HandleFunc("/api/v2/dj/profiles", s.requireAuth(s.handleDJProfiles))
-	mux.HandleFunc("/api/v2/web/tracks", s.requireAuth(s.handleWebTracks))
-	mux.HandleFunc("/api/v2/web/albums", s.requireAuth(s.handleWebAlbums))
-	mux.HandleFunc("/api/v2/web/album", s.requireAuth(s.handleWebAlbumDetail))
-	mux.HandleFunc("/api/v2/web/artists", s.requireAuth(s.handleWebArtists))
-	mux.HandleFunc("/api/v2/web/artist", s.requireAuth(s.handleWebArtistDetail))
-	mux.HandleFunc("/api/v2/web/playlists", s.requireAuth(s.handleWebPlaylists))
-	mux.HandleFunc("/api/v2/web/facets", s.requireAuth(s.handleWebFacets))
-	mux.HandleFunc("/api/v2/web/rate", s.requireAuth(s.handleWebRate))
-	mux.HandleFunc("/api/v2/web/random-queue", s.requireAuth(s.handleWebRandomQueue))
+	// AI Radio DJ Mode endpoints (uses server's global Gemini API key for all authorized users)
+	mux.HandleFunc("/api/v2/dj/state", s.requirePerm("dj", s.handleDJState))
+	mux.HandleFunc("/api/v2/dj/options", s.requirePerm("dj", s.handleDJOptions))
+	mux.HandleFunc("/api/v2/dj/session/create", s.requirePerm("dj", s.handleDJSessionCreate))
+	mux.HandleFunc("/api/v2/dj/queue/add", s.requirePerm("dj", s.handleDJQueueAdd))
+	mux.HandleFunc("/api/v2/dj/queue/action", s.requirePerm("dj", s.handleDJQueueAction))
+	mux.HandleFunc("/api/v2/dj/audio/", s.requirePerm("dj", s.handleDJAudio))
+	mux.HandleFunc("/api/v2/dj/test-voice", s.requireAdmin(s.handleDJTestVoice))
+	mux.HandleFunc("/api/v2/dj/models/live", s.requireAdmin(s.handleDJLiveModels))
+	mux.HandleFunc("/api/v2/dj/profiles", s.requirePerm("dj", s.handleDJProfiles))
+	mux.HandleFunc("/api/v2/web/tracks", s.requirePerm("library", s.handleWebTracks))
+	mux.HandleFunc("/api/v2/web/albums", s.requirePerm("library", s.handleWebAlbums))
+	mux.HandleFunc("/api/v2/web/album", s.requirePerm("library", s.handleWebAlbumDetail))
+	mux.HandleFunc("/api/v2/web/artists", s.requirePerm("library", s.handleWebArtists))
+	mux.HandleFunc("/api/v2/web/artist", s.requirePerm("library", s.handleWebArtistDetail))
+	mux.HandleFunc("/api/v2/web/playlists", s.requirePerm("library", s.handleWebPlaylists))
+	mux.HandleFunc("/api/v2/web/facets", s.requirePerm("library", s.handleWebFacets))
+	mux.HandleFunc("/api/v2/web/rate", s.requirePerm("library", s.handleWebRate))
+	mux.HandleFunc("/api/v2/web/random-queue", s.requirePerm("library", s.handleWebRandomQueue))
 
 	// Remote Access (Cloudflare Tunnel + UPnP-IGD/NAT-PMP) & DLNA Casting endpoints
 	mux.HandleFunc("/api/v2/remote/status", s.requireAuth(s.handleRemoteStatus))
-	mux.HandleFunc("/api/v2/remote/upnp/sync", s.requireAuth(s.handleRemoteUPnPSync))
-	mux.HandleFunc("/api/v2/remote/tunnel/restart", s.requireAuth(s.handleRemoteTunnelRestart))
+	mux.HandleFunc("/api/v2/remote/upnp/sync", s.requireAdmin(s.handleRemoteUPnPSync))
+	mux.HandleFunc("/api/v2/remote/tunnel/restart", s.requireAdmin(s.handleRemoteTunnelRestart))
 	mux.HandleFunc("/api/v2/dlna/discover", s.requireAuth(s.handleDLNADiscover))
 	mux.HandleFunc("/api/v2/dlna/cast", s.requireAuth(s.handleDLNACast))
 	mux.HandleFunc("/api/v2/dlna/stop", s.requireAuth(s.handleDLNAStop))
@@ -211,24 +215,95 @@ func (s *Server) Handler() http.Handler {
 	})
 }
 
+type sessionCtxKey struct{}
+
+func (s *Server) sessionFromRequest(r *http.Request) admin.SessionClaims {
+	if v, ok := r.Context().Value(sessionCtxKey{}).(admin.SessionClaims); ok {
+		return v
+	}
+	return admin.SessionClaims{}
+}
+
+func (s *Server) authenticateRequest(r *http.Request) (admin.SessionClaims, bool) {
+	if claims, ok := admin.ParseSessionCookie(r, s.cfg); ok {
+		return claims, true
+	}
+	tok := strings.TrimSpace(r.Header.Get("X-Echo-Token"))
+	if tok == "" {
+		tok = strings.TrimSpace(r.URL.Query().Get("token"))
+	}
+	if tok != "" && tok == s.cfg.PairingPIN {
+		return admin.AdminClaims(admin.IsLANRequest(r), len(s.cfg.Users) > 0), true
+	}
+	return admin.SessionClaims{}, false
+}
+
 func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if admin.HasValidSessionCookie(r, s.cfg.PairingPIN) {
-			next(w, r)
+		claims, ok := s.authenticateRequest(r)
+		if !ok {
+			writeJSON(w, http.StatusUnauthorized, map[string]string{
+				"error": "Sign in required (invalid or missing session/PIN)",
+			})
 			return
 		}
-		tok := strings.TrimSpace(r.Header.Get("X-Echo-Token"))
-		if tok == "" {
-			tok = strings.TrimSpace(r.URL.Query().Get("token"))
-		}
-		if tok == "" || tok != s.cfg.PairingPIN {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{
-				"error": "Invalid or missing pairing PIN (X-Echo-Token)",
+		next(w, r.WithContext(context.WithValue(r.Context(), sessionCtxKey{}, claims)))
+	}
+}
+
+func (s *Server) requireAdmin(next http.HandlerFunc) http.HandlerFunc {
+	return s.requireAuth(func(w http.ResponseWriter, r *http.Request) {
+		claims := s.sessionFromRequest(r)
+		if claims.Role != "admin" {
+			writeJSON(w, http.StatusForbidden, map[string]string{
+				"error": "Admin access required",
 			})
 			return
 		}
 		next(w, r)
+	})
+}
+
+func (s *Server) requirePerm(perm string, next http.HandlerFunc) http.HandlerFunc {
+	return s.requireAuth(func(w http.ResponseWriter, r *http.Request) {
+		claims := s.sessionFromRequest(r)
+		if claims.Role != "admin" {
+			allowed := false
+			switch perm {
+			case "library":
+				allowed = claims.AllowLibrary
+			case "dj":
+				allowed = claims.AllowDJ
+			case "party":
+				allowed = claims.AllowParty
+			}
+			if !allowed {
+				writeJSON(w, http.StatusForbidden, map[string]string{
+					"error": "Your account does not have permission for " + perm,
+				})
+				return
+			}
+		}
+		next(w, r)
+	})
+}
+
+func (s *Server) handleDJStreamM3U(w http.ResponseWriter, r *http.Request) {
+	scheme := "http"
+	if r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https") {
+		scheme = "https"
 	}
+	host := r.Host
+	if host == "" {
+		host = fmt.Sprintf("%s:%d", s.cfg.EffectiveAdvertiseHost(), s.cfg.APIPort)
+	}
+	station := s.cfg.DJ.RadioStationName
+	if station == "" {
+		station = "My Echo DJ Radio"
+	}
+	w.Header().Set("Content-Type", "audio/x-mpegurl; charset=utf-8")
+	w.Header().Set("Content-Disposition", `attachment; filename="my-echo-dj-radio.m3u"`)
+	_, _ = fmt.Fprintf(w, "#EXTM3U\n#EXTINF:-1,%s (Live AI Radio DJ)\n%s://%s/stream/dj.mp3\n", station, scheme, host)
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
@@ -848,6 +923,8 @@ func (s *Server) handleAdminSettings(w http.ResponseWriter, r *http.Request) {
 			LidarrAPIKey            *string  `json:"lidarrAPIKey"`
 			LidarrPollEnabled       *bool    `json:"lidarrPollEnabled"`
 			AdvancedAnalysisEnabled *bool    `json:"advancedAnalysisEnabled"`
+			NormEnabled             *bool    `json:"normEnabled"`
+			NormTargetDB            *float64 `json:"normTargetDB"`
 			LegacyMacPrefix         *string  `json:"legacyMacPrefix"`
 			DJ                 *struct {
 				Provider         *string  `json:"provider"`
@@ -940,6 +1017,13 @@ func (s *Server) handleAdminSettings(w http.ResponseWriter, r *http.Request) {
 					s.analyzer.StopCurrentRun()
 				}
 			}
+		}
+		if req.NormEnabled != nil {
+			v := *req.NormEnabled
+			s.cfg.NormEnabled = &v
+		}
+		if req.NormTargetDB != nil && *req.NormTargetDB >= -24 && *req.NormTargetDB <= -6 {
+			s.cfg.NormTargetDB = *req.NormTargetDB
 		}
 		if req.LegacyMacPrefix != nil && len(s.cfg.Libraries) > 0 {
 			s.cfg.Libraries[0].LegacyMacPrefix = strings.TrimSpace(*req.LegacyMacPrefix)
@@ -1064,20 +1148,23 @@ func (s *Server) handleAdminSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	djCfg := s.cfg.DJ
 	config.NormalizeDJConfig(&djCfg)
+	normTargetDB, normEnabled := s.cfg.EffectiveNormTargetDB()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":                 true,
-		"serverName":         s.cfg.ServerName,
-		"pairingPIN":         s.cfg.PairingPIN,
-		"advertiseHost":      s.cfg.EffectiveAdvertiseHost(),
-		"scanInterval":       s.cfg.ScanIntervalS,
-		"shardCount":         s.cfg.ShardCount,
-		"autoFetchEditorial": s.cfg.AutoFetchEditorial,
-		"mirrorToShare":      s.cfg.MirrorToShare,
-		"lidarrURL":          s.cfg.LidarrURL,
-		"hasLidarrAPIKey":    strings.TrimSpace(s.cfg.LidarrAPIKey) != "",
-		"lidarrAPIKeyMask":   maskSecret(s.cfg.LidarrAPIKey),
+		"ok":                      true,
+		"serverName":              s.cfg.ServerName,
+		"pairingPIN":              s.cfg.PairingPIN,
+		"advertiseHost":           s.cfg.EffectiveAdvertiseHost(),
+		"scanInterval":            s.cfg.ScanIntervalS,
+		"shardCount":              s.cfg.ShardCount,
+		"autoFetchEditorial":      s.cfg.AutoFetchEditorial,
+		"mirrorToShare":           s.cfg.MirrorToShare,
+		"lidarrURL":               s.cfg.LidarrURL,
+		"hasLidarrAPIKey":         strings.TrimSpace(s.cfg.LidarrAPIKey) != "",
+		"lidarrAPIKeyMask":        maskSecret(s.cfg.LidarrAPIKey),
 		"lidarrPollEnabled":       s.cfg.LidarrPollEnabled,
 		"advancedAnalysisEnabled": s.cfg.AdvancedAnalysisEnabled,
+		"normEnabled":             normEnabled,
+		"normTargetDB":            normTargetDB,
 		"legacyMacPrefix":         legacyPrefix,
 		"dj": map[string]any{
 			"provider":          djCfg.Provider,

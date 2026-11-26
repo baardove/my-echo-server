@@ -2,6 +2,9 @@ package config
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -12,6 +15,47 @@ import (
 	"strings"
 	"time"
 )
+
+// UserAccount represents a managed My Echo user with per-feature permissions.
+// Non-admin users automatically share the server's global Gemini API key for AI Radio DJ.
+type UserAccount struct {
+	ID              string `json:"id"`
+	Username        string `json:"username"`
+	DisplayName     string `json:"displayName"`
+	Role            string `json:"role"` // "admin" | "user"
+	PassSalt        string `json:"passSalt"`
+	PassHash        string `json:"passHash"`
+	AllowLibrary    bool   `json:"allowLibrary"`
+	AllowDJ         bool   `json:"allowDJ"`
+	AllowParty      bool   `json:"allowParty"`
+	CanEditProfiles bool   `json:"canEditProfiles"`
+	CreatedAt       string `json:"createdAt"`
+}
+
+// NewSalt generates a random 16-byte hex salt for user password hashing.
+func NewSalt() string {
+	var b [16]byte
+	_, _ = rand.Read(b[:])
+	return hex.EncodeToString(b[:])
+}
+
+// HashPassword computes a salted multi-round SHA-256 digest.
+func HashPassword(salt, password string) string {
+	sum := sha256.Sum256([]byte("my-echo-user-v1:" + salt + ":" + password))
+	for i := 0; i < 12000; i++ {
+		sum = sha256.Sum256(append([]byte(salt), sum[:]...))
+	}
+	return hex.EncodeToString(sum[:])
+}
+
+// VerifyPassword checks candidate against salt+hash in constant time.
+func VerifyPassword(salt, hash, candidate string) bool {
+	if salt == "" || hash == "" {
+		return false
+	}
+	got := HashPassword(salt, candidate)
+	return subtle.ConstantTimeCompare([]byte(got), []byte(hash)) == 1
+}
 
 // LibraryConfig describes one mounted music volume inside the container.
 type LibraryConfig struct {
@@ -218,10 +262,63 @@ type Config struct {
 	LidarrAPIKey            string          `json:"lidarrAPIKey,omitempty"`
 	LidarrPollEnabled       bool            `json:"lidarrPollEnabled"`
 	AdvancedAnalysisEnabled bool            `json:"advancedAnalysisEnabled"`
+	NormEnabled             *bool           `json:"normEnabled,omitempty"`
+	NormTargetDB            float64         `json:"normTargetDB,omitempty"`
+	AuthRequireLoginOnLAN   bool            `json:"authRequireLoginOnLAN,omitempty"`
+	Users                   []UserAccount   `json:"users,omitempty"`
 	DJ                      DJConfig        `json:"dj"`
 	Remote                  RemoteConfig    `json:"remote"`
 	DLNA                    DLNAConfig      `json:"dlna"`
 	Libraries               []LibraryConfig `json:"libraries"`
+}
+
+// EffectiveNormTargetDB returns the configured target loudness in dBFS (default -14.0)
+// and whether on-the-fly loudness normalization is enabled (true by default).
+func (c *Config) EffectiveNormTargetDB() (float64, bool) {
+	if c == nil {
+		return -14.0, true
+	}
+	if c.NormEnabled != nil && !*c.NormEnabled {
+		return 0, false
+	}
+	t := c.NormTargetDB
+	if t == 0 || t < -24.0 || t > -6.0 {
+		t = -14.0
+	}
+	return t, true
+}
+
+func (c *Config) FindUserByUsername(username string) *UserAccount {
+	want := strings.ToLower(strings.TrimSpace(username))
+	if want == "" {
+		return nil
+	}
+	for i := range c.Users {
+		if strings.ToLower(strings.TrimSpace(c.Users[i].Username)) == want {
+			return &c.Users[i]
+		}
+	}
+	return nil
+}
+
+func (c *Config) FindUserByID(id string) *UserAccount {
+	for i := range c.Users {
+		if c.Users[i].ID == id {
+			return &c.Users[i]
+		}
+	}
+	return nil
+}
+
+func (c *Config) AuthenticateUser(username, password string) (*UserAccount, bool) {
+	u := c.FindUserByUsername(username)
+	if u == nil {
+		return nil, false
+	}
+	if !VerifyPassword(u.PassSalt, u.PassHash, password) {
+		return nil, false
+	}
+	return u, true
 }
 
 func Load() (*Config, error) {
@@ -243,6 +340,7 @@ func Load() (*Config, error) {
 		AutoFetchEditorial: true,
 		MirrorToShare:      true,
 		LidarrPollEnabled:  true,
+		NormTargetDB:       -14.0,
 		DJ:                 DefaultDJConfig(),
 		Remote:             DefaultRemoteConfig(),
 		DLNA:               DefaultDLNAConfig(),

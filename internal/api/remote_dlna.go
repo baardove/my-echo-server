@@ -1,7 +1,9 @@
 package api
 
 import (
+	"crypto/rand"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"io"
 	"net"
@@ -11,6 +13,7 @@ import (
 	"time"
 
 	"github.com/baardove/my-echo-server/internal/admin"
+	"github.com/baardove/my-echo-server/internal/config"
 )
 
 type loginAttemptBucket struct {
@@ -36,7 +39,7 @@ func clientIPKey(r *http.Request) string {
 	return r.RemoteAddr
 }
 
-// handleAuthLogin verifies the Pairing PIN for remote visitors (Cloudflare Tunnel / UPnP)
+// handleAuthLogin verifies either a managed user (username + password) OR the Admin Pairing PIN
 // with per-IP brute-force rate limiting (max 10 failures per 5 minutes) and sets an HttpOnly session cookie.
 func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -55,14 +58,36 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	loginMu.Unlock()
 
 	var req struct {
-		PIN string `json:"pin"`
+		Username string `json:"username"`
+		Password string `json:"password"`
+		PIN      string `json:"pin"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 4096)).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
+
+	isLAN := admin.IsLANRequest(r)
+	hasUsers := len(s.cfg.Users) > 0
+	var claims admin.SessionClaims
+	authed := false
+
+	username := strings.TrimSpace(req.Username)
 	pin := strings.TrimSpace(req.PIN)
-	if subtle.ConstantTimeCompare([]byte(pin), []byte(s.cfg.PairingPIN)) != 1 {
+
+	if username != "" {
+		if u, ok := s.cfg.AuthenticateUser(username, req.Password); ok {
+			claims = admin.ClaimsFromUser(u, isLAN, hasUsers)
+			authed = true
+		}
+	} else if pin != "" {
+		if subtle.ConstantTimeCompare([]byte(pin), []byte(s.cfg.PairingPIN)) == 1 {
+			claims = admin.AdminClaims(isLAN, hasUsers)
+			authed = true
+		}
+	}
+
+	if !authed {
 		loginMu.Lock()
 		b = loginBuckets[ip]
 		if b == nil || now.After(b.resetAt) {
@@ -71,7 +96,11 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 		}
 		b.count++
 		loginMu.Unlock()
-		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "Incorrect Pairing PIN"})
+		msg := "Incorrect Pairing PIN"
+		if username != "" {
+			msg = "Invalid username or password"
+		}
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": msg})
 		return
 	}
 
@@ -82,14 +111,217 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	isHTTPS := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 	http.SetCookie(w, &http.Cookie{
 		Name:     admin.SessionCookieName,
-		Value:    admin.SessionCookieValue(s.cfg.PairingPIN),
+		Value:    admin.SignSessionCookie(claims, s.cfg.PairingPIN),
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   isHTTPS,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   30 * 86400,
 	})
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": claims})
+}
+
+func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
+	isHTTPS := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+	http.SetCookie(w, &http.Cookie{
+		Name:     admin.SessionCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   isHTTPS,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (s *Server) handleAuthMe(w http.ResponseWriter, r *http.Request) {
+	claims := s.sessionFromRequest(r)
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": claims})
+}
+
+// handleAdminUsers manages user accounts (Admin only). All users share the global Gemini API key.
+func (s *Server) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
+	type publicUser struct {
+		ID              string `json:"id"`
+		Username        string `json:"username"`
+		DisplayName     string `json:"displayName"`
+		Role            string `json:"role"`
+		AllowLibrary    bool   `json:"allowLibrary"`
+		AllowDJ         bool   `json:"allowDJ"`
+		AllowParty      bool   `json:"allowParty"`
+		CanEditProfiles bool   `json:"canEditProfiles"`
+		CreatedAt       string `json:"createdAt"`
+	}
+	serialize := func() []publicUser {
+		out := make([]publicUser, 0, len(s.cfg.Users))
+		for _, u := range s.cfg.Users {
+			out = append(out, publicUser{
+				ID:              u.ID,
+				Username:        u.Username,
+				DisplayName:     u.DisplayName,
+				Role:            u.Role,
+				AllowLibrary:    u.AllowLibrary,
+				AllowDJ:         u.AllowDJ,
+				AllowParty:      u.AllowParty,
+				CanEditProfiles: u.CanEditProfiles,
+				CreatedAt:       u.CreatedAt,
+			})
+		}
+		return out
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":                    true,
+			"users":                 serialize(),
+			"authRequireLoginOnLAN": s.cfg.AuthRequireLoginOnLAN,
+		})
+	case http.MethodPost:
+		var req struct {
+			ID                    string `json:"id"`
+			Username              string `json:"username"`
+			DisplayName           string `json:"displayName"`
+			Password              string `json:"password"`
+			Role                  string `json:"role"`
+			AllowLibrary          *bool  `json:"allowLibrary"`
+			AllowDJ               *bool  `json:"allowDJ"`
+			AllowParty            *bool  `json:"allowParty"`
+			CanEditProfiles       *bool  `json:"canEditProfiles"`
+			AuthRequireLoginOnLAN *bool  `json:"authRequireLoginOnLAN"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 32_768)).Decode(&req); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+			return
+		}
+		// Allow toggling AuthRequireLoginOnLAN alone
+		if req.AuthRequireLoginOnLAN != nil && strings.TrimSpace(req.Username) == "" && strings.TrimSpace(req.ID) == "" {
+			s.cfg.AuthRequireLoginOnLAN = *req.AuthRequireLoginOnLAN
+			_ = s.cfg.Save()
+			writeJSON(w, http.StatusOK, map[string]any{
+				"ok":                    true,
+				"users":                 serialize(),
+				"authRequireLoginOnLAN": s.cfg.AuthRequireLoginOnLAN,
+			})
+			return
+		}
+
+		uname := strings.TrimSpace(req.Username)
+		if uname == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Username is required"})
+			return
+		}
+		role := strings.ToLower(strings.TrimSpace(req.Role))
+		if role != "admin" {
+			role = "user"
+		}
+		disp := strings.TrimSpace(req.DisplayName)
+		if disp == "" {
+			disp = uname
+		}
+		allowLib := true
+		if req.AllowLibrary != nil {
+			allowLib = *req.AllowLibrary
+		}
+		allowDJ := true
+		if req.AllowDJ != nil {
+			allowDJ = *req.AllowDJ
+		}
+		allowParty := true
+		if req.AllowParty != nil {
+			allowParty = *req.AllowParty
+		}
+		canEditProf := false
+		if req.CanEditProfiles != nil {
+			canEditProf = *req.CanEditProfiles
+		}
+		if role == "admin" {
+			allowLib, allowDJ, allowParty, canEditProf = true, true, true, true
+		}
+
+		if strings.TrimSpace(req.ID) != "" {
+			u := s.cfg.FindUserByID(strings.TrimSpace(req.ID))
+			if u == nil {
+				writeJSON(w, http.StatusNotFound, map[string]string{"error": "User not found"})
+				return
+			}
+			// Check duplicate username against other users
+			if other := s.cfg.FindUserByUsername(uname); other != nil && other.ID != u.ID {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Username already exists"})
+				return
+			}
+			u.Username = uname
+			u.DisplayName = disp
+			u.Role = role
+			u.AllowLibrary = allowLib
+			u.AllowDJ = allowDJ
+			u.AllowParty = allowParty
+			u.CanEditProfiles = canEditProf
+			if req.Password != "" {
+				u.PassSalt = config.NewSalt()
+				u.PassHash = config.HashPassword(u.PassSalt, req.Password)
+			}
+		} else {
+			if s.cfg.FindUserByUsername(uname) != nil {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Username already exists"})
+				return
+			}
+			if len(req.Password) < 3 {
+				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Password must be at least 3 characters"})
+				return
+			}
+			var idBytes [8]byte
+			_, _ = rand.Read(idBytes[:])
+			salt := config.NewSalt()
+			s.cfg.Users = append(s.cfg.Users, config.UserAccount{
+				ID:              "usr_" + hex.EncodeToString(idBytes[:]),
+				Username:        uname,
+				DisplayName:     disp,
+				Role:            role,
+				PassSalt:        salt,
+				PassHash:        config.HashPassword(salt, req.Password),
+				AllowLibrary:    allowLib,
+				AllowDJ:         allowDJ,
+				AllowParty:      allowParty,
+				CanEditProfiles: canEditProf,
+				CreatedAt:       time.Now().UTC().Format(time.RFC3339),
+			})
+		}
+		if req.AuthRequireLoginOnLAN != nil {
+			s.cfg.AuthRequireLoginOnLAN = *req.AuthRequireLoginOnLAN
+		}
+		if err := s.cfg.Save(); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":                    true,
+			"users":                 serialize(),
+			"authRequireLoginOnLAN": s.cfg.AuthRequireLoginOnLAN,
+		})
+	case http.MethodDelete:
+		id := strings.TrimSpace(r.URL.Query().Get("id"))
+		if id == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Missing user id"})
+			return
+		}
+		next := make([]config.UserAccount, 0, len(s.cfg.Users))
+		for _, u := range s.cfg.Users {
+			if u.ID != id {
+				next = append(next, u)
+			}
+		}
+		s.cfg.Users = next
+		_ = s.cfg.Save()
+		writeJSON(w, http.StatusOK, map[string]any{
+			"ok":                    true,
+			"users":                 serialize(),
+			"authRequireLoginOnLAN": s.cfg.AuthRequireLoginOnLAN,
+		})
+	default:
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "GET, POST, or DELETE required"})
+	}
 }
 
 func (s *Server) handleRemoteStatus(w http.ResponseWriter, r *http.Request) {
