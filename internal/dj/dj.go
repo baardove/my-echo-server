@@ -44,10 +44,14 @@ type Engine struct {
 	sessionID     string
 	sourceLabel   string
 	activeProfile *config.DJProfile
-	currentIndex  int
-	slots         []DJSlot
-	updatedAt     time.Time
-	audioByID     map[string]string // breakID -> audio file path
+	currentIndex    int
+	slots           []DJSlot
+	updatedAt       time.Time
+	playbackPosSec  float64
+	playbackPlaying bool
+	playbackSource  string
+	playbackAt      time.Time
+	audioByID       map[string]string // breakID -> audio file path
 	recentFacts   []string          // avoid repeating identical talking angles back-to-back
 	analyzeFailed map[string]bool   // avoid retrying broken files in a loop
 
@@ -243,16 +247,30 @@ func (e *Engine) State() SessionState {
 		profName = e.activeProfile.Name
 	}
 
+	livePos := e.playbackPosSec
+	livePlaying := e.playbackPlaying
+	if livePlaying && !e.playbackAt.IsZero() {
+		age := time.Since(e.playbackAt)
+		if age > 10*time.Second {
+			livePlaying = false
+		} else {
+			livePos += age.Seconds()
+		}
+	}
+
 	return SessionState{
-		SessionID:        e.sessionID,
-		StationName:      djCfg.RadioStationName,
-		SourceLabel:      e.sourceLabel,
-		ProfileID:        profID,
-		ProfileName:      profName,
-		AutoRefill:       djCfg.AutoRefill,
-		MinQueueAhead:    djCfg.MinQueueAhead,
-		CurrentIndex:     e.currentIndex,
-		Configured:       strings.TrimSpace(djCfg.GeminiAPIKey) != "",
+		SessionID:           e.sessionID,
+		StationName:         djCfg.RadioStationName,
+		SourceLabel:         e.sourceLabel,
+		ProfileID:           profID,
+		ProfileName:         profName,
+		AutoRefill:          djCfg.AutoRefill,
+		MinQueueAhead:       djCfg.MinQueueAhead,
+		CurrentIndex:        e.currentIndex,
+		PlaybackPositionSec: livePos,
+		PlaybackPlaying:     livePlaying,
+		PlaybackSource:      e.playbackSource,
+		Configured:          strings.TrimSpace(djCfg.GeminiAPIKey) != "",
 		LLMModel:         djCfg.LLMModel,
 		TTSModel:         djCfg.TTSModel,
 		VoiceName:        djCfg.VoiceName,
@@ -677,6 +695,10 @@ func (e *Engine) AppendTracks(trackIDs []string) (SessionState, error) {
 func (e *Engine) SetCurrentIndex(idx int) SessionState {
 	e.mu.Lock()
 	if idx >= 0 && idx < len(e.slots) {
+		if e.currentIndex != idx {
+			e.playbackPosSec = 0
+			e.playbackAt = time.Now().UTC()
+		}
 		e.currentIndex = idx
 		e.updatedAt = time.Now().UTC()
 		e.persistSessionLocked()
@@ -686,6 +708,43 @@ func (e *Engine) SetCurrentIndex(idx int) SessionState {
 	e.EnsureQueueAhead()
 	e.wakeGenerator()
 	return e.State()
+}
+
+// ReportPlayback records the live playback clock (from browser host or MP3 broadcast stream)
+// so all listeners and DLNA speakers stay synchronized in real time.
+func (e *Engine) ReportPlayback(idx int, posSec float64, playing bool, source string) {
+	e.mu.Lock()
+	if idx >= 0 && idx < len(e.slots) {
+		e.currentIndex = idx
+	}
+	if posSec < 0 {
+		posSec = 0
+	}
+	e.playbackPosSec = posSec
+	e.playbackPlaying = playing
+	e.playbackSource = source
+	e.playbackAt = time.Now().UTC()
+	e.mu.Unlock()
+}
+
+// LivePlaybackClock returns the extrapolated live position for real-time stream synchronization.
+func (e *Engine) LivePlaybackClock() (sessionID string, idx int, posSec float64, playing bool, source string, age time.Duration) {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	sessionID = e.sessionID
+	idx = e.currentIndex
+	posSec = e.playbackPosSec
+	playing = e.playbackPlaying
+	source = e.playbackSource
+	if !e.playbackAt.IsZero() {
+		age = time.Since(e.playbackAt)
+		if playing && age < 12*time.Second {
+			posSec += age.Seconds()
+		}
+	} else {
+		age = time.Hour
+	}
+	return
 }
 
 func (e *Engine) RemoveSlot(idx int) SessionState {

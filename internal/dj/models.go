@@ -189,10 +189,13 @@ type SessionState struct {
 	SourceLabel      string    `json:"sourceLabel"`
 	ProfileID        string    `json:"profileId,omitempty"`
 	ProfileName      string    `json:"profileName,omitempty"`
-	AutoRefill       bool      `json:"autoRefill"`
-	MinQueueAhead    int       `json:"minQueueAhead"`
-	CurrentIndex     int       `json:"currentIndex"`
-	Configured       bool      `json:"configured"`
+	AutoRefill          bool      `json:"autoRefill"`
+	MinQueueAhead       int       `json:"minQueueAhead"`
+	CurrentIndex        int       `json:"currentIndex"`
+	PlaybackPositionSec float64   `json:"playbackPositionSec,omitempty"`
+	PlaybackPlaying     bool      `json:"playbackPlaying,omitempty"`
+	PlaybackSource      string    `json:"playbackSource,omitempty"`
+	Configured          bool      `json:"configured"`
 	LLMModel         string    `json:"llmModel"`
 	TTSModel         string    `json:"ttsModel"`
 	VoiceName        string    `json:"voiceName"`

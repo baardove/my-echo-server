@@ -147,7 +147,8 @@ func (c *channel) serveHTTP(w http.ResponseWriter, r *http.Request, icyName stri
 }
 
 func (c *channel) subscribe() chan []byte {
-	ch := make(chan []byte, 48)
+	// Tight 10-chunk buffer (~1-2s) keeps all live listeners and DLNA speakers tightly synchronized in real time.
+	ch := make(chan []byte, 10)
 	c.mu.Lock()
 	c.clients[ch] = struct{}{}
 	if c.idleTimer != nil {
@@ -209,12 +210,13 @@ func (c *channel) runLoop(ctx context.Context) {
 	defer log.Printf("[broadcast] stopped idle %s MP3 stream", c.name)
 
 	for ctx.Err() == nil {
-		var trackPath, voicePath, label string
-		var normGainDB float64
-		var advanceFn func()
+		var trackPath, voicePath, label, sessionID string
+		var normGainDB, startSec float64
+		var slotIdx int
+		var advanceFn func(ctx context.Context)
 
 		if c.name == "dj" {
-			trackPath, voicePath, label, normGainDB, advanceFn = c.nextDJItem()
+			trackPath, voicePath, label, sessionID, slotIdx, normGainDB, startSec, advanceFn = c.nextDJItem()
 		} else {
 			trackPath, voicePath, label, normGainDB, advanceFn = c.nextPartyItem()
 		}
@@ -226,27 +228,63 @@ func (c *channel) runLoop(ctx context.Context) {
 			continue
 		}
 
+		// Watch for external track skips / profile switches so the live stream cuts over within ~350ms!
+		itemCtx, cancelItem := context.WithCancel(ctx)
+		cutoverTriggered := false
+		if c.name == "dj" && c.hub.djEng != nil {
+			go func(expectedSess string, expectedIdx int) {
+				tk := time.NewTicker(350 * time.Millisecond)
+				defer tk.Stop()
+				for {
+					select {
+					case <-itemCtx.Done():
+						return
+					case <-tk.C:
+						st := c.hub.djEng.State()
+						if st.SessionID != expectedSess || st.CurrentIndex != expectedIdx {
+							cutoverTriggered = true
+							cancelItem()
+							return
+						}
+					}
+				}
+			}(sessionID, slotIdx)
+		}
+
 		c.setNowPlaying(label)
-		if voicePath != "" {
-			// Stream the DJ voice break or guest voice intro cleanly ahead of the song
-			_ = c.streamFileAsMP3(ctx, voicePath, 0)
+		if voicePath != "" && startSec < 1.5 {
+			// Stream the DJ voice break cleanly ahead of the song (only when starting from the beginning)
+			_ = c.streamFileAsMP3(itemCtx, voicePath, 0, 0, nil)
 		}
+		if itemCtx.Err() != nil {
+			cancelItem()
+			if ctx.Err() != nil {
+				return
+			}
+			continue
+		}
+
+		var onProgress func(elapsedSec float64)
+		if c.name == "dj" && c.hub.djEng != nil {
+			onProgress = func(elapsedSec float64) {
+				c.hub.djEng.ReportPlayback(slotIdx, startSec+elapsedSec, true, "stream")
+			}
+		}
+		_ = c.streamFileAsMP3(itemCtx, trackPath, normGainDB, startSec, onProgress)
+		wasCutover := cutoverTriggered
+		cancelItem()
 		if ctx.Err() != nil {
 			return
 		}
-		_ = c.streamFileAsMP3(ctx, trackPath, normGainDB)
-		if ctx.Err() != nil {
-			return
-		}
-		if advanceFn != nil {
-			advanceFn()
+		if !wasCutover && advanceFn != nil {
+			advanceFn(ctx)
 		}
 	}
 }
 
-func (c *channel) nextDJItem() (trackPath, voicePath, label string, normGainDB float64, advance func()) {
+func (c *channel) nextDJItem() (trackPath, voicePath, label, sessionID string, slotIdx int, normGainDB, startSec float64, advance func(ctx context.Context)) {
 	if c.hub.djEng == nil {
-		return "", "", "", 0, nil
+		return "", "", "", "", 0, 0, 0, nil
 	}
 	st := c.hub.djEng.State()
 	if len(st.Slots) == 0 {
@@ -258,7 +296,7 @@ func (c *channel) nextDJItem() (trackPath, voicePath, label string, normGainDB f
 			st, _ = c.hub.djEng.CreateSession(dj.CreateSessionRequest{Source: "shuffle", Count: 12})
 		}
 		if len(st.Slots) == 0 {
-			return "", "", "", 0, nil
+			return "", "", "", "", 0, 0, 0, nil
 		}
 	}
 	idx := st.CurrentIndex
@@ -272,28 +310,41 @@ func (c *channel) nextDJItem() (trackPath, voicePath, label string, normGainDB f
 		if nextIdx < len(st.Slots) {
 			c.hub.djEng.SetCurrentIndex(nextIdx)
 		}
-		return "", "", "", 0, nil
+		return "", "", "", "", 0, 0, 0, nil
+	}
+
+	// If a browser DJ host is actively playing this exact track, seek straight to its live real-time position!
+	clkSess, clkIdx, clkPos, clkPlaying, clkSrc, clkAge := c.hub.djEng.LivePlaybackClock()
+	if clkSrc == "browser" && clkPlaying && clkAge < 8*time.Second && clkSess == st.SessionID && clkIdx == idx && clkPos > 1.5 {
+		if slot.Track.Duration <= 0 || clkPos < slot.Track.Duration-3.0 {
+			startSec = clkPos
+		}
 	}
 
 	var vp string
-	if slot.Bridge != nil && slot.Bridge.Status == dj.StatusReady {
-		if p, ok := c.hub.djEng.AudioPathForBreak(slot.Bridge.ID); ok {
-			vp = p
-		}
-	} else if slot.Intro != nil && slot.Intro.Status == dj.StatusReady {
-		if p, ok := c.hub.djEng.AudioPathForBreak(slot.Intro.ID); ok {
-			vp = p
+	if startSec < 1.5 {
+		if slot.Bridge != nil && slot.Bridge.Status == dj.StatusReady {
+			if p, ok := c.hub.djEng.AudioPathForBreak(slot.Bridge.ID); ok {
+				vp = p
+			}
+		} else if slot.Intro != nil && slot.Intro.Status == dj.StatusReady {
+			if p, ok := c.hub.djEng.AudioPathForBreak(slot.Intro.ID); ok {
+				vp = p
+			}
 		}
 	}
 
 	label = fmt.Sprintf("%s — %s", slot.Track.Artist, slot.Track.Title)
 	normGainDB = c.hub.adjustedNormGain(slot.Track.NormGainDB)
-	advance = func() {
+	advance = func(advCtx context.Context) {
 		// If current slot has a trailing standalone outro, play it right after the track!
 		curState := c.hub.djEng.State()
+		if curState.SessionID != st.SessionID || curState.CurrentIndex != idx {
+			return
+		}
 		if idx < len(curState.Slots) && curState.Slots[idx].Outro != nil && curState.Slots[idx].Outro.Status == dj.StatusReady {
 			if p, ok := c.hub.djEng.AudioPathForBreak(curState.Slots[idx].Outro.ID); ok {
-				_ = c.streamFileAsMP3(context.Background(), p, 0)
+				_ = c.streamFileAsMP3(advCtx, p, 0, 0, nil)
 			}
 		}
 		nextIdx := idx + 1
@@ -302,10 +353,10 @@ func (c *channel) nextDJItem() (trackPath, voicePath, label string, normGainDB f
 		}
 		c.hub.djEng.SetCurrentIndex(nextIdx)
 	}
-	return tp, vp, label, normGainDB, advance
+	return tp, vp, label, st.SessionID, idx, normGainDB, startSec, advance
 }
 
-func (c *channel) nextPartyItem() (trackPath, voicePath, label string, normGainDB float64, advance func()) {
+func (c *channel) nextPartyItem() (trackPath, voicePath, label string, normGainDB float64, advance func(ctx context.Context)) {
 	if c.hub.party == nil {
 		return "", "", "", 0, nil
 	}
@@ -381,16 +432,20 @@ func (h *Hub) adjustedNormGain(baseGainDB float64) float64 {
 	return g
 }
 
-func (c *channel) streamFileAsMP3(ctx context.Context, path string, normGainDB float64) error {
+func (c *channel) streamFileAsMP3(ctx context.Context, path string, normGainDB, startSec float64, onProgress func(elapsedSec float64)) error {
 	ffBin, err := exec.LookPath("ffmpeg")
 	if err != nil {
 		return err
 	}
-	args := []string{"-v", "error", "-re", "-i", path, "-vn", "-ac", "2", "-ar", "44100"}
+	args := []string{"-v", "error", "-re"}
+	if startSec > 0.5 {
+		args = append(args, "-ss", fmt.Sprintf("%.2f", startSec))
+	}
+	args = append(args, "-i", path, "-vn", "-ac", "2", "-ar", "44100")
 	if normGainDB != 0 && normGainDB > -15 && normGainDB < 12 {
 		args = append(args, "-af", fmt.Sprintf("volume=%.2fdB,alimiter=limit=0.95", normGainDB))
 	}
-	args = append(args, "-c:a", "libmp3lame", "-b:a", "192k", "-f", "mp3", "pipe:1")
+	args = append(args, "-c:a", "libmp3lame", "-b:a", "192k", "-flush_packets", "1", "-f", "mp3", "pipe:1")
 	cmd := exec.CommandContext(ctx, ffBin, args...)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -399,13 +454,19 @@ func (c *channel) streamFileAsMP3(ctx context.Context, path string, normGainDB f
 	if err := cmd.Start(); err != nil {
 		return err
 	}
-	buf := make([]byte, 8192)
+	startedAt := time.Now()
+	lastReport := time.Time{}
+	buf := make([]byte, 2048)
 	for {
 		n, rerr := stdout.Read(buf)
 		if n > 0 {
 			cp := make([]byte, n)
 			copy(cp, buf[:n])
 			c.broadcast(cp)
+			if onProgress != nil && time.Since(lastReport) >= time.Second {
+				lastReport = time.Now()
+				onProgress(time.Since(startedAt).Seconds())
+			}
 		}
 		if rerr != nil {
 			if rerr != io.EOF {

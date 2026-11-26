@@ -3409,7 +3409,24 @@ async function refreshDJState() {
     }
     renderDJHeader();
     renderDJSlots();
-    if (playbackMode === "dj") {
+    if (djLiveStreamActive && djState?.slots?.length) {
+      const liveSlot = djState.slots[djState.currentIndex || 0];
+      if (liveSlot?.track) {
+        if (!currentTrackObj || currentTrackObj.id !== liveSlot.track.id) {
+          updateNowPlayingDisplay(liveSlot.track);
+        }
+        document.getElementById("djOnAirBadge").textContent = "LIVE STREAM";
+        document.getElementById("sideModeBadge").textContent = "LIVE MP3 STREAM";
+        if (typeof djState.playbackPositionSec === "number" && liveSlot.track.duration > 0) {
+          const pSec = Math.min(liveSlot.track.duration, Math.max(0, djState.playbackPositionSec));
+          document.getElementById("curTime").textContent = fmtDur(pSec);
+          document.getElementById("totTime").textContent = "-" + fmtDur(Math.max(0, liveSlot.track.duration - pSec));
+          const sb = document.getElementById("seekBar");
+          if (sb) sb.value = Math.min(100, (pSec / liveSlot.track.duration) * 100);
+        }
+        renderSidebarQueue();
+      }
+    } else if (playbackMode === "dj") {
       updateQueueCount();
       renderSidebarQueue();
     }
@@ -5361,7 +5378,20 @@ if (hasPerm("dj")) ensureDJOptions().then(refreshDJState);
 setInterval(() => {
   if (hasPerm("party")) refreshParty();
   if (IS_ADMIN && currentTab === "server") refreshServerStatus();
-  if (hasPerm("dj") && (currentTab === "dj" || djActive)) refreshDJState();
+  if (hasPerm("dj") && (currentTab === "dj" || djActive || djLiveStreamActive)) refreshDJState();
+  // Report live DJ playback position so /stream/dj.mp3 & DLNA speakers lock onto the exact real-time second!
+  if (hasPerm("dj") && djActive && !djLiveStreamActive && playbackMode === "dj" && djState?.slots?.length) {
+    fetch("/api/v2/dj/queue/action", {
+      method: "POST",
+      headers: { ...HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "heartbeat",
+        index: djState.currentIndex || 0,
+        positionSec: Number(activeDeck.currentTime || 0),
+        playing: !activeDeck.paused
+      })
+    }).catch(() => {});
+  }
 }, 3000);
 </script>
 </body>

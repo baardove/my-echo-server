@@ -279,18 +279,23 @@ func (s *Server) handleDJQueueAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Action    string `json:"action"` // "advance", "remove", "move", "clear", "updateBreak"
-		Index     int    `json:"index"`
-		FromIndex int    `json:"fromIndex"`
-		ToIndex   int    `json:"toIndex"`
-		Mode      string `json:"mode"` // "intro", "outro", "bridge", "none", "keep"
-		Regen     bool   `json:"regenerate"`
+		Action      string  `json:"action"` // "advance", "heartbeat", "remove", "move", "clear", "updateBreak"
+		Index       int     `json:"index"`
+		PositionSec float64 `json:"positionSec"`
+		Playing     bool    `json:"playing"`
+		FromIndex   int     `json:"fromIndex"`
+		ToIndex     int     `json:"toIndex"`
+		Mode        string  `json:"mode"` // "intro", "outro", "bridge", "none", "keep"
+		Regen       bool    `json:"regenerate"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 32_768)).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 		return
 	}
 	switch req.Action {
+	case "heartbeat":
+		s.dj.ReportPlayback(req.Index, req.PositionSec, req.Playing, "browser")
+		writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 	case "advance":
 		writeJSON(w, http.StatusOK, s.dj.SetCurrentIndex(req.Index))
 	case "remove":
