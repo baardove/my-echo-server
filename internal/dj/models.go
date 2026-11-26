@@ -158,7 +158,7 @@ type DJTrackInfo struct {
 	IsHiRes       bool     `json:"isHiRes"`
 	ArtworkHash   *string  `json:"artworkHash,omitempty"`
 	BPM           float64  `json:"bpm,omitempty"`
-	VocalStartSec float64  `json:"vocalStartSec,omitempty"`
+	VocalStartSec float64  `json:"vocalStartSec"`
 	VocalEndSec   float64  `json:"vocalEndSec,omitempty"`
 	Energy        float64  `json:"energy,omitempty"`
 	LoudnessDB    float64  `json:"loudnessDB,omitempty"`

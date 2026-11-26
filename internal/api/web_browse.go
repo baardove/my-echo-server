@@ -34,7 +34,7 @@ type webTrackDTO struct {
 	ArrivalUnix   int64    `json:"arrivalUnix"`
 	UserRating    int      `json:"userRating"`
 	BPM           float64  `json:"bpm,omitempty"`
-	VocalStartSec float64  `json:"vocalStartSec,omitempty"`
+	VocalStartSec float64  `json:"vocalStartSec"`
 	VocalEndSec   float64  `json:"vocalEndSec,omitempty"`
 	Energy        float64  `json:"energy,omitempty"`
 	Tags          []string `json:"tags,omitempty"`

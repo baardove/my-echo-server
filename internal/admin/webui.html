@@ -3277,7 +3277,7 @@ function renderDJBreakTrackRow(prevIdx, nextIdx, ownerIdx, brk, prevTrack, nextT
     : (isOutro ? `${prevTrack ? esc(prevTrack.artist) + " — " + esc(prevTrack.title) : ""}` : `${nextTrack ? esc(nextTrack.artist) + " — " + esc(nextTrack.title) : ""}`);
 
   const statusText = brk.status === "ready"
-    ? `${brk.duration.toFixed(1)}s`
+    ? `${Number(brk.duration || 0).toFixed(1)}s`
     : (brk.status === "generating" ? "RESEARCHING & VOICING…" : (brk.status === "error" ? `ERR: ${brk.error}` : "QUEUED"));
   const statusColor = muted ? "var(--text-3)" : (brk.status === "error" ? "var(--coral)" : (brk.status === "ready" ? "var(--mint)" : (brk.status === "generating" ? "var(--amber)" : "var(--text-3)")));
 
@@ -3437,7 +3437,7 @@ function renderDJSlots() {
           ${slot.fromLidarr ? '<span class="badge">LIDARR</span>' : ""}
         </div>
         <div class="track-artist">
-          ${esc(tr.artist)} · ${esc(tr.album)}${tr.year ? " · " + tr.year : ""} · ${fmtDur(tr.duration)}${tr.hasAnalysis ? ` · Intro ${tr.vocalStartSec.toFixed(1)}s` : ""}
+          ${esc(tr.artist)} · ${esc(tr.album)}${tr.year ? " · " + tr.year : ""} · ${fmtDur(tr.duration)}${tr.hasAnalysis ? ` · Intro ${Number(tr.vocalStartSec || 0).toFixed(1)}s` : ""}
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:6px;">
@@ -3672,7 +3672,7 @@ async function playDJFromBreak(prevIdx, nextIdx, ownerIdx, kind) {
 
   const fullVol = effectiveTrackVol(targetSlot.track, false);
   const targetDuckVol = effectiveTrackVol(targetSlot.track, true);
-  const immediateVocals = targetSlot.track.hasAnalysis && targetSlot.track.vocalStartSec < 3.5;
+  const immediateVocals = targetSlot.track.hasAnalysis && Number(targetSlot.track.vocalStartSec || 0) < 3.5;
   activeDeck.dataset.trackId = targetSlot.track.id;
   activeDeck.dataset.transcoded = "0";
   if (kind === "intro" && !immediateVocals) {
@@ -3755,7 +3755,7 @@ async function playDJSlot(idx, playIntroIfReady) {
   renderDJSlots();
 
   // Vocal-aware Intro: if singing starts immediately (<3.5s), let the DJ finish talking BEFORE dropping the song!
-  const immediateVocals = slot.track.hasAnalysis && slot.track.vocalStartSec < 3.5;
+  const immediateVocals = slot.track.hasAnalysis && Number(slot.track.vocalStartSec || 0) < 3.5;
   activeDeck.dataset.trackId = slot.track.id;
   activeDeck.dataset.transcoded = "0";
   if (introBreak && immediateVocals) {
@@ -4000,7 +4000,7 @@ async function testDJVoice() {
     djVoice.src = djAudioURL(data.break.audioURL);
     setDeckVolume(djVoice, Math.min(webAudioReady ? 1.4 : 1.0, masterVolume * 1.05));
     djVoice.play().catch(() => {});
-    showToast(`Playing ${payload.voiceName} (${data.break.duration.toFixed(1)}s broadcast DSP)!`);
+    showToast(`Playing ${payload.voiceName} (${Number(data.break?.duration || 0).toFixed(1)}s broadcast DSP)!`);
   } finally {
     btn.disabled = false;
     btn.innerHTML = ico("volume") + " Test DJ Voice";
