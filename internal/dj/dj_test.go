@@ -152,8 +152,8 @@ func TestBuildFactualPromptUsesRealMetadataAndVocalCues(t *testing.T) {
 	}
 
 	sys, usr, facts := eng.BuildFactualPrompt(context.Background(), cfg.DJ, BreakIntro, nil, tr, true, true)
-	if !strings.Contains(sys, "GOOGLE SEARCH") || !strings.Contains(sys, "Echo FM") || !strings.Contains(sys, "STRICT TEMPORAL AWARENESS") {
-		t.Fatalf("missing Google Search / station name / temporal awareness guidance in system prompt")
+	if !strings.Contains(sys, "GOOGLE SEARCH") || !strings.Contains(sys, "Echo FM") || !strings.Contains(sys, "CURRENT LOCAL DATE & TIME:") {
+		t.Fatalf("missing Google Search / station name / current date & time guidance in system prompt")
 	}
 	if !strings.Contains(usr, "NOT upcoming") {
 		t.Fatalf("expected user prompt to annotate past release year as NOT upcoming, got:\n%s", usr)

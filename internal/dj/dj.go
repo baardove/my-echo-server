@@ -1964,23 +1964,35 @@ func (e *Engine) BuildFactualPrompt(
 	}
 	bridgeMax := int(float64(maxWords) * 1.45)
 	now := time.Now()
-	todayStr := now.Format("January 2, 2006")
+	todayStr := now.Format("Monday, January 2, 2006")
+	timeStr := now.Format("15:04 MST")
 	todayYear := now.Year()
+	partOfDay := "late night"
+	switch h := now.Hour(); {
+	case h >= 5 && h < 8:
+		partOfDay = "early morning"
+	case h >= 8 && h < 12:
+		partOfDay = "morning"
+	case h >= 12 && h < 17:
+		partOfDay = "afternoon"
+	case h >= 17 && h < 21:
+		partOfDay = "evening"
+	}
 	systemPrompt = fmt.Sprintf(`You are the live music-journalist radio DJ hosting "%s".
-TODAY'S CURRENT DATE: %s (Current Year: %d).
+CURRENT LOCAL DATE & TIME: %s at %s (%s, Current Year: %d).
 Persona: %s
 %s%s
 
 CRITICAL RULES FOR RICH, NON-GENERIC SPOKEN RADIO SCRIPTS:
 1. USE LIVE GOOGLE SEARCH + PROVIDED DOSSIER: You have Google Search enabled. Always look up real, specific, fascinating facts about the SONG, ALBUM, and ARTIST (e.g., who produced/co-wrote it, the story behind the lyrics or recording session, chart history, iconic instrumentation/samples, label/album milestone, or a surprising connection between outgoing and incoming artists). NEVER fabricate facts — every detail must come from the provided dossier or verified Google Search results.
-2. STRICT TEMPORAL AWARENESS (NO STALE "UPCOMING" PHRASING): Today is %s (%d). Online reviews, press releases, and search snippets were often written BEFORE or AT the time a record originally came out and may say "this upcoming album", "due out this fall", "her brand-new single", or "currently on tour". NEVER blindly repeat time-relative wording from older reviews! Always compare the track/album's release date against TODAY (%s). If the song is already in the listener's library or its release date is in the past, ALWAYS refer to it in the past tense (e.g. "from her 2025 album Here for It All", NEVER "from her upcoming album"). Only describe a release as "brand new" if it was released within the last 3 months of %s.
+2. STRICT TEMPORAL & TIME-OF-DAY AWARENESS (NO STALE "UPCOMING" PHRASING): Right now it is %s at %s (%s, %d). Keep any time-of-day or seasonal references accurate to THIS exact date and time (never say "good morning" at night, etc.). Online reviews, press releases, and search snippets were often written BEFORE or AT the time a record originally came out and may say "this upcoming album", "due out this fall", "her brand-new single", or "currently on tour". NEVER blindly repeat time-relative wording from older reviews! Always compare the track/album's release date against TODAY (%s). If the song is already in the listener's library or its release date is in the past, ALWAYS refer to it in the past tense (e.g. "from her 2025 album Here for It All", NEVER "from her upcoming album"). Only describe a release as "brand new" if it was released within the last 3 months of %s.
 3. ZERO GENERIC FILLER: NEVER say empty clichés like "So glad you could join me", "Sit back and relax", "Turn up the volume", "Here's a great track", or "Let's dive into the music". Jump straight into an intriguing, concrete musical detail that makes the listener think "oh cool, I didn't know that!".
 4. NATURAL SPOKEN DELIVERY: Write ONLY the exact spoken words — no markdown, no asterisks, no citations like [1], no URLs, no quotes around the whole script, no stage directions like [music fades], no emojis.
 5. BROADCAST PACING:
    - INTRO or OUTRO: 2 vivid, flowing sentences (up to ~%d words, 8–15 seconds spoken) weaving at least 1–2 specific song/album/artist facts naturally.
    - OUT/INTRO: 2 to 3 connected sentences (up to ~%d words, 12–19 seconds spoken) naming a specific fact about the outgoing track first, then smoothly linking into a concrete fact about the incoming track.
 6. Vary your structure every break so it sounds like an authentic, deeply knowledgeable human FM host (like BBC Radio 6 Music / KEXP).`,
-		djCfg.RadioStationName, todayStr, todayYear, personaDesc, langRule, custom, todayStr, todayYear, todayStr, todayStr, maxWords, bridgeMax)
+		djCfg.RadioStationName, todayStr, timeStr, partOfDay, todayYear, personaDesc, langRule, custom, todayStr, timeStr, partOfDay, todayYear, todayStr, todayStr, maxWords, bridgeMax)
 
 	var sb strings.Builder
 	switch kind {
