@@ -3881,7 +3881,8 @@ async function playDJFromBreak(prevIdx, nextIdx, ownerIdx, kind) {
     return;
   }
 
-  // Out/Intro bridge (or immediate-vocal intro): DJ speaks cleanly first, then music smoothly enters underneath the tail or right after!
+  // Out/Intro bridge (or immediate-vocal intro): DJ speaks cleanly at steady volume (no voice crossfade);
+  // music starts ducked underneath the tail (when instrumental intro allows) and smoothly unducks when DJ finishes.
   activeDeck.src = streamURL(targetSlot.track.id, false);
   activeDeck.pause();
   const durSec = Number(brk.duration || 0);
@@ -3890,9 +3891,8 @@ async function playDJFromBreak(prevIdx, nextIdx, ownerIdx, kind) {
     djBridgeMusicTimer = setTimeout(() => {
       djBridgeMusicTimer = null;
       if (!djActive || playbackMode !== "dj") return;
-      setDeckVolume(activeDeck, 0.02);
+      setDeckVolume(activeDeck, djSpeakingBreak ? targetDuckVol : fullVol);
       activeDeck.play().catch(err => handleDeckPlayRejection(activeDeck, targetSlot.track, err));
-      rampAudioVolume(activeDeck, djSpeakingBreak ? targetDuckVol : fullVol, 1800);
     }, enterDelayMs);
     djPendingTrackAfterIntro = () => {
       if (activeDeck.paused) {
@@ -3979,13 +3979,17 @@ function fireDJVoiceBreak(brk, duckVol) {
   djTriggeredBreaks.add(brk.id);
   djSpeakingBreak = brk;
   updateDJTeleprompterUI(brk);
-  rampAudioVolume(activeDeck, duckVol, 450);
+  // Smoothly duck ONLY the music deck; keep DJ voice at steady full broadcast volume (never crossfaded)
+  if (!activeDeck.paused) {
+    rampAudioVolume(activeDeck, duckVol, 500);
+  }
+  cancelVolumeRamp(djVoice);
   djVoice.src = djAudioURL(brk.audioURL);
   setDeckVolume(djVoice, Math.min(webAudioReady ? 1.4 : 1.0, masterVolume * 1.05));
   djVoice.play().catch(() => {
     djSpeakingBreak = null;
     updateDJTeleprompterUI(null);
-    rampAudioVolume(activeDeck, effectiveTrackVol(currentTrackObj, false), 400);
+    rampAudioVolume(activeDeck, effectiveTrackVol(currentTrackObj, false), 500);
   });
   renderDJHeader();
   renderDJSlots();
@@ -4000,7 +4004,7 @@ function checkDJTransitionTriggers(curSec, durSec) {
   const nextSlot = idx + 1 < djState.slots.length ? djState.slots[idx + 1] : null;
   const remaining = durSec - curSec;
   const xfade = Math.max(1.5, Math.min(12, djState.crossfadeSeconds || 5.0));
-  const duckVol = masterVolume * (djState.duckVolume || 0.35);
+  const duckVol = effectiveTrackVol(slot?.track || currentTrackObj, true);
 
   // Vocal-aware Outro/Bridge timing: never start talking over singing if vocalEndSec is known!
   const vocalsFinished = !slot?.track?.hasAnalysis || !slot.track.vocalEndSec || curSec >= Math.max(0, slot.track.vocalEndSec - 0.6);
@@ -4013,7 +4017,7 @@ function checkDJTransitionTriggers(curSec, durSec) {
     }
   }
 
-  // 2. In/Outro Bridge on NEXT track (starts talking after singing finishes, then crossfades mid-bridge into next track!)
+  // 2. In/Outro Bridge on NEXT track (starts talking after singing finishes, over ducked outgoing tail)
   if (nextSlot?.bridge && nextSlot.bridge.status === "ready" && !djTriggeredBreaks.has(nextSlot.bridge.id)) {
     const bridgeHalf = Math.max(xfade + 1.5, (nextSlot.bridge.duration || 12) * 0.55);
     if ((vocalsFinished && remaining <= Math.max(bridgeHalf, 16)) || remaining <= xfade + 1.2) {
@@ -4021,8 +4025,14 @@ function checkDJTransitionTriggers(curSec, durSec) {
     }
   }
 
-  // 3. Crossfade into next track
-  if (nextSlot && remaining <= xfade) {
+  // 3. Transition into next track:
+  //    - Pure Seamless Crossfade (no voice break): overlap tracks over `xfade` seconds
+  //    - Voice break active or incoming Intro: DO NOT crossfade over the voice — wait until the outgoing track's tail (~1.0s) and switch cleanly with duck/unduck only!
+  const hasVoiceTransition = !!djSpeakingBreak ||
+    (nextSlot?.intro && nextSlot.intro.status === "ready" && !djTriggeredBreaks.has(nextSlot.intro.id)) ||
+    (nextSlot?.bridge && nextSlot.bridge.status === "ready");
+  const triggerAt = hasVoiceTransition ? 1.0 : xfade;
+  if (nextSlot && remaining <= triggerAt) {
     triggerDJTransitionToNext();
   }
 }
@@ -4048,12 +4058,12 @@ function triggerDJTransitionToNext() {
   const xfadeMs = Math.max(800, (djState.crossfadeSeconds || 5.0) * 1000);
   const fullIncomingVol = effectiveTrackVol(nextSlot.track, false);
   const duckVol = effectiveTrackVol(nextSlot.track, true);
+  const immediateVocals = nextSlot.track.hasAnalysis && Number(nextSlot.track.vocalStartSec || 0) < 3.5;
 
-  // Decide if incoming track enters ducked (either Bridge is still speaking, or incoming track has a ready Intro!)
+  // Decide if a DJ voice track is involved (Bridge/Outro still speaking, or incoming track has a ready Intro)
   const hasReadyIntro = nextSlot.intro && nextSlot.intro.status === "ready" && !djTriggeredBreaks.has(nextSlot.intro.id);
-  const targetIncomingVol = (djSpeakingBreak || hasReadyIntro) ? duckVol : fullIncomingVol;
+  const voiceInvolved = !!djSpeakingBreak || hasReadyIntro;
 
-  // Swap decks for true overlapping equal-power crossfade!
   const outgoingDeck = activeDeck;
   const incomingDeck = standbyDeck;
   activeDeck = incomingDeck;
@@ -4063,47 +4073,77 @@ function triggerDJTransitionToNext() {
   incomingDeck.dataset.trackId = nextSlot.track.id;
   incomingDeck.dataset.transcoded = "0";
   incomingDeck.src = streamURL(nextSlot.track.id, false);
-  setDeckVolume(incomingDeck, 0.02);
 
-  const playPromise = incomingDeck.play();
-  if (playPromise && typeof playPromise.catch === "function") {
-    playPromise.catch(err => {
-      if (myGen !== djActionGen) return;
-      // If browser autoplay blocked deckB (e.g. Safari background tab), immediately play on the already-unlocked outgoingDeck!
-      if (err && err.name === "NotAllowedError") {
-        clearTimeout(djCrossfadeEndTimer);
-        djCrossfadeEndTimer = null;
-        cancelVolumeRamp(outgoingDeck);
-        cancelVolumeRamp(incomingDeck);
-        activeDeck = outgoingDeck;
-        standbyDeck = incomingDeck;
-        outgoingDeck.dataset.trackId = nextSlot.track.id;
-        outgoingDeck.dataset.transcoded = "0";
-        outgoingDeck.src = streamURL(nextSlot.track.id, false);
-        setDeckVolume(outgoingDeck, targetIncomingVol);
-        outgoingDeck.play().catch(e2 => handleDeckPlayRejection(outgoingDeck, nextSlot.track, e2));
-        djTransitionLock = false;
-      } else {
-        handleDeckPlayRejection(incomingDeck, nextSlot.track, err);
-      }
-    });
-  }
-
-  rampAudioVolume(outgoingDeck, 0, xfadeMs);
-  rampAudioVolume(incomingDeck, targetIncomingVol, xfadeMs);
-  djCrossfadeEndTimer = setTimeout(() => {
-    djCrossfadeEndTimer = null;
-    if (outgoingDeck !== activeDeck) {
-      cancelVolumeRamp(outgoingDeck);
-      try { outgoingDeck.pause(); outgoingDeck.currentTime = 0; } catch(e) {}
+  const startIncomingSafe = (vol) => {
+    setDeckVolume(incomingDeck, vol);
+    const p = incomingDeck.play();
+    if (p && typeof p.catch === "function") {
+      p.catch(err => {
+        if (myGen !== djActionGen) return;
+        if (err && err.name === "NotAllowedError") {
+          clearTimeout(djCrossfadeEndTimer);
+          djCrossfadeEndTimer = null;
+          cancelVolumeRamp(outgoingDeck);
+          cancelVolumeRamp(incomingDeck);
+          activeDeck = outgoingDeck;
+          standbyDeck = incomingDeck;
+          outgoingDeck.dataset.trackId = nextSlot.track.id;
+          outgoingDeck.dataset.transcoded = "0";
+          outgoingDeck.src = streamURL(nextSlot.track.id, false);
+          setDeckVolume(outgoingDeck, vol);
+          outgoingDeck.play().catch(e2 => handleDeckPlayRejection(outgoingDeck, nextSlot.track, e2));
+          djTransitionLock = false;
+        } else {
+          handleDeckPlayRejection(incomingDeck, nextSlot.track, err);
+        }
+      });
     }
-    djTransitionLock = false;
-  }, xfadeMs + 150);
+  };
 
-  if (hasReadyIntro && !djSpeakingBreak) {
-    setTimeout(() => {
-      if (myGen === djActionGen && djActive) fireDJVoiceBreak(nextSlot.intro, duckVol);
-    }, 450);
+  if (voiceInvolved) {
+    // NO voice crossfade: cleanly fade out outgoing music tail, then start incoming music ducked (or after voice finishes if immediate vocals)
+    // and smoothly unduck music when djVoice ends!
+    rampAudioVolume(outgoingDeck, 0, 700);
+    djCrossfadeEndTimer = setTimeout(() => {
+      djCrossfadeEndTimer = null;
+      if (outgoingDeck !== activeDeck) {
+        cancelVolumeRamp(outgoingDeck);
+        try { outgoingDeck.pause(); outgoingDeck.currentTime = 0; } catch(e) {}
+      }
+      djTransitionLock = false;
+    }, 800);
+
+    if (immediateVocals) {
+      // Singing starts immediately (<3.5s) -> hold incoming song until DJ finishes speaking, then drop cleanly at full volume!
+      incomingDeck.pause();
+      djPendingTrackAfterIntro = () => {
+        if (myGen !== djActionGen || !djActive) return;
+        startIncomingSafe(fullIncomingVol);
+      };
+      if (hasReadyIntro && !djSpeakingBreak) {
+        fireDJVoiceBreak(nextSlot.intro, duckVol);
+      }
+    } else {
+      // Start incoming track directly at duckVol underneath the steady DJ voice (no crossfade); djVoice "ended" will smoothly unduck it!
+      startIncomingSafe(duckVol);
+      if (hasReadyIntro && !djSpeakingBreak) {
+        fireDJVoiceBreak(nextSlot.intro, duckVol);
+      }
+    }
+  } else {
+    // Pure Seamless Crossfade (no DJ voice): full overlapping equal-power crossfade between music decks!
+    setDeckVolume(incomingDeck, 0.02);
+    startIncomingSafe(0.02);
+    rampAudioVolume(outgoingDeck, 0, xfadeMs);
+    rampAudioVolume(incomingDeck, fullIncomingVol, xfadeMs);
+    djCrossfadeEndTimer = setTimeout(() => {
+      djCrossfadeEndTimer = null;
+      if (outgoingDeck !== activeDeck) {
+        cancelVolumeRamp(outgoingDeck);
+        try { outgoingDeck.pause(); outgoingDeck.currentTime = 0; } catch(e) {}
+      }
+      djTransitionLock = false;
+    }, xfadeMs + 150);
   }
 
   updateNowPlayingDisplay(nextSlot.track);
