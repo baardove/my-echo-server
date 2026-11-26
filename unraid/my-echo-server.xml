@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>my-echo-server</Name>
+  <Repository>ghcr.io/baardove/my-echo-server:latest</Repository>
+  <Registry>https://ghcr.io</Registry>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/baardove/my-echo</Support>
+  <Project>https://github.com/baardove/my-echo</Project>
+  <Overview>Optional self-hosted companion server for My Echo (macOS, Apple TV, iOS). Indexes your Unraid music shares locally into compressed delta shards for Mac, powers MyEchoTV completely independently of macOS with 1-hop lossless streaming, includes a built-in dark-neon Web Player, and hosts always-on Party Mode with DJ Voice Intros.</Overview>
+  <Category>MediaServer:Music</Category>
+  <WebUI>http://[IP]:[PORT:48721]/</WebUI>
+  <Icon>http://192.168.0.12:48721/icon.png</Icon>
+  <Config Name="API &amp; Admin WebUI Port" Target="48721" Default="48721" Mode="tcp" Description="Main API, compressed index delta shards, lossless streaming, and /admin WebUI." Type="Port" Display="always" Required="true" Mask="false">48721</Config>
+  <Config Name="Party Mode HTTP Port" Target="53333" Default="53333" Mode="tcp" Description="Zero-install Party Mode Guest Web Jukebox (QR code URL)." Type="Port" Display="always" Required="true" Mask="false">53333</Config>
+  <Config Name="Party Mode HTTPS Port" Target="53334" Default="53334" Mode="tcp" Description="Companion HTTPS listener for mobile Safari/Chrome DJ Voice Intro microphone recording." Type="Port" Display="always" Required="true" Mask="false">53334</Config>
+  <Config Name="AppData Config" Target="/config" Default="/mnt/user/appdata/my-echo-server" Mode="rw" Description="Stores SQLite database, pre-built compressed index shards, artwork thumbnail cache, TLS cert, and config.json." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/my-echo-server</Config>
+  <Config Name="Music Library" Target="/music" Default="/mnt/user/Media/MUSIC" Mode="rw" Description="Primary Unraid music share (rw allows mirroring compressed index &amp; auto-discovery beacon into .myecho/; ro also supported)." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/Media/MUSIC</Config>
+  <Config Name="Server Display Name" Target="ECHO_SERVER_NAME" Default="Unraid Echo" Description="Name displayed in My Echo on Mac, Apple TV, and Party Mode." Type="Variable" Display="always" Required="false" Mask="false">Unraid Echo</Config>
+  <Config Name="Advertise Host (Unraid LAN/Tailscale IP)" Target="ECHO_ADVERTISE_HOST" Default="" Description="Unraid IP used for Party Mode QR code URLs when running in bridge mode." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="6-Digit Pairing PIN" Target="ECHO_PIN" Default="" Description="Optional fixed 6-digit PIN for Mac &amp; Apple TV pairing (auto-generated on first boot if blank)." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="Scan Interval" Target="ECHO_SCAN_INTERVAL" Default="30m" Description="Incremental scan interval (e.g. 30m, 2h, 24h, or manual for webhook-only disk spin-down friendliness)." Type="Variable" Display="always" Required="false" Mask="false">30m</Config>
+  <Config Name="Legacy Mac SMB Prefix (Optional)" Target="ECHO_LEGACY_PATH_PREFIX" Default="/Volumes/Media/MUSIC" Description="Optional macOS SMB mount prefix so server Track IDs match existing Mac playlists and ratings 1:1." Type="Variable" Display="advanced" Required="false" Mask="false">/Volumes/Media/MUSIC</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Description="Unraid user ID (nobody=99)." Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Description="Unraid group ID (users=100)." Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+</Container>
