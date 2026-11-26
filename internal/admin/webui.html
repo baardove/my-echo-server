@@ -714,7 +714,9 @@
     padding: 14px 16px; margin-bottom: 18px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.30);
   }
-  .lidarr-list { display: flex; flex-direction: column; gap: 7px; max-height: 520px; overflow-y: auto; padding-right: 2px; }
+  .lidarr-list { display: flex; flex-direction: column; gap: 7px; max-height: 580px; overflow-y: auto; padding-right: 2px; }
+  .lidarr-list .group-header { margin: 10px 0 3px; }
+  .lidarr-list .group-header:first-child { margin-top: 0; }
   .lidarr-row {
     display: grid; grid-template-columns: 52px minmax(160px, 1fr) auto;
     align-items: center; gap: 12px; padding: 8px 11px;
@@ -3294,15 +3296,58 @@ function renderArtistLidarrResults() {
     return;
   }
 
-  // Albums mode
-  const list = artistLidarrMissingOnly ? artistLidarrAlbums.filter(a => !a.inEchoLibrary && !a.isDownloaded) : artistLidarrAlbums;
-  if (!list.length) {
+  // Albums mode — grouped per release year, newest albums first
+  const filtered = artistLidarrMissingOnly ? artistLidarrAlbums.filter(a => !a.inEchoLibrary && !a.isDownloaded) : artistLidarrAlbums;
+  if (!filtered.length) {
     body.innerHTML = `<div class="mono" style="color:var(--text-3);padding:10px 0;">${artistLidarrMissingOnly && artistLidarrAlbums.length ? "You already have all matching albums in your library!" : "No album matches found in Lidarr."}</div>`;
     return;
   }
+  const albYear = (a) => {
+    if (a.releaseYear && Number(a.releaseYear) > 0) return Number(a.releaseYear);
+    if (a.releaseDate && String(a.releaseDate).length >= 4) {
+      const y = parseInt(String(a.releaseDate).slice(0, 4), 10);
+      if (y > 1800) return y;
+    }
+    return 0;
+  };
+  const typeRank = (a) => {
+    const t = String(a.albumType || "").toLowerCase();
+    if (!t || t === "album") return 0;
+    if (t === "ep") return 1;
+    if (t === "compilation" || t === "live") return 2;
+    return 3;
+  };
+  const list = [...filtered].sort((a, b) => {
+    const ya = albYear(a), yb = albYear(b);
+    if (ya !== yb) return yb - ya;
+    const da = String(a.releaseDate || ""), db = String(b.releaseDate || "");
+    if (da !== db) return db.localeCompare(da);
+    const ta = typeRank(a), tb = typeRank(b);
+    if (ta !== tb) return ta - tb;
+    return String(a.title || "").localeCompare(String(b.title || ""));
+  });
+
+  const yearCounts = new Map();
+  list.forEach(a => {
+    const y = albYear(a);
+    const k = y > 0 ? String(y) : "Unknown Year";
+    yearCounts.set(k, (yearCounts.get(k) || 0) + 1);
+  });
+
   const wrap = document.createElement("div");
   wrap.className = "lidarr-list";
+  let lastYearGroup = null;
   list.forEach(alb => {
+    const y = albYear(alb);
+    const yKey = y > 0 ? String(y) : "Unknown Year";
+    if (yKey !== lastYearGroup) {
+      lastYearGroup = yKey;
+      const cnt = yearCounts.get(yKey) || 0;
+      const hdr = document.createElement("div");
+      hdr.className = "group-header";
+      hdr.innerHTML = `<span class="group-label">${esc(yKey)}</span><div class="group-line"></div><span class="group-count">${cnt} release${cnt === 1 ? "" : "s"}</span>`;
+      wrap.appendChild(hdr);
+    }
     const orderKey = `alb:${alb.foreignAlbumId || (alb.artistName + "::" + alb.title).toLowerCase()}`;
     const ordered = artistLidarrOrderedKeys.has(orderKey);
     const row = document.createElement("div");
