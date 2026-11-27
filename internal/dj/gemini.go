@@ -6,10 +6,12 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"math"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,20 +28,148 @@ import (
 const geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta/models"
 
 type GeminiClient struct {
+	baseURL    string
 	httpClient *http.Client
+	retryBase  time.Duration // base backoff for transient DNS/network/5xx retries
 	mu         sync.RWMutex
 	ttsMode    map[string]string // model -> last working attempt label (avoids repeating 400 fallbacks)
 	noThinkCfg map[string]bool   // model -> true if model rejected thinkingConfig
 }
 
 func NewGeminiClient() *GeminiClient {
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          16,
+		MaxIdleConnsPerHost:   8,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 	return &GeminiClient{
+		baseURL: geminiBaseURL,
 		httpClient: &http.Client{
-			Timeout: 65 * time.Second,
+			Transport: transport,
+			Timeout:   65 * time.Second,
 		},
+		retryBase:  1200 * time.Millisecond,
 		ttsMode:    make(map[string]string),
 		noThinkCfg: make(map[string]bool),
 	}
+}
+
+func (g *GeminiClient) apiBaseURL() string {
+	if strings.TrimSpace(g.baseURL) != "" {
+		return strings.TrimRight(g.baseURL, "/")
+	}
+	return geminiBaseURL
+}
+
+func sanitizeSecretInString(s, secret string) string {
+	if secret != "" {
+		s = strings.ReplaceAll(s, secret, "[REDACTED]")
+		s = strings.ReplaceAll(s, url.QueryEscape(secret), "[REDACTED]")
+	}
+	return s
+}
+
+func isTransientStatus(code int) bool {
+	return code == http.StatusTooManyRequests ||
+		code == http.StatusInternalServerError ||
+		code == http.StatusBadGateway ||
+		code == http.StatusServiceUnavailable ||
+		code == http.StatusGatewayTimeout
+}
+
+func isTransientTransportErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return false
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) {
+		return true
+	}
+	low := strings.ToLower(err.Error())
+	return strings.Contains(low, "timeout") ||
+		strings.Contains(low, "lookup ") ||
+		strings.Contains(low, "temporary") ||
+		strings.Contains(low, "connection reset") ||
+		strings.Contains(low, "eof") ||
+		strings.Contains(low, "broken pipe") ||
+		strings.Contains(low, "tls handshake")
+}
+
+// doWithRetry sends a Gemini API request with the key in the x-goog-api-key header (never in the URL,
+// so Go http.Client errors never leak secrets) and retries transient DNS/network/5xx/429 failures.
+func (g *GeminiClient) doWithRetry(ctx context.Context, method, endpoint, apiKey string, rawReq []byte, maxReadBytes int64) (int, []byte, error) {
+	const maxAttempts = 3
+	baseDelay := g.retryBase
+	if baseDelay <= 0 {
+		baseDelay = 1200 * time.Millisecond
+	}
+
+	var lastStatus int
+	var lastBody []byte
+	var lastErr error
+
+	for attempt := 1; attempt <= maxAttempts; attempt++ {
+		var bodyReader io.Reader
+		if rawReq != nil {
+			bodyReader = bytes.NewReader(rawReq)
+		}
+		req, err := http.NewRequestWithContext(ctx, method, endpoint, bodyReader)
+		if err != nil {
+			return 0, nil, errors.New(sanitizeSecretInString(err.Error(), apiKey))
+		}
+		if rawReq != nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		req.Header.Set("x-goog-api-key", apiKey)
+
+		resp, err := g.httpClient.Do(req)
+		if err != nil {
+			lastErr = errors.New(sanitizeSecretInString(err.Error(), apiKey))
+			if attempt < maxAttempts && ctx.Err() == nil && isTransientTransportErr(err) {
+				delay := time.Duration(attempt) * baseDelay
+				log.Printf("[dj] transient Gemini network error (attempt %d/%d, retrying in %v): %v", attempt, maxAttempts, delay, lastErr)
+				select {
+				case <-ctx.Done():
+					return 0, nil, ctx.Err()
+				case <-time.After(delay):
+				}
+				continue
+			}
+			return 0, nil, lastErr
+		}
+
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, maxReadBytes))
+		_ = resp.Body.Close()
+		lastStatus = resp.StatusCode
+		lastBody = body
+
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return resp.StatusCode, body, nil
+		}
+		if attempt < maxAttempts && ctx.Err() == nil && isTransientStatus(resp.StatusCode) {
+			delay := time.Duration(attempt) * baseDelay
+			log.Printf("[dj] transient Gemini HTTP %d (attempt %d/%d, retrying in %v)", resp.StatusCode, attempt, maxAttempts, delay)
+			select {
+			case <-ctx.Done():
+				return resp.StatusCode, body, ctx.Err()
+			case <-time.After(delay):
+			}
+			continue
+		}
+		return resp.StatusCode, body, nil
+	}
+	return lastStatus, lastBody, lastErr
 }
 
 // GenerateScript calls the configured Gemini LLM model with live Google Search Grounding
@@ -112,7 +242,7 @@ func (g *GeminiClient) callGenerateScript(ctx context.Context, djCfg config.DJCo
 		maxTokens = 2048
 	}
 
-	endpoint := fmt.Sprintf("%s/%s:generateContent?key=%s", geminiBaseURL, url.PathEscape(model), url.QueryEscape(apiKey))
+	endpoint := fmt.Sprintf("%s/%s:generateContent", g.apiBaseURL(), url.PathEscape(model))
 	genCfg := map[string]any{
 		"temperature":     0.78,
 		"maxOutputTokens": maxTokens,
@@ -144,21 +274,12 @@ func (g *GeminiClient) callGenerateScript(ctx context.Context, djCfg config.DJCo
 	if err != nil {
 		return "", false, "", err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(rawReq))
-	if err != nil {
-		return "", false, "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := g.httpClient.Do(req)
+	statusCode, body, err := g.doWithRetry(ctx, http.MethodPost, endpoint, apiKey, rawReq, 2_097_152)
 	if err != nil {
 		return "", false, "", fmt.Errorf("Gemini LLM request failed: %w", err)
 	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2_097_152))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", false, "", fmt.Errorf("Gemini LLM %s error (%d): %s", model, resp.StatusCode, extractGeminiError(body))
+	if statusCode < 200 || statusCode >= 300 {
+		return "", false, "", fmt.Errorf("Gemini LLM %s error (%d): %s", model, statusCode, extractGeminiError(body))
 	}
 
 	var parsed struct {
@@ -338,7 +459,7 @@ func (g *GeminiClient) callTTS(ctx context.Context, djCfg config.DJConfig, style
 		speechCfg["languageCode"] = strings.TrimSpace(languageCode)
 	}
 
-	endpoint := fmt.Sprintf("%s/%s:generateContent?key=%s", geminiBaseURL, url.PathEscape(model), url.QueryEscape(apiKey))
+	endpoint := fmt.Sprintf("%s/%s:generateContent", g.apiBaseURL(), url.PathEscape(model))
 	payload := map[string]any{
 		"contents": []map[string]any{
 			{
@@ -363,21 +484,12 @@ func (g *GeminiClient) callTTS(ctx context.Context, djCfg config.DJConfig, style
 	if err != nil {
 		return nil, "", err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(rawReq))
-	if err != nil {
-		return nil, "", err
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := g.httpClient.Do(req)
+	statusCode, body, err := g.doWithRetry(ctx, http.MethodPost, endpoint, apiKey, rawReq, 25_000_000)
 	if err != nil {
 		return nil, "", fmt.Errorf("Gemini TTS request failed: %w", err)
 	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 25_000_000))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, "", fmt.Errorf("Gemini TTS %s error (%d): %s", model, resp.StatusCode, extractGeminiError(body))
+	if statusCode < 200 || statusCode >= 300 {
+		return nil, "", fmt.Errorf("Gemini TTS %s error (%d): %s", model, statusCode, extractGeminiError(body))
 	}
 
 	var parsed struct {
@@ -850,20 +962,13 @@ func (g *GeminiClient) ListLiveModels(ctx context.Context, apiKey string) (ttsMo
 	if apiKey == "" {
 		return AvailableTTSModels(), AvailableLLMModels(), fmt.Errorf("Gemini API key is required to query live models")
 	}
-	endpoint := fmt.Sprintf("%s?pageSize=200&key=%s", geminiBaseURL, url.QueryEscape(apiKey))
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-	if err != nil {
-		return nil, nil, err
-	}
-	resp, err := g.httpClient.Do(req)
+	endpoint := fmt.Sprintf("%s?pageSize=200", g.apiBaseURL())
+	statusCode, body, err := g.doWithRetry(ctx, http.MethodGet, endpoint, apiKey, nil, 4_194_304)
 	if err != nil {
 		return nil, nil, fmt.Errorf("query Gemini models failed: %w", err)
 	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4_194_304))
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return nil, nil, fmt.Errorf("Gemini models API error (%d): %s", resp.StatusCode, extractGeminiError(body))
+	if statusCode < 200 || statusCode >= 300 {
+		return nil, nil, fmt.Errorf("Gemini models API error (%d): %s", statusCode, extractGeminiError(body))
 	}
 
 	var parsed struct {

@@ -605,7 +605,7 @@ func (w *Worker) applyBatchResults(
 }
 
 func (w *Worker) callGeminiBatch(ctx context.Context, apiKey, model string, batch []workUnit) ([]BackfillItem, error) {
-	endpoint := fmt.Sprintf("%s/%s:generateContent?key=%s", geminiBaseURL, url.PathEscape(model), url.QueryEscape(apiKey))
+	endpoint := fmt.Sprintf("%s/%s:generateContent", geminiBaseURL, url.PathEscape(model))
 
 	reqBytes, _ := json.Marshal(batch)
 	systemPrompt := `You are a precise music metadata archivist performing batch metadata backfill for a personal music library.
@@ -651,10 +651,12 @@ Rules:
 		return nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("x-goog-api-key", apiKey)
 
 	resp, err := w.httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("Gemini backfill request failed: %w", err)
+		clean := strings.ReplaceAll(err.Error(), apiKey, "[REDACTED]")
+		return nil, fmt.Errorf("Gemini backfill request failed: %s", clean)
 	}
 	defer resp.Body.Close()
 

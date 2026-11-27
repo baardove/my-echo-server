@@ -4,10 +4,14 @@ import (
 	"context"
 	"fmt"
 	mathrand "math/rand"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/baardove/my-echo-server/internal/config"
 	"github.com/baardove/my-echo-server/internal/db"
@@ -492,5 +496,58 @@ func TestMoveSlotRecreatesAffectedBridgesAndPreservesInvariants(t *testing.T) {
 		if hasIntro == hasOutro {
 			t.Fatalf("slot %d (%s) violated XOR invariant: hasIntro=%v hasOutro=%v", i, st.Slots[i].Track.ID, hasIntro, hasOutro)
 		}
+	}
+}
+
+func TestGeminiClientUsesHeaderKeyRetriesTransientAndNeverLeaksSecret(t *testing.T) {
+	const fakeSecret = "AIzaSyFAKE-SECRET-NEVER-LEAK-999"
+	var calls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := calls.Add(1)
+		if r.URL.Query().Get("key") != "" {
+			t.Errorf("API key must NEVER be passed in URL query string, got %q", r.URL.RawQuery)
+		}
+		if got := r.Header.Get("x-goog-api-key"); got != fakeSecret {
+			t.Errorf("expected x-goog-api-key header %q, got %q", fakeSecret, got)
+		}
+		if n == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(`{"error":{"message":"temporary upstream overload"}}`))
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"candidates":[{"finishReason":"STOP","content":{"parts":[{"text":"Her kommer Tina Turner etterfulgt av Eagles."}]}}]}`))
+	}))
+	defer srv.Close()
+
+	gc := NewGeminiClient()
+	gc.baseURL = srv.URL
+	gc.retryBase = 10 * time.Millisecond
+
+	djCfg := config.DefaultDJConfig()
+	djCfg.GeminiAPIKey = fakeSecret
+	djCfg.LLMModel = "gemini-3.8-flash"
+
+	script, _, err := gc.GenerateScript(context.Background(), djCfg, "sys", "user")
+	if err != nil {
+		t.Fatalf("expected transient 503 to succeed on retry, got error: %v", err)
+	}
+	if calls.Load() != 2 {
+		t.Fatalf("expected 2 attempts (1 transient failure + 1 retry), got %d", calls.Load())
+	}
+	if !strings.Contains(script, "Tina Turner") {
+		t.Fatalf("unexpected script: %q", script)
+	}
+
+	// Verify persistent transport failure never leaks the API key in returned error string
+	gcFail := NewGeminiClient()
+	gcFail.baseURL = "http://127.0.0.1:1"
+	gcFail.retryBase = 5 * time.Millisecond
+	_, _, err = gcFail.GenerateScript(context.Background(), djCfg, "sys", "user")
+	if err == nil {
+		t.Fatalf("expected transport error against closed port")
+	}
+	if strings.Contains(err.Error(), fakeSecret) || strings.Contains(err.Error(), "key=") {
+		t.Fatalf("error string leaked secret or key query param: %v", err)
 	}
 }
