@@ -2863,7 +2863,7 @@ function applyUserPermissionsUI() {
 
 async function signOutUser() {
   try { await fetch("/api/v2/auth/logout", { method: "POST" }); } catch (e) {}
-  location.href = "/?login=1";
+  location.replace("/?login=1");
 }
 
 // --- Group Header Bucketing for Library ---

@@ -118,6 +118,16 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   30 * 86400,
 	})
+	// Clear any explicit sign-out marker so the freshly authenticated session takes effect.
+	http.SetCookie(w, &http.Cookie{
+		Name:     admin.LoggedOutCookieName,
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   isHTTPS,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "user": claims})
 }
 
@@ -131,6 +141,17 @@ func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
 		Secure:   isHTTPS,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
+	})
+	// Keep the browser signed out on LAN (prevent auto-Admin re-login on Back / visiting "/")
+	// until the user explicitly signs in again.
+	http.SetCookie(w, &http.Cookie{
+		Name:     admin.LoggedOutCookieName,
+		Value:    "1",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   isHTTPS,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   7 * 86400,
 	})
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
 }

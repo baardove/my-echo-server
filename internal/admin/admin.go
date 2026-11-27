@@ -24,7 +24,16 @@ var appIconPNG []byte
 //go:embed webui.html
 var webUIHTML []byte
 
-const SessionCookieName = "echo_session"
+const (
+	SessionCookieName   = "echo_session"
+	LoggedOutCookieName = "echo_logged_out"
+)
+
+// IsExplicitlyLoggedOut reports whether the browser explicitly clicked Sign Out.
+func IsExplicitlyLoggedOut(r *http.Request) bool {
+	c, err := r.Cookie(LoggedOutCookieName)
+	return err == nil && c != nil && c.Value == "1"
+}
 
 // SessionClaims identifies the signed-in browser session and its effective permissions.
 type SessionClaims struct {
@@ -253,8 +262,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !hasCookie {
+		explicitlyLoggedOut := IsExplicitlyLoggedOut(r)
 		if !isLAN {
-			if h.cfg.Remote.RequirePINOnRemote || hasUsers {
+			if h.cfg.Remote.RequirePINOnRemote || hasUsers || explicitlyLoggedOut {
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				w.Header().Set("Cache-Control", "no-store")
 				_, _ = w.Write([]byte(renderRemoteLoginHTML(h.cfg.ServerName, hasUsers)))
@@ -275,7 +285,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				MaxAge:   7 * 86400,
 			})
 		} else {
-			if h.cfg.AuthRequireLoginOnLAN && hasUsers {
+			if (h.cfg.AuthRequireLoginOnLAN && hasUsers) || explicitlyLoggedOut {
 				w.Header().Set("Content-Type", "text/html; charset=utf-8")
 				w.Header().Set("Cache-Control", "no-store")
 				_, _ = w.Write([]byte(renderRemoteLoginHTML(h.cfg.ServerName, hasUsers)))
