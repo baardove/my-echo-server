@@ -171,17 +171,23 @@ func (e *Engine) SetAnalyzer(a TrackAnalyzer) {
 	e.wakeGenerator()
 }
 
+const djLookaheadWorkers = 3
+
 func (e *Engine) StartWorker(ctx context.Context) {
 	e.genOnce.Do(func() {
-		go e.lookaheadLoop(ctx)
+		for i := 0; i < djLookaheadWorkers; i++ {
+			go e.lookaheadLoop(ctx)
+		}
 		go e.analyzeRundownLoop(ctx)
 	})
 }
 
 func (e *Engine) wakeGenerator() {
-	select {
-	case e.genWake <- struct{}{}:
-	default:
+	for i := 0; i < djLookaheadWorkers; i++ {
+		select {
+		case e.genWake <- struct{}{}:
+		default:
+		}
 	}
 	select {
 	case e.analyzeWake <- struct{}{}:
@@ -1771,54 +1777,99 @@ func (e *Engine) pickNextPendingJob() *pendingJob {
 	if len(e.slots) == 0 {
 		return nil
 	}
-	// Pre-generate current slot plus ALL MinQueueAhead upcoming slots (default 3+ ahead!)
-	// so editorial research, LLM scripting, and Gemini TTS synthesis finish well ahead of playback.
+	// Pre-generate at least 5 upcoming slots ahead in parallel so bridges/intros are always
+	// ready well before playback reaches them — even if the listener skips tracks.
 	djCfg := e.effectiveDJConfigLocked()
-	lookahead := djCfg.MinQueueAhead + 1
-	if lookahead < 4 {
-		lookahead = 4
+	lookahead := djCfg.MinQueueAhead + 2
+	if lookahead < 5 {
+		lookahead = 5
 	}
-	endIdx := e.currentIndex + lookahead
+	cur := e.currentIndex
+	if cur < 0 {
+		cur = 0
+	}
+	if cur >= len(e.slots) {
+		return nil
+	}
+	endIdx := cur + lookahead + 1
 	if endIdx > len(e.slots) {
 		endIdx = len(e.slots)
 	}
-	startIdx := e.currentIndex
-	if startIdx < 0 {
-		startIdx = 0
+
+	claimBridge := func(i int) *pendingJob {
+		s := &e.slots[i]
+		if s.Bridge == nil || s.Bridge.Status != StatusPending {
+			return nil
+		}
+		s.Bridge.Status = StatusGenerating
+		var prev *DJTrackInfo
+		if i > 0 {
+			p := e.slots[i-1].Track
+			prev = &p
+		}
+		e.updatedAt = time.Now().UTC()
+		return &pendingJob{
+			sessionID: e.sessionID, slotIdx: i, breakID: s.Bridge.ID, kind: BreakBridge,
+			currTrack: s.Track, prevTrack: prev, fromLidarr: s.FromLidarr,
+		}
+	}
+	claimIntro := func(i int) *pendingJob {
+		s := &e.slots[i]
+		if s.Intro == nil || s.Intro.Status != StatusPending {
+			return nil
+		}
+		s.Intro.Status = StatusGenerating
+		e.updatedAt = time.Now().UTC()
+		return &pendingJob{
+			sessionID: e.sessionID, slotIdx: i, breakID: s.Intro.ID, kind: BreakIntro,
+			currTrack: s.Track, fromLidarr: s.FromLidarr,
+		}
+	}
+	claimOutro := func(i int) *pendingJob {
+		s := &e.slots[i]
+		if s.Outro == nil || s.Outro.Status != StatusPending {
+			return nil
+		}
+		s.Outro.Status = StatusGenerating
+		e.updatedAt = time.Now().UTC()
+		return &pendingJob{
+			sessionID: e.sessionID, slotIdx: i, breakID: s.Outro.ID, kind: BreakOutro,
+			currTrack: s.Track, fromLidarr: s.FromLidarr,
+		}
 	}
 
-	for i := startIdx; i < endIdx; i++ {
-		s := &e.slots[i]
-		// Priority order: Bridge/Intro for slot i first, then Outro for slot i
-		if s.Bridge != nil && s.Bridge.Status == StatusPending {
-			s.Bridge.Status = StatusGenerating
-			var prev *DJTrackInfo
-			if i > 0 {
-				p := e.slots[i-1].Track
-				prev = &p
-			}
-			e.updatedAt = time.Now().UTC()
-			return &pendingJob{
-				sessionID: e.sessionID, slotIdx: i, breakID: s.Bridge.ID, kind: BreakBridge,
-				currTrack: s.Track, prevTrack: prev, fromLidarr: s.FromLidarr,
-			}
+	// Priority 1: Opening intro on slot 0 (before first track is underway) + current slot's OUTRO
+	// (which plays at the end of the currently playing song!).
+	if cur == 0 {
+		if job := claimIntro(0); job != nil {
+			return job
 		}
-		if s.Intro != nil && s.Intro.Status == StatusPending {
-			s.Intro.Status = StatusGenerating
-			e.updatedAt = time.Now().UTC()
-			return &pendingJob{
-				sessionID: e.sessionID, slotIdx: i, breakID: s.Intro.ID, kind: BreakIntro,
-				currTrack: s.Track, fromLidarr: s.FromLidarr,
-			}
+	}
+	if job := claimOutro(cur); job != nil {
+		return job
+	}
+
+	// Priority 2: Upcoming slots cur+1 .. endIdx-1 (the breaks that are ACTUALLY about to play next!).
+	// NEVER waste worker time generating cur's already-passed Bridge/Intro before cur+1 is ready!
+	for i := cur + 1; i < endIdx; i++ {
+		if job := claimBridge(i); job != nil {
+			return job
 		}
-		if s.Outro != nil && s.Outro.Status == StatusPending {
-			s.Outro.Status = StatusGenerating
-			e.updatedAt = time.Now().UTC()
-			return &pendingJob{
-				sessionID: e.sessionID, slotIdx: i, breakID: s.Outro.ID, kind: BreakOutro,
-				currTrack: s.Track, fromLidarr: s.FromLidarr,
-			}
+		if job := claimIntro(i); job != nil {
+			return job
 		}
+		if job := claimOutro(i); job != nil {
+			return job
+		}
+	}
+
+	// Priority 3: Only after all upcoming lookahead slots are ready/generating, backfill current slot's
+	// pre-break if still pending (useful if the listener replays the current slot).
+	if job := claimBridge(cur); job != nil {
+		return job
+	}
+	if job := claimIntro(cur); job != nil {
+		return job
 	}
 	return nil
 }
@@ -1958,7 +2009,9 @@ func (e *Engine) runJob(ctx context.Context, job pendingJob) {
 	isOpening := (job.slotIdx == 1 && job.kind == BreakBridge) || job.slotIdx == 0
 	sysPrompt, userPrompt, factsUsed := e.BuildFactualPrompt(ctx, djCfg, job.kind, job.prevTrack, job.currTrack, isOpening, job.fromLidarr)
 
+	llmStart := time.Now()
 	script, usedSearch, err := e.gemini.GenerateScript(ctx, djCfg, sysPrompt, userPrompt)
+	llmElapsed := time.Since(llmStart)
 	if err != nil {
 		log.Printf("[dj] LLM script error (%s): %v", job.breakID, err)
 		e.finishJob(job, "", "", 0, factsUsed, err)
@@ -1969,14 +2022,16 @@ func (e *Engine) runJob(ctx context.Context, job pendingJob) {
 	}
 
 	outPath := filepath.Join(e.cfg.DJCacheDir(), job.breakID+".m4a")
+	ttsStart := time.Now()
 	dur, err := e.gemini.SynthesizeSpeech(ctx, djCfg, personaTTSStyle(djCfg.Persona, djCfg.Language), script, outPath)
+	ttsElapsed := time.Since(ttsStart)
 	if err != nil {
 		log.Printf("[dj] TTS synth error (%s): %v", job.breakID, err)
 		e.finishJob(job, script, "", 0, factsUsed, err)
 		return
 	}
 
-	log.Printf("[dj] ready %s (%s · %.1fs): %s", job.kind, job.currTrack.Title, dur, script)
+	log.Printf("[dj] ready %s (slot #%d %s · %.1fs) [llm=%.1fs tts=%.1fs]: %s", job.kind, job.slotIdx+1, job.currTrack.Title, dur, llmElapsed.Seconds(), ttsElapsed.Seconds(), script)
 	e.finishJob(job, script, outPath, dur, factsUsed, nil)
 }
 

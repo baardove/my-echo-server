@@ -208,6 +208,47 @@ func TestNorwegianDJPromptsAndTTSDirectivesLockNativeLanguage(t *testing.T) {
 	}
 }
 
+func TestPickNextPendingJobPrioritizesUpcomingOverAlreadyPassedCurrentSlot(t *testing.T) {
+	cfg := &config.Config{
+		ConfigDir: t.TempDir(),
+		DJ:        config.DefaultDJConfig(),
+	}
+	eng := NewEngine(cfg, nil, nil)
+	eng.sessionID = "sess-prio"
+	eng.currentIndex = 4
+	eng.slots = make([]DJSlot, 8)
+	for i := range eng.slots {
+		eng.slots[i] = DJSlot{
+			ID:       fmt.Sprintf("s%d", i),
+			Position: i,
+			Track:    DJTrackInfo{ID: fmt.Sprintf("t%d", i), Title: fmt.Sprintf("Track %d", i)},
+		}
+	}
+	// Slot 4 is ALREADY playing; its Bridge was missed, its Outro plays at the end of slot 4,
+	// and slots 5 & 6 have upcoming Bridge / Intro.
+	eng.slots[4].Bridge = &DJBreak{ID: "b4", Kind: BreakBridge, Status: StatusPending}
+	eng.slots[4].Outro = &DJBreak{ID: "o4", Kind: BreakOutro, Status: StatusPending}
+	eng.slots[5].Bridge = &DJBreak{ID: "b5", Kind: BreakBridge, Status: StatusPending}
+	eng.slots[6].Intro = &DJBreak{ID: "i6", Kind: BreakIntro, Status: StatusPending}
+
+	j1 := eng.pickNextPendingJob()
+	if j1 == nil || j1.breakID != "o4" {
+		t.Fatalf("expected current slot outro o4 first, got %+v", j1)
+	}
+	j2 := eng.pickNextPendingJob()
+	if j2 == nil || j2.breakID != "b5" {
+		t.Fatalf("expected upcoming slot 5 bridge b5 second (ahead of already-passed b4), got %+v", j2)
+	}
+	j3 := eng.pickNextPendingJob()
+	if j3 == nil || j3.breakID != "i6" {
+		t.Fatalf("expected upcoming slot 6 intro i6 third, got %+v", j3)
+	}
+	j4 := eng.pickNextPendingJob()
+	if j4 == nil || j4.breakID != "b4" {
+		t.Fatalf("expected backfill of current slot bridge b4 only after upcoming slots, got %+v", j4)
+	}
+}
+
 func TestProcessBroadcastDJVoiceProducesValidAudio(t *testing.T) {
 	// Generate 0.6s of synthetic 24kHz 16-bit mono PCM sine wave
 	const sr = 24000

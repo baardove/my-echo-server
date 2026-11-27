@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"net/url"
@@ -16,6 +17,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/baardove/my-echo-server/internal/config"
@@ -25,6 +27,9 @@ const geminiBaseURL = "https://generativelanguage.googleapis.com/v1beta/models"
 
 type GeminiClient struct {
 	httpClient *http.Client
+	mu         sync.RWMutex
+	ttsMode    map[string]string // model -> last working attempt label (avoids repeating 400 fallbacks)
+	noThinkCfg map[string]bool   // model -> true if model rejected thinkingConfig
 }
 
 func NewGeminiClient() *GeminiClient {
@@ -32,26 +37,45 @@ func NewGeminiClient() *GeminiClient {
 		httpClient: &http.Client{
 			Timeout: 65 * time.Second,
 		},
+		ttsMode:    make(map[string]string),
+		noThinkCfg: make(map[string]bool),
 	}
 }
 
 // GenerateScript calls the configured Gemini LLM model with live Google Search Grounding
 // to research and craft a specific, factual, engaging spoken DJ script.
-// Automatically retries with a larger token budget if Gemini hits MAX_TOKENS due to thinking + search tokens,
-// and falls back cleanly without search tool if a custom/legacy model does not support google_search.
+// Uses a low thinking budget on thinking models so DJ scripts finish in ~2-4s instead of 30s+,
+// automatically retries if MAX_TOKENS cuts off mid-sentence, and falls back cleanly if a model
+// does not support thinkingConfig or google_search.
 func (g *GeminiClient) GenerateScript(ctx context.Context, djCfg config.DJConfig, systemPrompt, userPrompt string) (string, bool, error) {
-	script, usedSearch, finishReason, err := g.callGenerateScript(ctx, djCfg, systemPrompt, userPrompt, true, 4096)
+	model := strings.TrimSpace(djCfg.LLMModel)
+	if model == "" {
+		model = "gemini-3.8-flash"
+	}
+	g.mu.RLock()
+	useThinkCap := !g.noThinkCfg[strings.ToLower(model)]
+	g.mu.RUnlock()
+
+	script, usedSearch, finishReason, err := g.callGenerateScript(ctx, djCfg, systemPrompt, userPrompt, true, 2048, useThinkCap)
+	if err != nil && useThinkCap &&
+		(strings.Contains(strings.ToLower(err.Error()), "thinking") || strings.Contains(strings.ToLower(err.Error()), "unknown name") || strings.Contains(strings.ToLower(err.Error()), "400")) {
+		g.mu.Lock()
+		g.noThinkCfg[strings.ToLower(model)] = true
+		g.mu.Unlock()
+		useThinkCap = false
+		script, usedSearch, finishReason, err = g.callGenerateScript(ctx, djCfg, systemPrompt, userPrompt, true, 4096, false)
+	}
 	if err != nil {
 		// Graceful fallback without google_search tool in case an older/custom model rejects search grounding
 		if strings.Contains(strings.ToLower(err.Error()), "tool") || strings.Contains(strings.ToLower(err.Error()), "google_search") || strings.Contains(strings.ToLower(err.Error()), "not supported") {
-			s2, _, _, err2 := g.callGenerateScript(ctx, djCfg, systemPrompt, userPrompt, false, 4096)
+			s2, _, _, err2 := g.callGenerateScript(ctx, djCfg, systemPrompt, userPrompt, false, 2048, useThinkCap)
 			return s2, false, err2
 		}
 		return "", false, err
 	}
-	// If thinking + Google Search grounding exhausted maxOutputTokens and cut off mid-sentence, retry with 8192 tokens!
+	// If thinking + Google Search grounding exhausted maxOutputTokens and cut off mid-sentence, retry with larger budget!
 	if strings.EqualFold(finishReason, "MAX_TOKENS") || looksCutOffMidSentence(script) {
-		if s2, used2, _, err2 := g.callGenerateScript(ctx, djCfg, systemPrompt, userPrompt, true, 8192); err2 == nil && s2 != "" {
+		if s2, used2, _, err2 := g.callGenerateScript(ctx, djCfg, systemPrompt, userPrompt, true, 6144, useThinkCap); err2 == nil && s2 != "" {
 			return s2, used2 || usedSearch, nil
 		}
 	}
@@ -75,7 +99,7 @@ func looksCutOffMidSentence(s string) bool {
 	return true
 }
 
-func (g *GeminiClient) callGenerateScript(ctx context.Context, djCfg config.DJConfig, systemPrompt, userPrompt string, enableSearch bool, maxTokens int) (string, bool, string, error) {
+func (g *GeminiClient) callGenerateScript(ctx context.Context, djCfg config.DJConfig, systemPrompt, userPrompt string, enableSearch bool, maxTokens int, lowThinking bool) (string, bool, string, error) {
 	apiKey := strings.TrimSpace(djCfg.GeminiAPIKey)
 	if apiKey == "" {
 		return "", false, "", fmt.Errorf("Gemini API key is not configured (set it in Settings → AI Radio DJ)")
@@ -84,14 +108,19 @@ func (g *GeminiClient) callGenerateScript(ctx context.Context, djCfg config.DJCo
 	if model == "" {
 		model = "gemini-3.8-flash"
 	}
-	if maxTokens < 2048 {
-		maxTokens = 4096
+	if maxTokens < 1024 {
+		maxTokens = 2048
 	}
 
 	endpoint := fmt.Sprintf("%s/%s:generateContent?key=%s", geminiBaseURL, url.PathEscape(model), url.QueryEscape(apiKey))
 	genCfg := map[string]any{
 		"temperature":     0.78,
 		"maxOutputTokens": maxTokens,
+	}
+	if lowThinking {
+		genCfg["thinkingConfig"] = map[string]any{
+			"thinkingBudget": 256,
+		}
 	}
 	payload := map[string]any{
 		"systemInstruction": map[string]any{
@@ -205,12 +234,36 @@ func (g *GeminiClient) SynthesizeSpeech(ctx context.Context, djCfg config.DJConf
 		attempts = append(attempts, ttsAttempt{label: "plain-text", langCode: "", partStyle: "", includeSystem: false})
 	}
 
+	ttsModelKey := strings.ToLower(strings.TrimSpace(djCfg.TTSModel))
+	if ttsModelKey == "" {
+		ttsModelKey = "gemini-3.8-flash-tts"
+	}
+	g.mu.RLock()
+	cachedMode := g.ttsMode[ttsModelKey]
+	g.mu.RUnlock()
+	if cachedMode != "" {
+		for idx, att := range attempts {
+			if att.label == cachedMode && idx > 0 {
+				attempts = append([]ttsAttempt{att}, attempts[idx+1:]...)
+				break
+			}
+		}
+	}
+
 	var rawAudio []byte
 	var mimeType string
 	var err error
 	for i, att := range attempts {
 		rawAudio, mimeType, err = g.callTTS(ctx, djCfg, styleDirective, att.partStyle, att.langCode, scriptText, att.includeSystem)
 		if err == nil {
+			if cachedMode != att.label {
+				g.mu.Lock()
+				g.ttsMode[ttsModelKey] = att.label
+				g.mu.Unlock()
+				if i > 0 {
+					log.Printf("[dj] TTS model %s locked to mode=%s", ttsModelKey, att.label)
+				}
+			}
 			break
 		}
 		// Only fall back on schema / parameter-rejection 400 errors; never retry auth/quota/network failures.
@@ -225,6 +278,7 @@ func (g *GeminiClient) SynthesizeSpeech(ctx context.Context, djCfg config.DJConf
 		if !isParamErr || i == len(attempts)-1 {
 			break
 		}
+		log.Printf("[dj] TTS %s attempt %s rejected (%v); trying fallback", ttsModelKey, att.label, err)
 	}
 	if err != nil {
 		return 0, err
