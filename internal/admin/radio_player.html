@@ -228,31 +228,6 @@
     margin-top: 3px;
   }
 
-  .dj-script-box {
-    background: rgba(255, 179, 71, 0.1);
-    border: 1px solid rgba(255, 179, 71, 0.35);
-    border-radius: 12px;
-    padding: 10px 12px;
-    display: none;
-  }
-  .dj-script-box.visible { display: block; }
-  .dj-script-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 10.5px;
-    font-weight: 800;
-    letter-spacing: 0.6px;
-    text-transform: uppercase;
-    color: var(--amber);
-    margin-bottom: 4px;
-  }
-  .dj-script-text {
-    font-size: 12.5px;
-    line-height: 1.45;
-    color: var(--text);
-  }
-
   .controls {
     display: flex;
     flex-direction: column;
@@ -430,14 +405,6 @@
       <h1 class="track-title" id="trackTitle">__RADIO_STATION_NAME__</h1>
       <div class="track-artist" id="trackArtist">Live AI Radio DJ Stream</div>
       <div class="track-album" id="trackAlbum">Press Play to start continuous broadcast</div>
-    </div>
-
-    <div class="dj-script-box" id="djScriptBox">
-      <div class="dj-script-head">
-        <span id="djScriptBadge">DJ ON MIC</span>
-        <span id="djVoiceTag">AI Host</span>
-      </div>
-      <div class="dj-script-text" id="djScriptText"></div>
     </div>
 
     <div class="controls">
@@ -693,18 +660,6 @@
           });
         } catch (_) {}
       }
-    }
-
-    const scriptBox = document.getElementById("djScriptBox");
-    if (d.djScript && d.djScript.trim()) {
-      scriptBox.classList.add("visible");
-      document.getElementById("djScriptBadge").textContent = d.isSpeaking
-        ? ("DJ ON MIC · " + (d.breakKind || "LIVE").toUpperCase())
-        : "LAST DJ NOTE";
-      document.getElementById("djVoiceTag").textContent = d.voiceName ? ("Host " + d.voiceName) : "AI Radio DJ";
-      document.getElementById("djScriptText").textContent = d.djScript;
-    } else {
-      scriptBox.classList.remove("visible");
     }
 
     const listenersEl = document.getElementById("listenerCount");
