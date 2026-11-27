@@ -17,7 +17,6 @@ import (
 
 	"github.com/baardove/my-echo-server/internal/db"
 	"github.com/baardove/my-echo-server/internal/lidarr"
-	"github.com/google/uuid"
 	"golang.org/x/text/unicode/norm"
 )
 
@@ -710,7 +709,7 @@ func BuildSharedPlaylist(report MatchReport, customName, customDesc string) db.S
 
 	now := time.Now().UTC()
 	return db.SharedPlaylist{
-		ID:                uuid.NewString(),
+		ID:                db.NewPlaylistID(),
 		Name:              name,
 		Description:       desc,
 		TrackIDs:          trackIDs,

@@ -10,7 +10,6 @@ import (
 
 	"github.com/baardove/my-echo-server/internal/db"
 	"github.com/baardove/my-echo-server/internal/spotify"
-	"github.com/google/uuid"
 )
 
 type webPlaylistItemDTO struct {
@@ -107,7 +106,7 @@ func (s *Server) handleWebPlaylistCreate(w http.ResponseWriter, r *http.Request)
 	}
 	now := time.Now().UTC()
 	pl := db.SharedPlaylist{
-		ID:          uuid.NewString(),
+		ID:          db.NewPlaylistID(),
 		Name:        name,
 		Description: strings.TrimSpace(req.Description),
 		TrackIDs:    req.TrackIDs,

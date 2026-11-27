@@ -10,8 +10,28 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	_ "modernc.org/sqlite"
 )
+
+// CanonicalPlaylistID normalizes valid UUID playlist IDs to canonical UPPERCASE
+// (matching Apple/Swift UUID.uuidString) so case-sensitive SQLite primary keys never
+// store duplicate lowercase/uppercase rows for the same playlist across server & Mac sync.
+func CanonicalPlaylistID(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	if u, err := uuid.Parse(trimmed); err == nil {
+		return strings.ToUpper(u.String())
+	}
+	return trimmed
+}
+
+// NewPlaylistID returns a canonical uppercase UUID string for newly created playlists.
+func NewPlaylistID() string {
+	return strings.ToUpper(uuid.NewString())
+}
 
 // TrackRecord is the canonical indexed track stored on My Echo Server and distributed in shards/deltas.
 type TrackRecord struct {
@@ -364,7 +384,137 @@ func (s *Store) migrate() error {
 	} {
 		_, _ = s.sql.Exec(stmt)
 	}
+	if err := s.deduplicatePlaylists(); err != nil {
+		return err
+	}
 	return nil
+}
+
+func playlistRowBeats(
+	aUpdated int64, aDeleted int, aPl SharedPlaylist, aCanon bool,
+	bUpdated int64, bDeleted int, bPl SharedPlaylist, bCanon bool,
+) bool {
+	if aUpdated != bUpdated {
+		return aUpdated > bUpdated
+	}
+	if aDeleted != bDeleted {
+		return aDeleted > bDeleted // deletion tombstone wins timestamp ties
+	}
+	aItems := len(aPl.TrackIDs) + len(aPl.MissingTracks)
+	bItems := len(bPl.TrackIDs) + len(bPl.MissingTracks)
+	if aItems != bItems {
+		return aItems > bItems
+	}
+	if (aPl.SpotifyPlaylistID != "") != (bPl.SpotifyPlaylistID != "") {
+		return aPl.SpotifyPlaylistID != ""
+	}
+	if (aPl.Description != "") != (bPl.Description != "") {
+		return aPl.Description != ""
+	}
+	return aCanon && !bCanon
+}
+
+// deduplicatePlaylists merges any legacy case-variant UUID duplicates in the playlists table
+// (e.g. lowercase Go UUID vs uppercase Swift UUID) into a single canonical UPPERCASE row.
+func (s *Store) deduplicatePlaylists() error {
+	rows, err := s.sql.Query(`SELECT id, updated_at, deleted, json FROM playlists`)
+	if err != nil {
+		return err
+	}
+	type rawRow struct {
+		id        string
+		updatedAt int64
+		deleted   int
+		rawJSON   string
+		pl        SharedPlaylist
+		validJSON bool
+	}
+	var all []rawRow
+	for rows.Next() {
+		var r rawRow
+		if scanErr := rows.Scan(&r.id, &r.updatedAt, &r.deleted, &r.rawJSON); scanErr != nil {
+			_ = rows.Close()
+			return scanErr
+		}
+		if json.Unmarshal([]byte(r.rawJSON), &r.pl) == nil {
+			r.validJSON = true
+		}
+		all = append(all, r)
+	}
+	_ = rows.Close()
+	if len(all) == 0 {
+		return nil
+	}
+
+	groups := make(map[string][]rawRow, len(all))
+	var order []string
+	for _, r := range all {
+		canon := CanonicalPlaylistID(r.id)
+		key := strings.ToUpper(canon)
+		if _, exists := groups[key]; !exists {
+			order = append(order, key)
+		}
+		groups[key] = append(groups[key], r)
+	}
+
+	needsWork := false
+	for _, key := range order {
+		grp := groups[key]
+		canon := CanonicalPlaylistID(grp[0].id)
+		if len(grp) > 1 || grp[0].id != canon || (grp[0].validJSON && grp[0].pl.ID != canon) {
+			needsWork = true
+			break
+		}
+	}
+	if !needsWork {
+		return nil
+	}
+
+	tx, err := s.sql.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	for _, key := range order {
+		grp := groups[key]
+		canon := CanonicalPlaylistID(grp[0].id)
+		if len(grp) == 1 && grp[0].id == canon && (!grp[0].validJSON || grp[0].pl.ID == canon) {
+			continue
+		}
+		winner := grp[0]
+		for _, cand := range grp[1:] {
+			if playlistRowBeats(
+				cand.updatedAt, cand.deleted, cand.pl, cand.id == canon,
+				winner.updatedAt, winner.deleted, winner.pl, winner.id == canon,
+			) {
+				winner = cand
+			}
+		}
+		for _, r := range grp {
+			if _, err = tx.Exec(`DELETE FROM playlists WHERE id = ?`, r.id); err != nil {
+				return err
+			}
+		}
+		rawOut := winner.rawJSON
+		if winner.validJSON {
+			winner.pl.ID = canon
+			if b, mErr := json.Marshal(winner.pl); mErr == nil {
+				rawOut = string(b)
+			}
+		}
+		if _, err = tx.Exec(`
+			INSERT INTO playlists (id, updated_at, deleted, json) VALUES (?, ?, ?, ?)
+			ON CONFLICT(id) DO UPDATE SET updated_at=excluded.updated_at, deleted=excluded.deleted, json=excluded.json
+		`, canon, winner.updatedAt, winner.deleted, rawOut); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 // UpsertLibrary ensures a library row exists.
@@ -744,6 +894,7 @@ func (s *Store) ListPlaylists(includeDeleted bool) ([]SharedPlaylist, error) {
 	}
 	defer rows.Close()
 	var out []SharedPlaylist
+	seenIdx := make(map[string]int)
 	for rows.Next() {
 		var raw string
 		if err := rows.Scan(&raw); err != nil {
@@ -751,6 +902,24 @@ func (s *Store) ListPlaylists(includeDeleted bool) ([]SharedPlaylist, error) {
 		}
 		var p SharedPlaylist
 		if json.Unmarshal([]byte(raw), &p) == nil {
+			p.ID = CanonicalPlaylistID(p.ID)
+			key := strings.ToUpper(p.ID)
+			if idx, exists := seenIdx[key]; exists {
+				prev := out[idx]
+				prevDel := 0
+				if prev.Deleted {
+					prevDel = 1
+				}
+				curDel := 0
+				if p.Deleted {
+					curDel = 1
+				}
+				if playlistRowBeats(p.UpdatedAt.Unix(), curDel, p, true, prev.UpdatedAt.Unix(), prevDel, prev, true) {
+					out[idx] = p
+				}
+				continue
+			}
+			seenIdx[key] = len(out)
 			out = append(out, p)
 		}
 	}
@@ -760,8 +929,12 @@ func (s *Store) ListPlaylists(includeDeleted bool) ([]SharedPlaylist, error) {
 func (s *Store) GetPlaylist(id string) (*SharedPlaylist, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	canon := CanonicalPlaylistID(id)
 	var raw string
-	err := s.sql.QueryRow(`SELECT json FROM playlists WHERE id = ? AND deleted = 0`, id).Scan(&raw)
+	err := s.sql.QueryRow(`SELECT json FROM playlists WHERE id = ? AND deleted = 0`, canon).Scan(&raw)
+	if err == sql.ErrNoRows {
+		err = s.sql.QueryRow(`SELECT json FROM playlists WHERE LOWER(id) = LOWER(?) AND deleted = 0 LIMIT 1`, canon).Scan(&raw)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -769,12 +942,14 @@ func (s *Store) GetPlaylist(id string) (*SharedPlaylist, error) {
 	if err := json.Unmarshal([]byte(raw), &p); err != nil {
 		return nil, err
 	}
+	p.ID = CanonicalPlaylistID(p.ID)
 	return &p, nil
 }
 
 func (s *Store) SavePlaylist(p SharedPlaylist) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	p.ID = CanonicalPlaylistID(p.ID)
 	if p.CreatedAt.IsZero() {
 		p.CreatedAt = time.Now().UTC()
 	}
@@ -789,11 +964,25 @@ func (s *Store) SavePlaylist(p SharedPlaylist) error {
 	if p.Deleted {
 		del = 1
 	}
-	_, err = s.sql.Exec(`
+	tx, err := s.sql.Begin()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+	if _, err = tx.Exec(`DELETE FROM playlists WHERE LOWER(id) = LOWER(?) AND id != ?`, p.ID, p.ID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`
 		INSERT INTO playlists (id, updated_at, deleted, json) VALUES (?, ?, ?, ?)
 		ON CONFLICT(id) DO UPDATE SET updated_at=excluded.updated_at, deleted=excluded.deleted, json=excluded.json
-	`, p.ID, p.UpdatedAt.Unix(), del, string(raw))
-	return err
+	`, p.ID, p.UpdatedAt.Unix(), del, string(raw)); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (s *Store) DeletePlaylist(id string) error {
@@ -819,12 +1008,38 @@ func (s *Store) MergePlaylists(incoming []SharedPlaylist) error {
 		}
 	}()
 	for _, p := range incoming {
+		p.ID = CanonicalPlaylistID(p.ID)
+		if p.ID == "" {
+			continue
+		}
+		var hasExisting bool
 		var existingUpdated int64
-		row := tx.QueryRow(`SELECT updated_at FROM playlists WHERE id = ?`, p.ID)
-		if scanErr := row.Scan(&existingUpdated); scanErr == nil {
+		var existingDeleted bool
+		exRows, qErr := tx.Query(`SELECT updated_at, deleted FROM playlists WHERE LOWER(id) = LOWER(?)`, p.ID)
+		if qErr == nil {
+			for exRows.Next() {
+				var u int64
+				var d int
+				if exRows.Scan(&u, &d) == nil {
+					if !hasExisting || u > existingUpdated || (u == existingUpdated && d == 1) {
+						hasExisting = true
+						existingUpdated = u
+						existingDeleted = d != 0
+					}
+				}
+			}
+			_ = exRows.Close()
+		}
+		if hasExisting {
 			if p.UpdatedAt.Unix() < existingUpdated {
 				continue
 			}
+			if p.UpdatedAt.Unix() == existingUpdated && !p.Deleted && existingDeleted {
+				continue
+			}
+		}
+		if _, err = tx.Exec(`DELETE FROM playlists WHERE LOWER(id) = LOWER(?) AND id != ?`, p.ID, p.ID); err != nil {
+			return err
 		}
 		raw, _ := json.Marshal(p)
 		del := 0
