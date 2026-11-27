@@ -1207,6 +1207,154 @@ func (s *Store) BackfillTrackMetadata(trackKey string, year *int, genre *string)
 	return true, nil
 }
 
+// BackfillTrackArtwork sets ArtworkHash on the given track keys ONLY if they currently lack artwork.
+// Never overwrites embedded or folder artwork. Returns the updated TrackRecord snapshots.
+func (s *Store) BackfillTrackArtwork(trackKeys []string, artworkHash string) ([]TrackRecord, error) {
+	hash := strings.TrimSpace(artworkHash)
+	if hash == "" || len(trackKeys) == 0 {
+		return nil, nil
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.sql.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	var updated []TrackRecord
+	seen := make(map[string]bool, len(trackKeys))
+	for _, tk := range trackKeys {
+		if tk == "" || seen[tk] {
+			continue
+		}
+		seen[tk] = true
+
+		var raw string
+		if scanErr := tx.QueryRow(`SELECT json FROM tracks WHERE track_key = ?`, tk).Scan(&raw); scanErr != nil {
+			continue
+		}
+		var tr TrackRecord
+		if unmarshalErr := json.Unmarshal([]byte(raw), &tr); unmarshalErr != nil {
+			continue
+		}
+		if tr.ArtworkHash != nil && strings.TrimSpace(*tr.ArtworkHash) != "" {
+			continue
+		}
+		h := hash
+		tr.ArtworkHash = &h
+		updatedRaw, mErr := json.Marshal(tr)
+		if mErr != nil {
+			err = mErr
+			return nil, err
+		}
+		if _, err = tx.Exec(`UPDATE tracks SET json = ? WHERE track_key = ?`, string(updatedRaw), tk); err != nil {
+			return nil, err
+		}
+		updated = append(updated, tr)
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, err
+	}
+	return updated, nil
+}
+
+// RecordTrackDeltaUpdates bumps library revisions and appends upsert changelog entries for tracks whose
+// metadata or artwork was enriched out-of-band so Mac/Apple TV delta sync and shards stay up to date.
+func (s *Store) RecordTrackDeltaUpdates(updated []TrackRecord, maxDeltaRevs int) (revisions map[string]int, dirtyShards map[string][]int, err error) {
+	if len(updated) == 0 {
+		return nil, nil, nil
+	}
+	byLib := make(map[string][]TrackRecord)
+	for _, tr := range updated {
+		if tr.LibraryID == "" {
+			continue
+		}
+		byLib[tr.LibraryID] = append(byLib[tr.LibraryID], tr)
+	}
+	if len(byLib) == 0 {
+		return nil, nil, nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	tx, err := s.sql.Begin()
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() {
+		if err != nil {
+			_ = tx.Rollback()
+		}
+	}()
+
+	revisions = make(map[string]int, len(byLib))
+	dirtyShards = make(map[string][]int, len(byLib))
+
+	logStmt, err := tx.Prepare(`
+		INSERT INTO index_changelog (library_id, revision, op, track_key, relative_path, track_json)
+		VALUES (?, ?, 'upsert', ?, ?, ?)
+	`)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer logStmt.Close()
+
+	for libID, list := range byLib {
+		var curRev, minDelta int
+		if scanErr := tx.QueryRow(`SELECT current_revision, min_delta_revision FROM libraries WHERE id = ?`, libID).Scan(&curRev, &minDelta); scanErr != nil {
+			continue
+		}
+		newRev := curRev + 1
+		if minDelta == 0 {
+			minDelta = 1
+		}
+		shardSet := make(map[int]bool)
+		for _, tr := range list {
+			raw, mErr := json.Marshal(tr)
+			if mErr != nil {
+				err = mErr
+				return nil, nil, err
+			}
+			if _, err = logStmt.Exec(libID, newRev, tr.TrackKey, tr.RelativePath, string(raw)); err != nil {
+				return nil, nil, err
+			}
+			shardSet[tr.ShardID] = true
+		}
+
+		if maxDeltaRevs > 0 && newRev-minDelta >= maxDeltaRevs {
+			cutoff := newRev - maxDeltaRevs + 1
+			if cutoff > minDelta {
+				minDelta = cutoff
+				_, _ = tx.Exec(`DELETE FROM index_changelog WHERE library_id = ? AND revision < ?`, libID, minDelta)
+			}
+		}
+
+		if _, err = tx.Exec(`UPDATE libraries SET current_revision = ?, min_delta_revision = ? WHERE id = ?`, newRev, minDelta, libID); err != nil {
+			return nil, nil, err
+		}
+
+		revisions[libID] = newRev
+		shards := make([]int, 0, len(shardSet))
+		for sid := range shardSet {
+			shards = append(shards, sid)
+		}
+		dirtyShards[libID] = shards
+	}
+
+	if err = tx.Commit(); err != nil {
+		return nil, nil, err
+	}
+	return revisions, dirtyShards, nil
+}
+
 func (s *Store) UpsertTrackAnalysis(a TrackAnalysis) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()

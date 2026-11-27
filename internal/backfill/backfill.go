@@ -66,10 +66,11 @@ type workUnit struct {
 }
 
 type Worker struct {
-	cfg        *config.Config
-	store      *db.Store
-	httpClient *http.Client
-	onUpdated  func()
+	cfg          *config.Config
+	store        *db.Store
+	httpClient   *http.Client
+	onUpdated    func()
+	fetchArtwork func(ctx context.Context, tracks []db.TrackRecord) int
 
 	mu         sync.RWMutex
 	status     Status
@@ -92,6 +93,11 @@ func NewWorker(cfg *config.Config, store *db.Store, onUpdated func()) *Worker {
 	}
 	w.loadDoneMap()
 	return w
+}
+
+// SetArtworkFetcher wires an optional cover-art fetcher invoked whenever backfilled tracks lack album artwork.
+func (w *Worker) SetArtworkFetcher(fn func(ctx context.Context, tracks []db.TrackRecord) int) {
+	w.fetchArtwork = fn
 }
 
 func (w *Worker) EffectiveModel() string {
@@ -299,6 +305,23 @@ func (w *Worker) runPass(parentCtx context.Context) {
 		updTracks, updAlbums := w.applyBatchResults(batch, byID, edByAlb, anMap)
 		if updTracks > 0 || updAlbums > 0 {
 			changedAny = true
+		}
+
+		// Also fetch missing album artwork for any tracks in this batch that lack embedded/folder cover art
+		if w.fetchArtwork != nil {
+			var missingArt []db.TrackRecord
+			for _, u := range batch {
+				for _, tr := range u.tracks {
+					if tr.ArtworkHash == nil || strings.TrimSpace(*tr.ArtworkHash) == "" {
+						missingArt = append(missingArt, tr)
+					}
+				}
+			}
+			if len(missingArt) > 0 {
+				if artUpdated := w.fetchArtwork(runCtx, missingArt); artUpdated > 0 {
+					changedAny = true
+				}
+			}
 		}
 
 		nowUnix := time.Now().UTC().Unix()

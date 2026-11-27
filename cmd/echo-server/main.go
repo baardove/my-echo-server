@@ -89,8 +89,54 @@ func main() {
 		}
 	}
 
+	// Flush out-of-band track artwork/metadata updates into delta changelogs, compressed shards, .myecho & Party catalog
+	onTrackArtworkUpdated := func(updated []db.TrackRecord) {
+		if len(updated) == 0 {
+			return
+		}
+		revs, dirtyByLib, err := store.RecordTrackDeltaUpdates(updated, cfg.MaxDeltaRevs)
+		if err != nil {
+			log.Printf("record track artwork delta error: %v", err)
+		} else {
+			host := cfg.EffectiveAdvertiseHost()
+			for libID, dirtyShards := range dirtyByLib {
+				newRev := revs[libID]
+				if len(dirtyShards) > 0 {
+					if err := snapBuilder.BuildShards(libID, dirtyShards, newRev); err != nil {
+						log.Printf("[snapshot] artwork shard rebuild error for %s: %v", libID, err)
+					}
+				}
+				if cfg.MirrorToShare {
+					for _, lib := range cfg.Libraries {
+						if lib.ID != libID {
+							continue
+						}
+						if libMeta, mErr := store.GetLibrary(lib.ID); mErr == nil {
+							snapBuilder.MirrorToShare(lib.Path, snapshot.ShareBeacon{
+								ServerName:  cfg.ServerName,
+								ServerKind:  "echo-server",
+								LibraryID:   lib.ID,
+								LibraryName: lib.Name,
+								LANURL:      fmt.Sprintf("http://%s:%d", host, cfg.APIPort),
+								PartyURL:    fmt.Sprintf("http://%s:%d", host, cfg.PartyHTTPPort),
+								APIPort:     cfg.APIPort,
+								PartyPort:   cfg.PartyHTTPPort,
+								UpdatedAt:   time.Now().UTC(),
+							}, libMeta, dirtyShards)
+						}
+					}
+				}
+			}
+		}
+		partyEngine.ReloadCatalog()
+	}
+
 	edFetcher := editorial.NewFetcher(store, rebuildAndMirrorEditorial)
+	edFetcher.SetArtworkCache(artCache, onTrackArtworkUpdated)
 	backfillWorker := backfill.NewWorker(cfg, store, rebuildAndMirrorEditorial)
+	backfillWorker.SetArtworkFetcher(func(ctx context.Context, tracks []db.TrackRecord) int {
+		return len(edFetcher.EnsureMissingArtworkForTracks(ctx, tracks))
+	})
 	lidarrMgr := lidarr.NewManager(cfg, idx, edFetcher)
 	spotifyImporter := spotify.NewImporter(store, lidarrMgr)
 	analyzer := analysis.NewAnalyzer(cfg, store)

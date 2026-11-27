@@ -259,7 +259,12 @@ func (idx *Indexer) ScanLibrary(ctx context.Context, lib config.LibraryConfig, s
 				if ctx.Err() != nil {
 					return
 				}
-				tr := idx.buildTrackRecord(ctx, lib, df.fullPath, df.relPath, df.format, df.ext, df.size, df.modTime, &dirArtMu, dirArtHash)
+				var existingArtHash *string
+				if prev, existed := existingByRel[df.relPath]; existed && prev.ArtworkHash != nil && strings.TrimSpace(*prev.ArtworkHash) != "" {
+					h := *prev.ArtworkHash
+					existingArtHash = &h
+				}
+				tr := idx.buildTrackRecord(ctx, lib, df.fullPath, df.relPath, df.format, df.ext, df.size, df.modTime, &dirArtMu, dirArtHash, existingArtHash)
 				n := int(scanned.Add(1))
 				if n%20 == 0 || n == totalFound {
 					idx.setStatus(ScanStatus{
@@ -388,6 +393,7 @@ func (idx *Indexer) buildTrackRecord(
 	modTime time.Time,
 	dirArtMu *sync.Mutex,
 	dirArtHash map[string]string,
+	existingArtHash *string,
 ) db.TrackRecord {
 	meta := ParseAudioFile(ctx, fullPath, format)
 
@@ -411,6 +417,10 @@ func (idx *Indexer) buildTrackRecord(
 		}
 		if cachedHash != "" {
 			h := cachedHash
+			artHash = &h
+		} else if existingArtHash != nil && strings.TrimSpace(*existingArtHash) != "" {
+			// Preserve previously fetched online album art when file has neither embedded nor folder art
+			h := *existingArtHash
 			artHash = &h
 		}
 	}
