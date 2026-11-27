@@ -854,6 +854,106 @@
     word-break: break-word; line-height: 1.35;
   }
   .meta-v.mono-v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; }
+
+  /* Extensive About Page */
+  .about-stack { display: flex; flex-direction: column; gap: 16px; padding-bottom: 12px; }
+  .about-hero {
+    background:
+      radial-gradient(680px 260px at 0% 0%, rgba(20, 241, 149, 0.14), transparent 65%),
+      radial-gradient(560px 240px at 100% 0%, rgba(0, 229, 255, 0.12), transparent 65%),
+      var(--surface);
+    border: 1px solid var(--border-strong); border-radius: 8px; padding: 20px 22px;
+    display: flex; flex-direction: column; gap: 16px;
+  }
+  .about-hero-top { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .about-hero-logo {
+    width: 60px; height: 60px; border-radius: 10px;
+    border: 1px solid rgba(20, 241, 149, 0.45);
+    box-shadow: 0 8px 24px rgba(20, 241, 149, 0.16);
+    flex-shrink: 0;
+  }
+  .about-kicker {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px;
+    font-weight: 900; letter-spacing: 1.4px; text-transform: uppercase; color: var(--cyan);
+    margin-bottom: 4px;
+  }
+  .about-title { font-size: 26px; font-weight: 900; letter-spacing: 0.2px; line-height: 1.15; }
+  .about-title span { color: var(--mint); }
+  .about-lead { color: var(--text-2); font-size: 13.5px; line-height: 1.55; max-width: 880px; margin-top: 6px; }
+  .about-repo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 12px; }
+  .about-repo-card {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 13px 15px; border-radius: 7px; text-decoration: none; color: var(--text);
+    background: var(--surface-2); border: 1px solid var(--border-strong); transition: 0.16s;
+  }
+  .about-repo-card:hover {
+    border-color: var(--mint); transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.4);
+  }
+  .about-repo-card.cyan:hover { border-color: var(--cyan); }
+  .about-repo-name {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px;
+    font-weight: 900; color: var(--mint); display: flex; align-items: center; gap: 7px;
+  }
+  .about-repo-card.cyan .about-repo-name { color: var(--cyan); }
+  .about-repo-desc { font-size: 12px; color: var(--text-2); margin-top: 3px; line-height: 1.4; }
+  .about-flow {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;
+  }
+  .about-flow-node {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 7px;
+    padding: 11px 13px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .about-flow-step {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10px;
+    font-weight: 900; letter-spacing: 0.9px; text-transform: uppercase;
+  }
+  .about-flow-title { font-size: 13.5px; font-weight: 800; color: var(--text); }
+  .about-flow-sub { font-size: 11.8px; color: var(--text-2); line-height: 1.4; }
+  .about-apps { display: flex; flex-direction: column; gap: 14px; }
+  .about-app-card {
+    background: var(--surface); border: 1px solid var(--border-strong); border-radius: 8px;
+    padding: 18px 20px; display: flex; flex-direction: column; gap: 13px;
+    position: relative; overflow: hidden;
+  }
+  .about-app-card.accent-mint { border-left: 3px solid var(--mint); }
+  .about-app-card.accent-cyan { border-left: 3px solid var(--cyan); }
+  .about-app-card.accent-magenta { border-left: 3px solid var(--magenta); }
+  .about-app-card.accent-amber { border-left: 3px solid var(--amber); }
+  .about-app-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .about-app-ident { display: flex; align-items: center; gap: 12px; min-width: 0; }
+  .about-app-icon {
+    width: 42px; height: 42px; border-radius: 8px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface-2); border: 1px solid var(--border-strong);
+  }
+  .about-app-name { font-size: 18px; font-weight: 900; line-height: 1.2; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .about-app-role { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+  .about-app-summary { font-size: 13px; color: var(--text); line-height: 1.55; }
+  .about-feats {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 9px 14px;
+  }
+  .about-feat {
+    background: rgba(0, 0, 0, 0.22); border: 1px solid var(--border); border-radius: 6px;
+    padding: 10px 12px; font-size: 12.2px; color: var(--text-2); line-height: 1.45;
+  }
+  .about-feat strong { color: var(--text); font-weight: 800; }
+  .about-tags { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .about-tag {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; font-weight: 700;
+    padding: 3px 8px; border-radius: 4px; background: var(--surface-2);
+    border: 1px solid var(--border); color: var(--text-2);
+  }
+  .about-footer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .about-link-btn {
+    display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+    padding: 6px 11px; border-radius: 5px; font-size: 11.5px; font-weight: 800;
+    background: var(--surface-2); color: var(--text); border: 1px solid var(--border-strong);
+    transition: 0.14s; white-space: nowrap;
+  }
+  .about-link-btn:hover { border-color: var(--mint); color: var(--mint); }
 </style>
 </head>
 <body>
@@ -878,7 +978,7 @@
           <span class="dot dim" id="partyNavDot"></span> Party Mode
         </button>
         <div class="header-menu-wrap">
-          <button type="button" class="nav-tab header-menu-btn" id="headerMenuBtn" onclick="toggleHeaderMenu(event)" title="Menu (Server &amp; Indexing, Settings, Theme)" aria-label="Open menu" aria-haspopup="true" aria-expanded="false">
+          <button type="button" class="nav-tab header-menu-btn" id="headerMenuBtn" onclick="toggleHeaderMenu(event)" title="Menu (Playlists, Server &amp; Indexing, Settings, Theme, About)" aria-label="Open menu" aria-haspopup="true" aria-expanded="false">
             <svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
           </button>
           <div class="header-menu-panel hidden" id="headerMenuDropdown" onclick="event.stopPropagation()">
@@ -907,6 +1007,11 @@
             </div>
             <div class="header-menu-label">Theme</div>
             <div id="headerMenuThemes"></div>
+            <div class="header-menu-sep"></div>
+            <button type="button" class="header-menu-item" data-tab="about" onclick="closeHeaderMenu();switchTab('about')">
+              <svg class="ico" style="color:var(--cyan);" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+              <span>About My Echo</span>
+            </button>
           </div>
         </div>
       </nav>
@@ -1674,6 +1779,253 @@
         <button class="btn btn-mint" onclick="saveServerSettings()">Save All Settings</button>
       </div>
     </section>
+
+    <!-- TAB 6: ABOUT MY ECHO ECOSYSTEM -->
+    <section id="tab-about" class="hidden">
+      <div class="about-stack">
+        <!-- Hero + Both GitHub Repositories -->
+        <div class="about-hero">
+          <div class="about-hero-top">
+            <img class="about-hero-logo" src="/icon.png" alt="My Echo Logo" />
+            <div style="min-width:0;flex:1;">
+              <div class="about-kicker">OPEN-SOURCE SELF-HOSTED HI-FI MUSIC ECOSYSTEM</div>
+              <div class="about-title">MY ECHO <span>SERVER</span> &amp; NATIVE APPS</div>
+              <div class="about-lead">
+                <strong>My Echo</strong> is a self-hosted Hi-Fi music, podcast, AI Radio DJ, Party Jukebox, and portable DAP sync ecosystem spanning your <strong>NAS / Unraid server</strong>, <strong>macOS studio</strong>, <strong>iPhone &amp; iPad</strong>, and <strong>Apple TV</strong>. Own your lossless library with zero subscriptions — start with any single app or pair all four together seamlessly.
+              </div>
+            </div>
+          </div>
+
+          <div class="about-repo-grid">
+            <a class="about-repo-card" href="https://github.com/baardove/my-echo-server" target="_blank" rel="noopener noreferrer">
+              <div style="min-width:0;">
+                <div class="about-repo-name">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                  <span>github.com/baardove/my-echo-server</span>
+                </div>
+                <div class="about-repo-desc">Go + Docker / Unraid companion server · Dark-Neon Web App · AI Radio DJ · Party Mode · DLNA Casting · Delta Index</div>
+              </div>
+              <span class="badge mint">SERVER REPO ↗</span>
+            </a>
+
+            <a class="about-repo-card cyan" href="https://github.com/baardove/my-echo" target="_blank" rel="noopener noreferrer">
+              <div style="min-width:0;">
+                <div class="about-repo-name">
+                  <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+                  <span>github.com/baardove/my-echo</span>
+                </div>
+                <div class="about-repo-desc">Native Swift 6 / SwiftUI apps · macOS Studio &amp; FiiO/DAP Sync · Universal iPhone &amp; iPad Player · Apple TV (MyEchoTV)</div>
+              </div>
+              <span class="badge" style="color:var(--cyan);border-color:rgba(0,229,255,0.45);background:rgba(0,229,255,0.12);">APPLE APPS REPO ↗</span>
+            </a>
+          </div>
+        </div>
+
+        <!-- How the 4 Apps Fit Together -->
+        <div class="card">
+          <div class="card-title" style="color:var(--cyan);">HOW THE MY ECHO ECOSYSTEM WORKS TOGETHER</div>
+          <div class="about-flow">
+            <div class="about-flow-node">
+              <div class="about-flow-step" style="color:var(--mint);">01 · ALWAYS-ON CORE</div>
+              <div class="about-flow-title">My Echo Server</div>
+              <div class="about-flow-sub">Indexes local NAS disks into compressed SQLite delta shards, streams to browsers &amp; DLNA speakers, hosts AI Radio DJ &amp; 24/7 Party Mode.</div>
+            </div>
+            <div class="about-flow-node">
+              <div class="about-flow-step" style="color:var(--cyan);">02 · DESKTOP STUDIO</div>
+              <div class="about-flow-title">My Echo for macOS</div>
+              <div class="about-flow-sub">Syncs with Server in milliseconds, manages playlists, podcasts &amp; Lidarr, plays Hi-Fi locally, and syncs USB/SD DAPs &amp; Wi-Fi iOS devices.</div>
+            </div>
+            <div class="about-flow-node">
+              <div class="about-flow-step" style="color:var(--magenta);">03 · MOBILE &amp; OFFLINE</div>
+              <div class="about-flow-title">My Echo for iPhone &amp; iPad</div>
+              <div class="about-flow-sub">Pulls lossless music, playlists &amp; podcasts over Wi-Fi for offline Hi-Fi playback, streams via Navidrome/Tailscale, and queues new picks on the go.</div>
+            </div>
+            <div class="about-flow-node">
+              <div class="about-flow-step" style="color:var(--amber);">04 · LIVING ROOM</div>
+              <div class="about-flow-title">My Echo for Apple TV</div>
+              <div class="about-flow-sub">Streams lossless audio &amp; artwork directly from My Echo Server (or Mac) with a 10-foot UI and big-screen Party Mode QR dashboard.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- App Cards (Server First) -->
+        <div class="about-apps">
+          <!-- 1. MY ECHO SERVER -->
+          <article class="about-app-card accent-mint">
+            <div class="about-app-head">
+              <div class="about-app-ident">
+                <div class="about-app-icon" style="color:var(--mint);border-color:rgba(20,241,149,0.45);">
+                  <svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="8" rx="2"/><rect x="2" y="13" width="20" height="8" rx="2"/><line x1="6" y1="7" x2="6.01" y2="7"/><line x1="6" y1="17" x2="6.01" y2="17"/></svg>
+                </div>
+                <div>
+                  <div class="about-app-name">
+                    My Echo Server
+                    <span class="badge mint">THIS APP · RUNNING HERE</span>
+                  </div>
+                  <div class="about-app-role">Self-Hosted Go + Docker / Unraid Music Server, Web Player, AI Radio DJ &amp; Companion Hub</div>
+                </div>
+              </div>
+              <a class="about-link-btn" href="https://github.com/baardove/my-echo-server" target="_blank" rel="noopener noreferrer">baardove/my-echo-server ↗</a>
+            </div>
+            <div class="about-app-summary">
+              A lightweight, single-binary Go + Docker server built for <strong>Unraid</strong>, NAS boxes, and Linux homelabs. It works completely standalone in any desktop or mobile browser and on LAN DLNA speakers/TVs, while also acting as the high-speed always-on indexing and sync backend for My Echo on macOS and Apple TV.
+            </div>
+            <div class="about-feats">
+              <div class="about-feat"><strong>Zero-Overhead Local NAS Indexing:</strong> Scans <code>/music</code> directly off local storage into SQLite WAL + 16 gzip-compressed NDJSON shards and incremental delta changelogs so Mac &amp; Apple TV sync in milliseconds.</div>
+              <div class="about-feat"><strong>Standalone Dark-Neon Web Player:</strong> Streams lossless FLAC, ALAC, WAV, DSD, MP3, M4A, OGG, OPUS, APE &amp; AIFF with HTTP 206 byte-range seeking, 320k browser fallback, dual-deck crossfade, and 5 live themes.</div>
+              <div class="about-feat"><strong>AI Radio DJ (Google Gemini):</strong> Curates personalized radio shows from your own library with fact-grounded banter, Gemini TTS voices, multi-language personas, drag-and-drop live rundown, and BPM/loudness (-14 dBFS) normalization.</div>
+              <div class="about-feat"><strong>24/7 Party Mode Jukebox:</strong> Zero-install guest web app (<code>:53333</code>) with QR code, live play schedule, party chat, listen-along streaming, and HTTPS mobile DJ voice intros (<code>:53334</code>) with broadcast EQ &amp; ducking.</div>
+              <div class="about-feat"><strong>Spotify Import &amp; Lidarr Auto-Order:</strong> Import public Spotify playlists, retain missing tracks in place, order missing albums automatically through Lidarr, and resolve them automatically when Lidarr webhooks fire.</div>
+              <div class="about-feat"><strong>DLNA Casting &amp; Remote Access:</strong> Native UPnP/DLNA MediaServer + one-click casting to Sonos, Denon/HEOS, WiiM, AVRs &amp; smart TVs (0% idle CPU), plus Cloudflare Tunnel &amp; UPnP/NAT-PMP behind multi-user &amp; PIN auth.</div>
+            </div>
+            <div class="about-tags">
+              <span class="about-tag">Go 1.24</span>
+              <span class="about-tag">Docker &amp; Unraid</span>
+              <span class="about-tag">SQLite WAL + Gzip Shards</span>
+              <span class="about-tag">Gemini AI DJ + TTS</span>
+              <span class="about-tag">DLNA / UPnP</span>
+              <span class="about-tag">Cloudflare Tunnel</span>
+              <span class="about-tag">Lidarr &amp; Spotify</span>
+            </div>
+          </article>
+
+          <!-- 2. MY ECHO FOR MACOS -->
+          <article class="about-app-card accent-cyan">
+            <div class="about-app-head">
+              <div class="about-app-ident">
+                <div class="about-app-icon" style="color:var(--cyan);border-color:rgba(0,229,255,0.45);">
+                  <svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                </div>
+                <div>
+                  <div class="about-app-name">
+                    My Echo for macOS
+                    <span class="badge" style="color:var(--cyan);border-color:rgba(0,229,255,0.45);background:rgba(0,229,255,0.12);">MACOS 14+ STUDIO</span>
+                  </div>
+                  <div class="about-app-role">Native Swift 6 / SwiftUI Audiophile Player, Library Manager &amp; Multi-Device DAP Sync Studio</div>
+                </div>
+              </div>
+              <a class="about-link-btn" href="https://github.com/baardove/my-echo" target="_blank" rel="noopener noreferrer">baardove/my-echo ↗</a>
+            </div>
+            <div class="about-app-summary">
+              The flagship desktop studio for audiophiles, portable Digital Audio Player (DAP) owners, and self-hosted collectors. Scales smoothly from a classic offline iTunes-style MP3/SD card sync station all the way up to a NAS-backed multi-device hub paired natively with My Echo Server.
+            </div>
+            <div class="about-feats">
+              <div class="about-feat"><strong>Pure-Swift Hi-Fi Metadata Engine:</strong> Zero native third-party dependencies — parses FLAC, MP3, M4A/ALAC, WAV, OGG, APE, DSD (.dsf/.dff), AIFF, OPUS &amp; WMA with bit-depth/sample-rate badges and <code>.lrc</code> lyrics.</div>
+              <div class="about-feat"><strong>FiiO / Snowsky &amp; DAP Sync Studio:</strong> Preserves strict <code>ARTIST/ALBUM/TRACK</code> folders, optimizes cover art on the fly (sRGB Baseline JPEG + ID3v2.3) without touching originals, exports <code>.m3u</code>/<code>.m3u8</code>, tracks 8,191-file hardware caps, and purges macOS <code>._*</code> junk on Clean &amp; Eject.</div>
+              <div class="about-feat"><strong>Echo Server Delta Sync &amp; Two-Way State:</strong> Pairs with My Echo Server to fetch compressed library deltas in milliseconds instead of walking SMB over Wi-Fi, with bidirectional playlists, Spotify imports, and 1–5 star ratings.</div>
+              <div class="about-feat"><strong>Built-In Player &amp; Winamp Mini Player:</strong> CoreAudio output device hot-switching, equal-power crossfade, call/mic auto-pause &amp; auto-resume, macOS media keys, plus the floating resizable <code>EchoAmp Mini</code> with live 16-band spectrum analyzer.</div>
+              <div class="about-feat"><strong>Multi-Destination &amp; Wi-Fi iOS Sync:</strong> Manage FiiO Echo, Nano, Disc, SD cards, iPhone &amp; iPad side by side — each remembers its own independent selection of artists, albums, tracks, playlists, and podcast feeds.</div>
+              <div class="about-feat"><strong>Podcasts, Lidarr &amp; Party Mode Host:</strong> Search Apple Podcasts &amp; gPodder, import RSS/OPML with per-show <code>Keep Latest N</code> rotation, order albums in Lidarr, and host local LAN Party Mode right from your Mac.</div>
+            </div>
+            <div class="about-tags">
+              <span class="about-tag">Swift 6 &amp; SwiftUI</span>
+              <span class="about-tag">CoreAudio</span>
+              <span class="about-tag">FiiO / Snowsky DAP</span>
+              <span class="about-tag">Winamp Mini Player</span>
+              <span class="about-tag">Bonjour Wi-Fi Sync</span>
+              <span class="about-tag">5 Live Themes</span>
+            </div>
+          </article>
+
+          <!-- 3. MY ECHO FOR IPHONE & IPAD -->
+          <article class="about-app-card accent-magenta">
+            <div class="about-app-head">
+              <div class="about-app-ident">
+                <div class="about-app-icon" style="color:var(--magenta);border-color:rgba(255,46,151,0.45);">
+                  <svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                </div>
+                <div>
+                  <div class="about-app-name">
+                    My Echo for iPhone &amp; iPad
+                    <span class="badge" style="color:var(--magenta);border-color:rgba(255,46,151,0.45);background:rgba(255,46,151,0.12);">UNIVERSAL IOS / IPADOS</span>
+                  </div>
+                  <div class="about-app-role">Native Offline Hi-Fi Player, Wireless Mac Sync Companion &amp; Navidrome On-the-Go Client</div>
+                </div>
+              </div>
+              <a class="about-link-btn" href="https://github.com/baardove/my-echo" target="_blank" rel="noopener noreferrer">baardove/my-echo (iOS/) ↗</a>
+            </div>
+            <div class="about-app-summary">
+              A Universal SwiftUI companion app for <strong>iPhone and iPad</strong> built for flights, commutes, and lossless listening anywhere. Pair once with My Echo on Mac over Wi-Fi for automatic offline sync, or connect to your NAS over Home LAN / Tailscale to stream and save tracks on the move.
+            </div>
+            <div class="about-feats">
+              <div class="about-feat"><strong>Zero-Cable Bonjour Wi-Fi Sync:</strong> Pairs automatically with My Echo on Mac using a 6-digit PIN to sync your chosen lossless FLAC, ALAC &amp; MP3 tracks, playlists, and podcast episodes straight to local device storage.</div>
+              <div class="about-feat"><strong>True Offline Hi-Fi Playback:</strong> Full-featured mobile player with scrubbable timeline, elapsed/remaining clocks, equal-power crossfade, lock-screen &amp; Control Center controls, call interruption handling, and editorial album lightbox.</div>
+              <div class="about-feat"><strong>Navidrome Streaming &amp; Save Offline:</strong> Connect to your NAS Navidrome server with 1-tap Home LAN ↔ Tailscale URL switching to browse artists, albums &amp; playlists, stream audio, and save favorites offline.</div>
+              <div class="about-feat"><strong>Remote Library Picks &amp; Lidarr Orders:</strong> Search your entire Mac library from your phone to toggle single tracks or full albums into your sync queue, or order missing albums into NAS Lidarr relayed securely through Mac.</div>
+              <div class="about-feat"><strong>Independent Podcasts with Two-Way Sync:</strong> Flip the Podcasts Offline / Online switch to search Apple Podcasts &amp; gPodder on the go, refresh RSS feeds without duplicating Mac-synced episodes, and sync new shows back to Mac.</div>
+            </div>
+            <div class="about-tags">
+              <span class="about-tag">iOS &amp; iPadOS</span>
+              <span class="about-tag">Offline FLAC / ALAC</span>
+              <span class="about-tag">Bonjour Wi-Fi Auto-Sync</span>
+              <span class="about-tag">Navidrome + Tailscale</span>
+              <span class="about-tag">Remote Lidarr</span>
+            </div>
+          </article>
+
+          <!-- 4. MY ECHO FOR APPLE TV -->
+          <article class="about-app-card accent-amber">
+            <div class="about-app-head">
+              <div class="about-app-ident">
+                <div class="about-app-icon" style="color:var(--amber);border-color:rgba(255,148,46,0.45);">
+                  <svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="14" rx="2"/><line x1="7" y1="21" x2="17" y2="21"/></svg>
+                </div>
+                <div>
+                  <div class="about-app-name">
+                    My Echo for Apple TV (MyEchoTV)
+                    <span class="badge amber">TVOS LIVING ROOM</span>
+                  </div>
+                  <div class="about-app-role">Native 10-Foot Living-Room Hi-Fi Player, Server Streamer &amp; Big-Screen Party Mode Display</div>
+                </div>
+              </div>
+              <a class="about-link-btn" href="https://github.com/baardove/my-echo" target="_blank" rel="noopener noreferrer">baardove/my-echo (tvOS/) ↗</a>
+            </div>
+            <div class="about-app-summary">
+              Brings your entire self-hosted music library and Party Mode onto the big screen with a native SwiftUI tvOS interface designed for the Siri Remote and living-room sound systems.
+            </div>
+            <div class="about-feats">
+              <div class="about-feat"><strong>Direct My Echo Server Streaming:</strong> Pair directly with My Echo Server on Unraid/Docker to browse and stream your full lossless library, artwork, editorial liner notes, and playlists 24/7 — even when your Mac is asleep or powered off.</div>
+              <div class="about-feat"><strong>Mac Catalog &amp; Remote Control:</strong> Also pairs over LAN with My Echo on Mac using a dedicated 6-digit Apple TV PIN to stream from Mac or remotely control Mac playback (play/pause, skip, seek, and volume).</div>
+              <div class="about-feat"><strong>Big-Screen Party Mode Dashboard:</strong> Turns your TV into the centerpiece of the party with bold Now Playing cover art, live upcoming queue &amp; play schedule, guest activity, and a scannable QR code for song requests &amp; DJ voice intros.</div>
+              <div class="about-feat"><strong>Navidrome &amp; Podcasts on TV:</strong> Switch cleanly between My Echo Server, Mac, and Navidrome libraries, and listen to your subscribed podcast feeds right from the couch.</div>
+            </div>
+            <div class="about-tags">
+              <span class="about-tag">tvOS / SwiftUI</span>
+              <span class="about-tag">Direct Echo Server</span>
+              <span class="about-tag">Big-Screen Party Mode</span>
+              <span class="about-tag">Mac Remote Control</span>
+              <span class="about-tag">Navidrome &amp; Podcasts</span>
+            </div>
+          </article>
+        </div>
+
+        <!-- Open Source & Quick Reference Footer -->
+        <div class="card">
+          <div class="card-title" style="color:var(--mint);">OPEN SOURCE &amp; QUICK LINKS</div>
+          <div class="about-footer-grid">
+            <div class="about-flow-node">
+              <div class="about-flow-step" style="color:var(--mint);">MY ECHO SERVER</div>
+              <div class="about-flow-sub">Docker image <code>ghcr.io/baardove/my-echo-server:latest</code> · Unraid XML template · Ports <code>:48721</code> (Web/API/DLNA), <code>:53333</code> (Party HTTP), <code>:53334</code> (Voice Intro HTTPS).</div>
+              <div style="margin-top:6px;">
+                <a class="about-link-btn" href="https://github.com/baardove/my-echo-server" target="_blank" rel="noopener noreferrer">Open Server Repository ↗</a>
+              </div>
+            </div>
+            <div class="about-flow-node">
+              <div class="about-flow-step" style="color:var(--cyan);">MY ECHO (MAC / IOS / TVOS)</div>
+              <div class="about-flow-sub">Prebuilt macOS Apple Silicon releases, <code>HOW-TO-INSTALL.md</code> sideloading guide, and full Swift 6 source for macOS, iPhone/iPad, and Apple TV.</div>
+              <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap;">
+                <a class="about-link-btn" href="https://github.com/baardove/my-echo" target="_blank" rel="noopener noreferrer">Open Apple Apps Repo ↗</a>
+                <a class="about-link-btn" href="https://github.com/baardove/my-echo/releases" target="_blank" rel="noopener noreferrer">Releases ↗</a>
+              </div>
+            </div>
+            <div class="about-flow-node">
+              <div class="about-flow-step" style="color:var(--amber);">LICENSE &amp; PHILOSOPHY</div>
+              <div class="about-flow-sub">Released under the <strong>MIT License</strong>. Built for people who love owning their music files, lossless formats, real hardware players, and local-first software with zero cloud lock-in.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- RIGHT NOW PLAYING SIDEBAR -->
@@ -1791,6 +2143,7 @@ const HEADERS = PIN ? { "X-Echo-Token": PIN } : {};
 const SESSION = __ECHO_SESSION_JSON__;
 const IS_ADMIN = !SESSION || SESSION.role === "admin";
 function hasPerm(perm) {
+  if (perm === "about") return true;
   if (IS_ADMIN) return true;
   if (perm === "library") return !!SESSION.allowLibrary;
   if (perm === "dj") return !!SESSION.allowDJ;
@@ -2505,6 +2858,7 @@ function buildBaseRouteHash() {
   if (currentTab === "party") return "#party";
   if (currentTab === "server") return "#server";
   if (currentTab === "settings") return "#settings/" + encodeURIComponent(currentSettingsSubTab || "dj");
+  if (currentTab === "about") return "#about";
 
   if (activeArtistPageKey) {
     const base = "#artist/" + encodeURIComponent(activeArtistPageKey);
@@ -2730,6 +3084,10 @@ async function applyRouteFromHash(rawHash = location.hash, opts = {}) {
       switchTab("settings", false, { skipURL: true, subTab: sub || undefined });
       return true;
     }
+    if (root === "about") {
+      switchTab("about", false, { skipURL: true });
+      return true;
+    }
     if (root === "library") {
       if (activeArtistPageKey) closeArtistPage(false);
       const view = ["albums", "tracks", "artists", "playlists"].includes(rest.toLowerCase()) ? rest.toLowerCase() : "albums";
@@ -2787,8 +3145,8 @@ function switchTab(tab, keepArtistPage = false, opts = {}) {
     closeArtistPage(false);
   }
   document.querySelectorAll(".nav-tab[data-tab], .header-menu-item[data-tab]").forEach(b => b.classList.toggle("active", b.dataset.tab === tab));
-  document.getElementById("headerMenuBtn")?.classList.toggle("active", tab === "server" || tab === "settings");
-  ["library", "dj", "party", "server", "settings"].forEach(t => document.getElementById("tab-" + t).classList.toggle("hidden", t !== tab));
+  document.getElementById("headerMenuBtn")?.classList.toggle("active", tab === "server" || tab === "settings" || tab === "about");
+  ["library", "dj", "party", "server", "settings", "about"].forEach(t => document.getElementById("tab-" + t).classList.toggle("hidden", t !== tab));
   if (tab === "dj" && hasPerm("dj")) { ensureDJOptions().then(refreshDJState); }
   if (tab === "party" && hasPerm("party")) refreshParty();
   if (tab === "server" && IS_ADMIN) refreshServerStatus();
