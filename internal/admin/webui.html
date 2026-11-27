@@ -394,6 +394,23 @@
   .icon-btn.accent-danger:hover:not(:disabled) { color: var(--coral); }
   .icon-btn.row-remove-btn { color: var(--text-2); }
   .icon-btn.row-remove-btn:hover:not(:disabled) { color: var(--coral); }
+  .icon-btn.row-play-btn {
+    width: 32px; height: 32px; padding: 0; border-radius: 6px;
+    background: rgba(20, 241, 149, 0.16);
+    border: 1.5px solid rgba(20, 241, 149, 0.55);
+    color: var(--mint); flex-shrink: 0;
+    transition: background 0.12s, border-color 0.12s, color 0.12s, transform 0.1s, box-shadow 0.12s;
+  }
+  .icon-btn.row-play-btn .ico { width: 16px; height: 16px; }
+  .icon-btn.row-play-btn:hover:not(:disabled) {
+    background: var(--mint); border-color: var(--mint); color: #04150d;
+    transform: scale(1.05); box-shadow: 0 0 12px rgba(20, 241, 149, 0.38);
+  }
+  .track-row.playing .icon-btn.row-play-btn,
+  .dj-music-row.playing .icon-btn.row-play-btn {
+    background: var(--mint); border-color: var(--mint); color: #04150d;
+    box-shadow: 0 0 12px rgba(20, 241, 149, 0.35);
+  }
   .icon-btn.active { color: var(--cyan); }
   .icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
@@ -6446,7 +6463,7 @@ function renderDJSlots() {
       <div style="display:flex;align-items:center;gap:6px;">
         ${tr.bpm ? `<span class="badge amber">${Math.round(tr.bpm)} BPM</span>` : ""}
         <button class="icon-btn" onclick="event.stopPropagation();openTrackPropertiesModal('${esc(tr.id).replace(/'/g, "\\'")}')" title="Track properties &amp; metadata">${ico("info")}</button>
-        <button class="icon-btn accent-mint" onclick="playDJSlot(${idx}, false)" title="${isPlayed ? "Replay this track" : "Start broadcast on this track"}">${ico("play", "ico-lg")}</button>
+        <button class="icon-btn accent-mint row-play-btn" onclick="playDJSlot(${idx}, false)" title="${isPlayed ? "Replay this track" : "Start broadcast on this track"}">${ico("play", "ico-lg")}</button>
         <button class="icon-btn accent-danger" onclick="removeDJSlot(${idx})" title="Remove track">${ico("close")}</button>
       </div>
     `;
