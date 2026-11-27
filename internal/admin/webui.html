@@ -543,6 +543,302 @@
   }
   .missing-banner.searching { border-color: rgba(0, 229, 255, 0.45); }
 
+  /* Mac-Style Compact Track Table (Albums, Playlists, Artist, Tracks, Queue) */
+  .mac-track-table {
+    display: flex; flex-direction: column; gap: 1px;
+    --mac-other-w: 28px;
+    --mac-grid: 30px 36px minmax(170px, 1fr) 44px 58px 76px 84px 176px 44px 26px var(--mac-other-w);
+  }
+  .mac-track-table.has-remove { --mac-other-w: 56px; }
+  .mac-track-header {
+    display: grid; grid-template-columns: var(--mac-grid);
+    align-items: center; gap: 10px;
+    padding: 6px 10px; margin-bottom: 3px;
+    border-bottom: 1px solid var(--border);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.7px; text-transform: uppercase;
+    color: var(--text-3); user-select: none;
+  }
+  .mac-track-header .mac-h-idx { text-align: center; }
+  .mac-track-header .mac-h-title { grid-column: 2 / 4; text-align: left; }
+  .mac-track-header .mac-h-plays { text-align: right; }
+  .mac-track-header .mac-h-pop { text-align: right; }
+  .mac-track-header .mac-h-rating { text-align: center; }
+  .mac-track-header .mac-h-format { text-align: center; }
+  .mac-track-header .mac-h-actions { text-align: center; }
+  .mac-track-header .mac-h-time { display: flex; justify-content: flex-end; align-items: center; }
+
+  .mac-track-row {
+    display: grid; grid-template-columns: var(--mac-grid);
+    align-items: center; gap: 10px;
+    padding: 6px 10px; border-radius: 6px;
+    background: transparent; border: 1px solid transparent;
+    transition: background 0.1s, border-color 0.1s, opacity 0.12s;
+    position: relative;
+  }
+  .mac-track-row:hover {
+    background: rgba(255, 255, 255, 0.045);
+  }
+  [data-theme="daylight-studio"] .mac-track-row:hover {
+    background: rgba(15, 23, 42, 0.045);
+  }
+  .mac-track-row.playing {
+    background: rgba(20, 241, 149, 0.09);
+  }
+  [data-theme="daylight-studio"] .mac-track-row.playing {
+    background: rgba(5, 150, 105, 0.10);
+  }
+  .mac-track-row.playing:hover {
+    background: rgba(20, 241, 149, 0.14);
+  }
+  .mac-track-row.playing .mac-title-text {
+    color: var(--mint); font-weight: 700;
+  }
+
+  /* # column -> Play/Pause button on hover */
+  .mac-col-idx {
+    width: 30px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; user-select: none; cursor: pointer;
+  }
+  .mac-idx-num {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; color: var(--text-3);
+  }
+  .mac-idx-playing-ico {
+    display: none; color: var(--mint); align-items: center; justify-content: center;
+  }
+  .mac-idx-playing-ico .ico { width: 12px; height: 12px; }
+  .mac-idx-play-btn {
+    display: none; border: none; background: transparent; color: var(--mint);
+    width: 26px; height: 26px; border-radius: 5px; padding: 0;
+    align-items: center; justify-content: center; cursor: pointer;
+    transition: background 0.12s, transform 0.1s;
+  }
+  .mac-idx-play-btn .ico { width: 13px; height: 13px; }
+  .mac-idx-play-btn:hover {
+    background: rgba(20, 241, 149, 0.18); transform: scale(1.08);
+  }
+  .mac-track-row.playing .mac-idx-num { display: none; }
+  .mac-track-row.playing .mac-idx-playing-ico { display: inline-flex; }
+  .mac-track-row:not(.missing-row):hover .mac-idx-num,
+  .mac-track-row:not(.missing-row):hover .mac-idx-playing-ico { display: none; }
+  .mac-track-row:not(.missing-row):hover .mac-idx-play-btn { display: inline-flex; }
+
+  /* 36x36 album art with animated equalizer overlay when playing */
+  .mac-col-art {
+    position: relative; width: 36px; height: 36px; flex-shrink: 0;
+    border-radius: 4px; overflow: hidden; cursor: pointer;
+  }
+  .mac-col-art .mac-thumb {
+    width: 36px; height: 36px; border-radius: 4px; object-fit: cover;
+    background: var(--surface-2); display: block;
+  }
+  .mac-col-art .thumb-eq-overlay {
+    border-radius: 4px; background: rgba(5, 10, 14, 0.72);
+  }
+  .mac-track-row.playing .mac-col-art .thumb-eq-overlay { display: flex; }
+
+  /* Title + Artist */
+  .mac-col-title { min-width: 0; display: flex; flex-direction: column; gap: 1.5px; }
+  .mac-title-line {
+    display: flex; align-items: center; gap: 6px; min-width: 0;
+  }
+  .mac-title-text {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25;
+  }
+  .mac-artist-line {
+    font-size: 11.5px; color: var(--text-2);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.25;
+  }
+
+  /* Plays */
+  .mac-col-plays {
+    display: flex; align-items: center; justify-content: flex-end; gap: 3px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px;
+    white-space: nowrap;
+  }
+  .mac-plays-zero { color: var(--text-3); opacity: 0.55; }
+  .mac-plays-val { color: var(--text); font-weight: 700; }
+  .mac-plays-ico { color: var(--mint); opacity: 0.85; display: inline-flex; }
+  .mac-plays-ico .ico { width: 8px; height: 8px; }
+
+  /* Online Popularity 5-bar retro LED meter */
+  .mac-col-pop {
+    display: flex; align-items: center; justify-content: flex-end; gap: 5px;
+    white-space: nowrap;
+  }
+  .pop-bars {
+    display: inline-flex; align-items: flex-end; gap: 1.5px; height: 13px;
+  }
+  .pop-bars i {
+    display: block; width: 2.5px; border-radius: 1px;
+    background: rgba(255, 255, 255, 0.14);
+  }
+  [data-theme="daylight-studio"] .pop-bars i { background: rgba(15, 23, 42, 0.14); }
+  .pop-bars i:nth-child(1) { height: 4px; }
+  .pop-bars i:nth-child(2) { height: 6px; }
+  .pop-bars i:nth-child(3) { height: 8px; }
+  .pop-bars i:nth-child(4) { height: 10px; }
+  .pop-bars i:nth-child(5) { height: 12px; }
+  .pop-score {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px; font-weight: 800; min-width: 19px; text-align: right;
+  }
+  .pop-tier-high .pop-bars i.lit { background: var(--mint); }
+  .pop-tier-high .pop-score { color: var(--mint); }
+  .pop-tier-mid .pop-bars i.lit { background: #FFD147; }
+  .pop-tier-mid .pop-score { color: #FFD147; }
+  [data-theme="daylight-studio"] .pop-tier-mid .pop-bars i.lit { background: #D97706; }
+  [data-theme="daylight-studio"] .pop-tier-mid .pop-score { color: #D97706; }
+  .pop-tier-low .pop-bars i.lit { background: var(--amber); }
+  .pop-tier-low .pop-score { color: var(--amber); }
+  .pop-tier-dim .pop-bars i.lit { background: var(--text-2); }
+  .pop-tier-dim .pop-score { color: var(--text-2); }
+  .pop-none .pop-score { color: var(--text-3); opacity: 0.5; font-weight: 500; }
+
+  /* Rating */
+  .mac-col-rating {
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mac-col-rating .star-btn { font-size: 11.5px; padding: 0 0.5px; }
+
+  /* Stacked 2-line Format Pill */
+  .mac-col-format {
+    display: flex; align-items: center; justify-content: center;
+  }
+  .fmt-pill {
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    min-width: 74px; padding: 2.5px 6px; border-radius: 4px; line-height: 1.15;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
+    white-space: nowrap;
+  }
+  .fmt-pill .fmt-codec { font-size: 9.5px; font-weight: 900; letter-spacing: 0.3px; }
+  .fmt-pill .fmt-detail { font-size: 7.5px; font-weight: 700; opacity: 0.85; }
+  .fmt-pill.hires {
+    color: #FFD147; background: rgba(255, 209, 71, 0.12); border-color: rgba(255, 209, 71, 0.42);
+  }
+  [data-theme="daylight-studio"] .fmt-pill.hires {
+    color: #B45309; background: rgba(217, 119, 6, 0.12); border-color: rgba(217, 119, 6, 0.42);
+  }
+  .fmt-pill.lossless {
+    color: var(--cyan); background: rgba(0, 229, 255, 0.10); border-color: rgba(0, 229, 255, 0.36);
+  }
+  [data-theme="daylight-studio"] .fmt-pill.lossless {
+    color: #0284C7; background: rgba(2, 132, 199, 0.10); border-color: rgba(2, 132, 199, 0.36);
+  }
+
+  /* Action Buttons (+Q, +PL, +DJ, +Party) */
+  .mac-col-actions {
+    display: flex; align-items: center; justify-content: center; gap: 3px;
+  }
+  .mac-act-btn {
+    border: 1px solid var(--border); background: var(--surface-2); color: var(--text-2);
+    border-radius: 4px; height: 23px; padding: 0 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10px; font-weight: 800; line-height: 1;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    white-space: nowrap; transition: background 0.12s, border-color 0.12s, color 0.12s;
+  }
+  .mac-act-btn:hover { background: var(--surface-3); color: var(--text); border-color: var(--border-strong); }
+  .mac-act-btn.act-dj {
+    color: var(--amber); border-color: rgba(255, 148, 46, 0.42); background: rgba(255, 148, 46, 0.12);
+  }
+  .mac-act-btn.act-dj:hover { background: var(--amber); color: #1b0c00; border-color: var(--amber); }
+  .mac-act-btn.act-party {
+    color: var(--magenta); border-color: rgba(255, 46, 151, 0.42); background: rgba(255, 46, 151, 0.12);
+  }
+  .mac-act-btn.act-party:hover { background: var(--magenta); color: #fff; border-color: var(--magenta); }
+
+  /* Length, Info, Other */
+  .mac-col-time {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11.5px; color: var(--text-3); text-align: right; white-space: nowrap;
+  }
+  .mac-col-info {
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mac-col-other {
+    display: flex; align-items: center; justify-content: flex-end; gap: 2px;
+  }
+  .mac-col-info .icon-btn,
+  .mac-col-other .icon-btn {
+    width: 24px; height: 24px; padding: 0; opacity: 0.72;
+  }
+  .mac-track-row:hover .mac-col-info .icon-btn,
+  .mac-track-row:hover .mac-col-other .icon-btn { opacity: 1; }
+
+  /* Missing playlist row inside Mac table */
+  .mac-track-row.missing-row {
+    opacity: 0.62; cursor: default;
+  }
+  .mac-track-row.missing-row:hover { opacity: 0.85; }
+  .mac-track-row.missing-row .mac-thumb { filter: saturate(0.25) brightness(0.6); }
+  .mac-track-row.missing-row .mac-title-text { color: var(--text-2); font-weight: 500; }
+  .mac-track-row.missing-row .mac-col-idx { cursor: default; }
+  .mac-missing-thumb {
+    width: 36px; height: 36px; border-radius: 4px;
+    background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.07);
+    display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 13px;
+  }
+
+  /* Playlist Drag-and-Drop Reorder (No Handle Needed) */
+  .mac-track-row.pl-draggable { cursor: grab; }
+  .mac-track-row.pl-draggable:active { cursor: grabbing; }
+  .mac-track-row.pl-dragging {
+    opacity: 0.34; background: var(--surface-2); border-style: dashed; border-color: var(--cyan);
+  }
+  .mac-track-row.pl-drag-over-top {
+    box-shadow: inset 0 2.5px 0 0 var(--mint);
+    background: rgba(20, 241, 149, 0.06);
+  }
+  .mac-track-row.pl-drag-over-bottom {
+    box-shadow: inset 0 -2.5px 0 0 var(--mint);
+    background: rgba(20, 241, 149, 0.06);
+  }
+
+  /* Floating Track Overflow Menu (•••) */
+  .track-ctx-menu {
+    position: fixed; z-index: 120; min-width: 224px; max-width: 290px;
+    max-height: min(440px, calc(100vh - 24px)); overflow-y: auto;
+    background: var(--surface-2); border: 1px solid var(--border-strong); border-radius: 7px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.72); padding: 5px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  [data-theme="daylight-studio"] .track-ctx-menu {
+    background: #FFFFFF; box-shadow: 0 14px 34px rgba(15, 23, 42, 0.18);
+  }
+  .track-ctx-item {
+    width: 100%; border: none; background: transparent; color: var(--text);
+    padding: 7px 9px; border-radius: 4px; font-size: 12px; font-weight: 600;
+    text-align: left; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .track-ctx-item:hover { background: rgba(255, 255, 255, 0.08); }
+  [data-theme="daylight-studio"] .track-ctx-item:hover { background: rgba(15, 23, 42, 0.06); }
+  .track-ctx-item.danger { color: var(--coral); }
+  .track-ctx-item.active-pl { color: var(--cyan); }
+  .track-ctx-sep { height: 1px; background: var(--border); margin: 4px 3px; }
+  .track-ctx-lbl {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9.5px; font-weight: 800;
+    letter-spacing: 0.7px; text-transform: uppercase; color: var(--text-3); padding: 4px 9px 2px;
+  }
+
+  @media (max-width: 1080px) {
+    .mac-track-table { --mac-grid: 30px 36px minmax(150px, 1fr) 76px 84px 176px 44px 26px var(--mac-other-w); }
+    .mac-col-plays, .mac-col-pop, .mac-h-plays, .mac-h-pop { display: none !important; }
+  }
+  @media (max-width: 820px) {
+    .mac-track-table { --mac-grid: 28px 36px minmax(120px, 1fr) auto 42px 26px var(--mac-other-w); gap: 8px; }
+    .mac-col-rating, .mac-col-format, .mac-h-rating, .mac-h-format { display: none !important; }
+  }
+  @media (max-width: 600px) {
+    .mac-track-table { --mac-grid: 26px 36px minmax(100px, 1fr) auto 26px var(--mac-other-w); }
+    .mac-col-time, .mac-h-time { display: none !important; }
+  }
+
   /* Compact Studio DJ Playlist (Separate Music & DJ Voice Track Rows) */
   .dj-music-row {
     background: var(--surface); border: 1.5px solid var(--border-strong); border-radius: 6px;
@@ -2170,6 +2466,8 @@ const ICONS = {
   search: `<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>`,
   disc: `<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/>`,
   music: `<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>`,
+  clock: `<circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>`,
+  more: `<circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/>`,
   grip: `<circle cx="9" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="6" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="12" r="1.3" fill="currentColor" stroke="none"/><circle cx="9" cy="18" r="1.3" fill="currentColor" stroke="none"/><circle cx="15" cy="18" r="1.3" fill="currentColor" stroke="none"/>`
 };
 function ico(name, extraCls = "") {
@@ -2603,6 +2901,10 @@ function pickRatingDD(prefix, val) {
 document.addEventListener("click", () => {
   document.querySelectorAll(".rating-dd-menu").forEach(m => m.classList.add("hidden"));
   closeHeaderMenu();
+  closeTrackContextMenu();
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeTrackContextMenu();
 });
 
 function setFilterRatingInputs(minRating, avoidMaxRating) {
@@ -3376,9 +3678,10 @@ async function loadLibrary(append) {
           : (libSort === "title" ? computeLetterGroup(tr.title) : computeArrivalGroup(tr.arrivalUnix)));
         if (gKey !== lastLibGroupKey || !lastLibGroupGrid) {
           lastLibGroupKey = gKey;
-          lastLibGroupGrid = appendGroupSection(container, gKey, "track-list");
+          lastLibGroupGrid = appendGroupSection(container, gKey, "mac-track-table");
+          lastLibGroupGrid.appendChild(renderTrackTableHeader());
         }
-        lastLibGroupGrid.appendChild(renderTrackRow(tr));
+        lastLibGroupGrid.appendChild(renderTrackRow(tr, null, { index: baseIndex + i + 1, showAlbum: true }));
       });
       libOffset += batch.length;
       libHasMore = !!data.hasMore;
@@ -3497,14 +3800,341 @@ async function loadLibrary(append) {
   }
 }
 
+function fmtCompactCount(n) {
+  const num = Number(n || 0);
+  if (num >= 1_000_000) return (num / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
+  if (num >= 1_000) return (num / 1_000).toFixed(1).replace(/\.0$/, "") + "k";
+  return String(num);
+}
+
+function renderPlaysHTML(tr) {
+  const plays = Number(tr.userPlayCount || 0);
+  const tip = plays > 0
+    ? `Your plays: ${plays.toLocaleString()}`
+    : "Your plays: 0";
+  if (plays > 0) {
+    return `<div class="mac-col-plays" title="${esc(tip)}"><span class="mac-plays-ico">${ico("play")}</span><span class="mac-plays-val">${esc(fmtCompactCount(plays))}</span></div>`;
+  }
+  return `<div class="mac-col-plays" title="${esc(tip)}"><span class="mac-plays-zero">0</span></div>`;
+}
+
+function renderPopMeterHTML(tr) {
+  const raw = tr.onlinePopularity;
+  const hasPop = typeof raw === "number" && raw > 0;
+  const score = hasPop ? Math.max(0, Math.min(100, Math.round(raw))) : 0;
+  let barsLit = 0;
+  if (hasPop) {
+    if (score >= 80) barsLit = 5;
+    else if (score >= 60) barsLit = 4;
+    else if (score >= 40) barsLit = 3;
+    else if (score >= 20) barsLit = 2;
+    else if (score >= 1) barsLit = 1;
+  }
+  let tier = "pop-none";
+  if (hasPop) {
+    if (score >= 75) tier = "pop-tier-high";
+    else if (score >= 50) tier = "pop-tier-mid";
+    else if (score >= 25) tier = "pop-tier-low";
+    else tier = "pop-tier-dim";
+  }
+  const tipParts = hasPop ? [`Online popularity: ${score}/100`] : ["Online popularity not fetched yet"];
+  if (hasPop && tr.onlinePlayCount > 0) {
+    if (tr.onlineSource && String(tr.onlineSource).includes("lastfm")) {
+      tipParts.push(`Last.fm plays: ${fmtCompactCount(tr.onlinePlayCount)}`);
+      if (tr.onlineListeners > 0) tipParts.push(`${fmtCompactCount(tr.onlineListeners)} listeners`);
+    } else {
+      tipParts.push(`Rank: ${fmtCompactCount(tr.onlinePlayCount)}`);
+    }
+  }
+  let bars = "";
+  for (let lvl = 1; lvl <= 5; lvl++) {
+    bars += `<i${lvl <= barsLit ? ' class="lit"' : ""}></i>`;
+  }
+  return `<div class="mac-col-pop ${tier}" title="${esc(tipParts.join(" · "))}"><span class="pop-bars">${bars}</span><span class="pop-score">${hasPop ? score : "—"}</span></div>`;
+}
+
+function renderFormatPillHTML(tr) {
+  const codec = String(tr.format || "").toUpperCase();
+  const detail = String(tr.formatDetail || "");
+  if (!codec && !detail) return `<div class="mac-col-format"></div>`;
+  const losslessSet = new Set(["FLAC", "ALAC", "WAV", "AIFF", "AIF", "DSF", "DFF", "APE", "WV", "PCM"]);
+  let cls = "";
+  if (tr.isHiRes) cls = " hires";
+  else if (losslessSet.has(codec)) cls = " lossless";
+  const tip = [codec, detail].filter(Boolean).join(" ");
+  return `
+    <div class="mac-col-format">
+      <span class="fmt-pill${cls}" title="Audio format: ${esc(tip)}">
+        <span class="fmt-codec">${esc(codec || "AUDIO")}</span>
+        ${detail ? `<span class="fmt-detail">${esc(detail)}</span>` : ""}
+      </span>
+    </div>
+  `;
+}
+
+function renderTrackTableHeader() {
+  const hdr = document.createElement("div");
+  hdr.className = "mac-track-header";
+  hdr.innerHTML = `
+    <div class="mac-h-idx">#</div>
+    <div class="mac-h-title">TITLE</div>
+    <div class="mac-h-plays">PLAYS</div>
+    <div class="mac-h-pop">POP</div>
+    <div class="mac-h-rating">RATING</div>
+    <div class="mac-h-format">FORMAT</div>
+    <div class="mac-h-actions">ADD TO</div>
+    <div class="mac-h-time" title="Duration">${ico("clock", "ico-sm")}</div>
+    <div></div>
+    <div></div>
+  `;
+  return hdr;
+}
+
+let activeTrackCtxMenu = null;
+function closeTrackContextMenu() {
+  if (activeTrackCtxMenu) {
+    activeTrackCtxMenu.remove();
+    activeTrackCtxMenu = null;
+  }
+}
+
+function enqueueTrackNext(tr) {
+  if (!tr || !tr.id) return;
+  if (playbackMode === "dj" && djState?.slots?.length && IS_ADMIN) {
+    const curDJIdx = typeof djState.currentIndex === "number" ? djState.currentIndex : 0;
+    fetch("/api/v2/dj/queue/add", {
+      method: "POST",
+      headers: { ...HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify({ trackId: tr.id, insertAfterCurrent: true, afterIndex: curDJIdx })
+    }).then(r => r.json().then(d => ({ ok: r.ok, d }))).then(({ ok, d }) => {
+      if (!ok) { showToast(d.error || "Could not queue next", true); return; }
+      djState = d.state || d;
+      updateQueueCount();
+      renderDJHeader();
+      renderDJSlots();
+      renderSidebarQueue();
+      refreshQueueModalPreservingScroll();
+      showToast(`Up next in DJ queue: "${tr.title}"`);
+    }).catch(() => {});
+    return;
+  }
+  const insertIdx = playIndex >= 0 ? Math.min(playIndex + 1, playQueue.length) : 0;
+  playQueue.splice(insertIdx, 0, tr);
+  updateQueueCount();
+  renderSidebarQueue();
+  refreshQueueModalPreservingScroll();
+  savePersistentState(true);
+  showToast(`Up next: "${tr.title}"`);
+}
+
+async function toggleTrackInSpecificPlaylist(playlistId, tr) {
+  if (!playlistId || !tr || !tr.id) return;
+  const pl = playlistsCache.find(p => p.id === playlistId);
+  try {
+    const res = await fetch("/api/v2/web/playlists/update", {
+      method: "POST",
+      headers: { ...HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify({ id: playlistId, action: "toggleTrack", trackId: tr.id })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Update failed");
+    if (data.playlist) upsertPlaylistInCache(data.playlist);
+    const name = data.playlist?.name || pl?.name || "playlist";
+    if (data.added) showToast(`Added "${tr.title}" to "${name}"`);
+    else if (data.removed) showToast(`Removed "${tr.title}" from "${name}"`);
+    if (activePlaylistModalId === playlistId && data.playlist) {
+      openPlaylistModal(data.playlist, { skipURL: true, preserveScroll: true });
+    }
+    if (libSubView === "playlists" && currentTab === "library") loadLibrary(false);
+  } catch (e) {
+    showToast("Playlist update failed: " + (e?.message || e), true);
+  }
+}
+
+function openTrackContextMenu(anchorBtn, tr, opts = {}, triggerPlayFn = null) {
+  closeTrackContextMenu();
+  const menu = document.createElement("div");
+  menu.className = "track-ctx-menu";
+  menu.onclick = e => e.stopPropagation();
+
+  const addItem = (label, onClick, extraCls = "", rightText = "") => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "track-ctx-item" + (extraCls ? " " + extraCls : "");
+    b.innerHTML = `<span style="overflow:hidden;text-overflow:ellipsis;">${esc(label)}</span>${rightText ? `<span class="mono" style="font-size:10px;opacity:0.75;flex-shrink:0;">${esc(rightText)}</span>` : ""}`;
+    b.onclick = e => {
+      e.stopPropagation();
+      closeTrackContextMenu();
+      onClick();
+    };
+    menu.appendChild(b);
+  };
+  const addSep = () => {
+    const s = document.createElement("div");
+    s.className = "track-ctx-sep";
+    menu.appendChild(s);
+  };
+  const addLbl = txt => {
+    const d = document.createElement("div");
+    d.className = "track-ctx-lbl";
+    d.textContent = txt;
+    menu.appendChild(d);
+  };
+
+  addItem("Play Now", () => { if (triggerPlayFn) triggerPlayFn(); else playTrackPreservingQueue(tr); });
+  addItem("Play Next", () => enqueueTrackNext(tr));
+  addItem("Add to Queue", () => enqueueTrack(tr));
+  addItem("Add to AI Radio DJ", () => addTrackToDJ(tr.id, tr.title));
+  addItem("Request in Party Mode", () => addTrackToParty(tr.id, tr.title));
+
+  addSep();
+  addLbl("Playlists");
+  if (playlistsCache.length) {
+    playlistsCache.slice(0, 10).forEach(pl => {
+      const inPl = (pl.tracks || []).some(t => t.id === tr.id);
+      addItem(`${inPl ? "✓ " : "+ "}${pl.name}`, () => toggleTrackInSpecificPlaylist(pl.id, tr), inPl ? "active-pl" : "", pl.id === focusedPlaylistId ? "focused" : "");
+    });
+  }
+  addItem("+ New Playlist with Track…", () => openCreatePlaylistModal(tr));
+
+  addSep();
+  if (tr.albumKey) {
+    addItem("Go to Album", () => openAlbumByKey(tr.albumKey, tr.album));
+  }
+  if (tr.artist && isNavigableArtist(tr.artist)) {
+    const primaryArtist = String(tr.artist).split(/\s+(?:feat\.?|ft\.?|featuring)\s+|;\s+|,\s+/i)[0]?.trim() || tr.artist;
+    if (isNavigableArtist(primaryArtist)) {
+      addItem(`Go to Artist (${primaryArtist})`, () => openArtistPage(primaryArtist));
+    }
+  }
+  addItem("Track Properties & Metadata", () => openTrackPropertiesModal(tr));
+
+  if (typeof opts.onRemove === "function") {
+    addSep();
+    addItem(opts.removeTitle || "Remove", () => opts.onRemove(), "danger");
+  }
+
+  document.body.appendChild(menu);
+  activeTrackCtxMenu = menu;
+
+  // Position near anchor button while keeping menu inside viewport
+  const rect = anchorBtn.getBoundingClientRect();
+  const mw = menu.offsetWidth;
+  const mh = menu.offsetHeight;
+  let left = rect.right - mw;
+  if (left < 10) left = Math.max(10, rect.left);
+  if (left + mw > window.innerWidth - 10) left = window.innerWidth - mw - 10;
+  let top = rect.bottom + 5;
+  if (top + mh > window.innerHeight - 12) {
+    top = Math.max(10, rect.top - mh - 5);
+  }
+  menu.style.left = `${Math.round(left)}px`;
+  menu.style.top = `${Math.round(top)}px`;
+}
+
+// Playlist Drag-and-Drop Reordering (whole row draggable, no handle needed)
+let plDragState = null; // { playlistId, fromOrigIdx }
+let plReorderBusy = false;
+
+function attachPlaylistRowDrag(row, playlistId, origIdx) {
+  row.classList.add("pl-draggable");
+  row.draggable = true;
+  row.dataset.plOrigIdx = String(origIdx);
+
+  let blockDrag = false;
+  row.addEventListener("pointerdown", e => {
+    blockDrag = !!e.target.closest("button, a, input, select, .stars");
+  });
+
+  row.addEventListener("dragstart", e => {
+    if (blockDrag || plReorderBusy) {
+      e.preventDefault();
+      return;
+    }
+    closeTrackContextMenu();
+    plDragState = { playlistId, fromOrigIdx: origIdx };
+    row.classList.add("pl-dragging");
+    try {
+      e.dataTransfer.effectAllowed = "move";
+      e.dataTransfer.setData("text/plain", String(origIdx));
+    } catch (_) {}
+  });
+
+  row.addEventListener("dragend", () => {
+    plDragState = null;
+    blockDrag = false;
+    document.querySelectorAll(".mac-track-row.pl-dragging,.mac-track-row.pl-drag-over-top,.mac-track-row.pl-drag-over-bottom").forEach(el => {
+      el.classList.remove("pl-dragging", "pl-drag-over-top", "pl-drag-over-bottom");
+    });
+  });
+
+  row.addEventListener("dragover", e => {
+    if (!plDragState || plDragState.playlistId !== playlistId || plDragState.fromOrigIdx === origIdx) return;
+    e.preventDefault();
+    try { e.dataTransfer.dropEffect = "move"; } catch (_) {}
+    const rect = row.getBoundingClientRect();
+    const above = (e.clientY - rect.top) < rect.height / 2;
+    row.classList.toggle("pl-drag-over-top", above);
+    row.classList.toggle("pl-drag-over-bottom", !above);
+  });
+
+  row.addEventListener("dragleave", e => {
+    if (!e.relatedTarget || !row.contains(e.relatedTarget)) {
+      row.classList.remove("pl-drag-over-top", "pl-drag-over-bottom");
+    }
+  });
+
+  row.addEventListener("drop", e => {
+    e.preventDefault();
+    const drag = plDragState;
+    const rect = row.getBoundingClientRect();
+    const above = (e.clientY - rect.top) < rect.height / 2;
+    row.classList.remove("pl-drag-over-top", "pl-drag-over-bottom");
+    plDragState = null;
+    if (!drag || drag.playlistId !== playlistId || drag.fromOrigIdx === origIdx) return;
+    let target = above ? origIdx : origIdx + 1;
+    if (drag.fromOrigIdx < target) target -= 1;
+    if (target !== drag.fromOrigIdx) {
+      reorderPlaylistItem(playlistId, drag.fromOrigIdx, target);
+    }
+  });
+}
+
+async function reorderPlaylistItem(playlistId, fromIndex, toIndex) {
+  if (plReorderBusy || fromIndex === toIndex) return;
+  plReorderBusy = true;
+  try {
+    const res = await fetch("/api/v2/web/playlists/update", {
+      method: "POST",
+      headers: { ...HEADERS, "Content-Type": "application/json" },
+      body: JSON.stringify({ id: playlistId, action: "reorder", fromIndex, toIndex })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Reorder failed");
+    if (data.playlist) {
+      upsertPlaylistInCache(data.playlist);
+      if (activePlaylistModalId === playlistId) {
+        openPlaylistModal(data.playlist, { skipURL: true, preserveScroll: true });
+      }
+      if (libSubView === "playlists" && currentTab === "library") loadLibrary(false);
+    }
+  } catch (e) {
+    showToast("Could not reorder playlist: " + (e?.message || e), true);
+  } finally {
+    plReorderBusy = false;
+  }
+}
+
 function renderTrackRow(tr, onPlay, opts = {}) {
   const row = document.createElement("div");
-  const hasPlIdx = typeof opts.playlistIndex === "number";
-  row.className = "track-row" + (hasPlIdx ? " has-pl-idx" : "");
+  row.className = "mac-track-row";
   row.dataset.trackId = tr.id;
   if (typeof opts.queueIndex === "number") row.dataset.queueIndex = String(opts.queueIndex);
-  const qual = [tr.format, tr.formatDetail].filter(Boolean).join(" ");
-  const bpmTag = tr.bpm ? `<span class="badge amber track-hide-sm">${Math.round(tr.bpm)} BPM</span>` : "";
+
+  const displayNum = typeof opts.playlistIndex === "number"
+    ? opts.playlistIndex
+    : (opts.useTrackNumber && tr.trackNumber ? tr.trackNumber : (typeof opts.index === "number" ? opts.index : ""));
+
   const hasRemove = typeof opts.onRemove === "function";
   const inFocusedPl = isTrackInFocusedPlaylist(tr.id);
   const focusedPl = getFocusedPlaylist();
@@ -3512,42 +4142,58 @@ function renderTrackRow(tr, onPlay, opts = {}) {
     ? (inFocusedPl ? `In focused playlist "${focusedPl.name}" — click to remove` : `Add to focused playlist "${focusedPl.name}"`)
     : "Add to focused playlist (creates one if none selected)";
   const removeTitle = opts.removeTitle || "Remove from queue";
+  const showAlbum = opts.showAlbum !== false;
+  const albumPart = showAlbum && tr.album
+    ? ` · <a href="${albumHref(tr.albumKey)}" class="album-link" onclick="event.preventDefault();event.stopPropagation();openAlbumByKey('${esc(tr.albumKey || "").replace(/'/g, "\\'")}','${esc(tr.album || "").replace(/'/g, "\\'")}')">${esc(tr.album)}</a>`
+    : "";
+
   row.innerHTML = `
-    ${hasPlIdx ? `<div class="pl-idx-num">${opts.playlistIndex}</div>` : ""}
-    <div class="thumb-wrap">
-      <img class="track-thumb" loading="lazy" src="${artURL(tr.artworkHash)}" alt="" />
+    <div class="mac-col-idx" title="Play / Pause">
+      <span class="mac-idx-num">${displayNum !== "" ? esc(String(displayNum)) : "·"}</span>
+      <span class="mac-idx-playing-ico">${ico("play")}</span>
+      <button type="button" class="mac-idx-play-btn row-play-btn" title="Play / Pause">${ico("play")}</button>
+    </div>
+    <div class="mac-col-art" title="Play / Pause">
+      <img class="mac-thumb" loading="lazy" src="${artURL(tr.artworkHash)}" alt="" />
       <div class="thumb-eq-overlay"><span class="eq-bars"><i></i><i></i><i></i></span></div>
     </div>
-    <div class="track-main">
-      <div class="track-name">
-        <span style="overflow:hidden;text-overflow:ellipsis;">${esc(tr.title)}</span>
-        <span class="badge mint playing-pill">PLAYING</span>
+    <div class="mac-col-title">
+      <div class="mac-title-line">
+        <span class="mac-title-text" title="${esc(tr.title)}">${esc(tr.title)}</span>
       </div>
-      <div class="track-artist">${renderArtistLinksHTML(tr.artist)} · ${esc(tr.album)}${tr.year ? " · " + tr.year : ""}</div>
+      <div class="mac-artist-line">${renderArtistLinksHTML(tr.artist)}${albumPart}</div>
     </div>
-    <div style="display:flex;align-items:center;gap:6px;" class="track-hide-sm">
-      ${renderStarsHTML(tr.userRating, "track", tr.id)}
-      ${bpmTag}
-      <span class="badge ${tr.isHiRes ? "hires" : ""}">${esc(qual)}</span>
+    ${renderPlaysHTML(tr)}
+    ${renderPopMeterHTML(tr)}
+    <div class="mac-col-rating">${renderStarsHTML(tr.userRating, "track", tr.id)}</div>
+    ${renderFormatPillHTML(tr)}
+    <div class="mac-col-actions">
+      <button type="button" class="mac-act-btn row-q-btn" title="Add to Playing Queue">+Q</button>
+      <button type="button" class="mac-act-btn row-pl-btn${inFocusedPl ? " in-pl" : ""}" data-pl-track="${esc(tr.id)}" title="${esc(plTip)}">${inFocusedPl ? "✓PL" : "+PL"}</button>
+      <button type="button" class="mac-act-btn act-dj row-dj-btn" title="Add to AI Radio DJ">+DJ</button>
+      <button type="button" class="mac-act-btn act-party row-party-btn" title="Request in Party Mode">+Party</button>
     </div>
-    <span class="mono track-hide-sm">${fmtDur(tr.duration)}</span>
-    <div class="row-actions">
-      <button class="icon-btn accent-mint row-play-btn" title="Play / Pause">${ico("play")}</button>
-      <button class="btn btn-dim btn-sm row-q-btn" title="Add to Playing Queue">+ Q</button>
-      <button class="btn btn-dim btn-sm row-pl-btn${inFocusedPl ? " in-pl" : ""}" data-pl-track="${esc(tr.id)}" title="${esc(plTip)}">${inFocusedPl ? "✓ PL" : "+ PL"}</button>
-      <button class="btn btn-amber btn-sm row-dj-btn" title="Add to AI Radio DJ">+ DJ</button>
-      <button class="btn btn-mag btn-sm row-party-btn" title="Request in Party Mode">+ Party</button>
-      <button class="icon-btn row-props-btn" title="Track properties &amp; metadata">${ico("info")}</button>
-      ${hasRemove ? `<button class="icon-btn accent-danger row-remove-btn" title="${esc(removeTitle)}" aria-label="${esc(removeTitle)}">${ico("close")}</button>` : ""}
+    <div class="mac-col-time">${fmtDur(tr.duration)}</div>
+    <div class="mac-col-info">
+      <button type="button" class="icon-btn row-props-btn" title="Track properties &amp; metadata">${ico("info")}</button>
+    </div>
+    <div class="mac-col-other">
+      <button type="button" class="icon-btn row-more-btn" title="More actions">${ico("more")}</button>
+      ${hasRemove ? `<button type="button" class="icon-btn accent-danger row-remove-btn" title="${esc(removeTitle)}" aria-label="${esc(removeTitle)}">${ico("close")}</button>` : ""}
     </div>
   `;
+
+  const idxCol = row.querySelector(".mac-col-idx");
+  const artCol = row.querySelector(".mac-col-art");
   const bPlay = row.querySelector(".row-play-btn");
   const bQ = row.querySelector(".row-q-btn");
   const bPL = row.querySelector(".row-pl-btn");
   const bDJ = row.querySelector(".row-dj-btn");
   const bParty = row.querySelector(".row-party-btn");
   const bProps = row.querySelector(".row-props-btn");
+  const bMore = row.querySelector(".row-more-btn");
   const bRemove = row.querySelector(".row-remove-btn");
+
   const triggerPlay = () => {
     if (opts.isQueueRow) {
       const activeQueueIdx = playbackMode === "dj" ? (djState?.currentIndex ?? -1) : playIndex;
@@ -3566,17 +4212,22 @@ function renderTrackRow(tr, onPlay, opts = {}) {
     if (currentTrackObj && currentTrackObj.id === tr.id) { togglePlay(); return; }
     playTrackPreservingQueue(tr);
   };
-  bPlay.onclick = e => {
-    e.stopPropagation();
-    triggerPlay();
-  };
+
+  idxCol.onclick = e => { e.stopPropagation(); triggerPlay(); };
+  artCol.onclick = e => { e.stopPropagation(); triggerPlay(); };
+  bPlay.onclick = e => { e.stopPropagation(); triggerPlay(); };
   bQ.onclick = e => { e.stopPropagation(); enqueueTrack(tr); };
   bPL.onclick = e => { e.stopPropagation(); toggleTrackInFocusedPlaylist(tr); };
   bDJ.onclick = e => { e.stopPropagation(); addTrackToDJ(tr.id, tr.title); };
   bParty.onclick = e => { e.stopPropagation(); addTrackToParty(tr.id, tr.title); };
   bProps.onclick = e => { e.stopPropagation(); openTrackPropertiesModal(tr); };
+  bMore.onclick = e => { e.stopPropagation(); openTrackContextMenu(bMore, tr, opts, triggerPlay); };
   if (bRemove && hasRemove) bRemove.onclick = e => { e.stopPropagation(); opts.onRemove(); };
   row.ondblclick = triggerPlay;
+
+  if (opts.playlistDrag && typeof opts.playlistDrag.origIdx === "number") {
+    attachPlaylistRowDrag(row, opts.playlistDrag.playlistId, opts.playlistDrag.origIdx);
+  }
   return row;
 }
 
@@ -3586,7 +4237,7 @@ function syncPlayingRows() {
   const isActuallyPlaying = !activeDeck.paused && !!activeDeck.src;
   const activeQueueIdx = playbackMode === "dj" ? (djState?.currentIndex ?? -1) : playIndex;
 
-  document.querySelectorAll(".track-row[data-track-id]").forEach(row => {
+  document.querySelectorAll(".track-row[data-track-id], .mac-track-row[data-track-id]").forEach(row => {
     const qIdx = row.dataset.queueIndex;
     const match = !!activeID && row.dataset.trackId === activeID && (qIdx === undefined || Number(qIdx) === activeQueueIdx);
     row.classList.toggle("playing", match);
@@ -3596,6 +4247,8 @@ function syncPlayingRows() {
     if (pill) pill.textContent = isActuallyPlaying ? "PLAYING" : "PAUSED";
     const playBtn = row.querySelector(".row-play-btn");
     if (playBtn) playBtn.innerHTML = (match && isActuallyPlaying) ? ico("pause") : ico("play");
+    const playingIco = row.querySelector(".mac-idx-playing-ico");
+    if (playingIco) playingIco.innerHTML = (match && !isActuallyPlaying) ? ico("pause") : ico("play");
   });
 
   // Update Now Playing sidebar stage pill
@@ -3656,13 +4309,16 @@ async function openAlbumModal(alb, opts = {}) {
         ${data.editorial?.albumSummary ? `<p style="font-size:12.5px;color:var(--text-2);line-height:1.5;margin-top:12px;">${esc(data.editorial.albumSummary)}</p>` : ""}
       </div>
     </div>
-    <div class="track-list" id="mTrackList"></div>
+    <div class="mac-track-table" id="mTrackList"></div>
   `;
   document.getElementById("mPlayAlb").onclick = () => { startQueue(tracks, 0); };
   document.getElementById("mQueueAlb").onclick = () => { playQueue.push(...tracks); updateQueueCount(); renderSidebarQueue(); showToast(`Queued ${tracks.length} tracks`); };
   document.getElementById("mDJAlb").onclick = () => { closeModal(); createDJSession("album", alb.albumKey); };
   const tl = document.getElementById("mTrackList");
-  tracks.forEach(tr => tl.appendChild(renderTrackRow(tr)));
+  if (tracks.length) {
+    tl.appendChild(renderTrackTableHeader());
+    tracks.forEach((tr, i) => tl.appendChild(renderTrackRow(tr, null, { index: i + 1, useTrackNumber: true, showAlbum: false })));
+  }
   document.getElementById("modalBackdrop").classList.remove("hidden");
   syncPlayingRows();
 }
@@ -3851,10 +4507,11 @@ function renderArtistPage(data) {
       <div class="artist-section-hdr">
         <div class="artist-section-title">${ico("music")} Popular &amp; Top Rated <span class="badge cyan">${popular.length}</span></div>
       </div>
-      <div class="track-list" id="artistPopList"></div>
+      <div class="mac-track-table" id="artistPopList"></div>
     `;
     const list = document.getElementById("artistPopList");
-    popular.forEach(tr => list.appendChild(renderTrackRow(tr)));
+    list.appendChild(renderTrackTableHeader());
+    popular.forEach((tr, i) => list.appendChild(renderTrackRow(tr, null, { index: i + 1, showAlbum: true })));
   }
 
   // 2. Albums Grid
@@ -3942,9 +4599,10 @@ function renderArtistPage(data) {
       groupedBox.appendChild(grpHdr);
 
       const list = document.createElement("div");
-      list.className = "track-list";
-      entries.forEach(({ tr }) => {
-        list.appendChild(renderTrackRow(tr));
+      list.className = "mac-track-table";
+      list.appendChild(renderTrackTableHeader());
+      entries.forEach(({ tr }, localIdx) => {
+        list.appendChild(renderTrackRow(tr, null, { index: localIdx + 1, useTrackNumber: true, showAlbum: false }));
       });
       groupedBox.appendChild(list);
     }
@@ -4575,7 +5233,8 @@ function syncFocusedPlaylistButtons() {
     const tid = btn.dataset.plTrack;
     const inPl = !!pl && idSet.has(tid);
     btn.classList.toggle("in-pl", inPl);
-    btn.textContent = inPl ? "✓ PL" : "+ PL";
+    const compact = btn.classList.contains("mac-act-btn");
+    btn.textContent = inPl ? (compact ? "✓PL" : "✓ PL") : (compact ? "+PL" : "+ PL");
     btn.title = pl
       ? (inPl ? `In focused playlist "${pl.name}" — click to remove` : `Add to focused playlist "${pl.name}"`)
       : "Add to focused playlist (creates one if none selected)";
@@ -4998,36 +5657,40 @@ function renderSpotifyPreviewArea() {
 
 function renderMissingPlaylistRow(playlistId, m, rowNum, origIdx) {
   const row = document.createElement("div");
-  row.className = "track-row has-pl-idx missing-row";
+  row.className = "mac-track-row missing-row";
   const st = m.lidarrStatus || "missing";
   let statusBadge = `<span class="badge dim">MISSING</span>`;
-  if (st === "searching") statusBadge = `<span class="badge" style="color:var(--cyan);border-color:rgba(0,229,255,0.45);background:rgba(0,229,255,0.12);">SEARCHING LIDARR</span>`;
-  else if (st === "ordered") statusBadge = `<span class="badge" style="color:var(--cyan);border-color:rgba(0,229,255,0.45);background:rgba(0,229,255,0.14);" title="${esc(m.lidarrStatusDetail || "Ordered in Lidarr")}">LIDARR ORDERED</span>`;
-  else if (st === "notFound") statusBadge = `<span class="badge amber" title="${esc(m.lidarrStatusDetail || "Not found in Lidarr")}">NOT IN LIDARR</span>`;
-  else if (st === "failed") statusBadge = `<span class="badge" style="color:var(--coral);border-color:rgba(255,77,109,0.45);background:rgba(255,77,109,0.12);" title="${esc(m.lidarrStatusDetail || "Lidarr error")}">LIDARR RETRY</span>`;
+  if (st === "searching") statusBadge = `<span class="badge" style="color:var(--cyan);border-color:rgba(0,229,255,0.45);background:rgba(0,229,255,0.12);">SEARCHING</span>`;
+  else if (st === "ordered") statusBadge = `<span class="badge" style="color:var(--cyan);border-color:rgba(0,229,255,0.45);background:rgba(0,229,255,0.14);" title="${esc(m.lidarrStatusDetail || "Ordered in Lidarr")}">ORDERED</span>`;
+  else if (st === "notFound") statusBadge = `<span class="badge amber" title="${esc(m.lidarrStatusDetail || "Not found in Lidarr")}">NOT FOUND</span>`;
+  else if (st === "failed") statusBadge = `<span class="badge" style="color:var(--coral);border-color:rgba(255,77,109,0.45);background:rgba(255,77,109,0.12);" title="${esc(m.lidarrStatusDetail || "Lidarr error")}">RETRY</span>`;
 
   const thumbHTML = m.artworkURL
-    ? `<img class="track-thumb" loading="lazy" src="${esc(m.artworkURL)}" alt="" />`
-    : `<div class="missing-thumb-placeholder">♪</div>`;
+    ? `<img class="mac-thumb" loading="lazy" src="${esc(m.artworkURL)}" alt="" />`
+    : `<div class="mac-missing-thumb">♪</div>`;
 
   const canLidarr = IS_ADMIN && serverLidarrConfigured;
   row.innerHTML = `
-    <div class="pl-idx-num">${rowNum}</div>
-    <div class="thumb-wrap">${thumbHTML}</div>
-    <div class="track-main">
-      <div class="track-name"><span style="overflow:hidden;text-overflow:ellipsis;">${esc(m.title)}</span></div>
-      <div class="track-artist">${esc(m.artist || "Unknown Artist")}${m.album ? " · " + esc(m.album) : ""}</div>
+    <div class="mac-col-idx"><span class="mac-idx-num">${rowNum}</span></div>
+    <div class="mac-col-art" style="cursor:default;">${thumbHTML}</div>
+    <div class="mac-col-title">
+      <div class="mac-title-line"><span class="mac-title-text" title="${esc(m.title)}">${esc(m.title)}</span></div>
+      <div class="mac-artist-line">${esc(m.artist || "Unknown Artist")}${m.album ? " · " + esc(m.album) : ""}</div>
     </div>
-    <div style="display:flex;align-items:center;gap:6px;" class="track-hide-sm">
-      ${statusBadge}
+    <div class="mac-col-plays"><span class="mac-plays-zero">—</span></div>
+    <div class="mac-col-pop pop-none"><span class="pop-score">—</span></div>
+    <div class="mac-col-rating"></div>
+    <div class="mac-col-format">${statusBadge}</div>
+    <div class="mac-col-actions">
+      ${canLidarr ? `<button type="button" class="mac-act-btn miss-lidarr-btn" ${st === "searching" ? "disabled" : ""} title="${esc(st === "ordered" ? "Re-search in Lidarr" : "Auto-search & order parent album in Lidarr")}">${st === "searching" ? "…" : (st === "ordered" ? "✓ Lidarr" : "↓ Lidarr")}</button>` : ""}
     </div>
-    <span class="mono track-hide-sm" style="opacity:0.45;">${m.duration > 0 ? fmtDur(m.duration) : "—"}</span>
-    <div class="row-actions">
-      ${canLidarr ? `<button class="btn btn-dim btn-sm miss-lidarr-btn" ${st === "searching" ? "disabled" : ""} title="${esc(st === "ordered" ? "Re-search in Lidarr" : "Auto-search & order parent album in Lidarr")}">${st === "searching" ? "…" : (st === "ordered" ? "✓ Lidarr" : "↓ Lidarr")}</button>` : ""}
-      <button class="icon-btn accent-danger miss-remove-btn" title="Remove missing track from playlist">${ico("close")}</button>
+    <div class="mac-col-time">${m.duration > 0 ? fmtDur(m.duration) : "—"}</div>
+    <div class="mac-col-info"></div>
+    <div class="mac-col-other">
+      <button type="button" class="icon-btn accent-danger miss-remove-btn" title="Remove missing track from playlist">${ico("close")}</button>
     </div>
   `;
-  row.title = `Missing from server library (muted & skipped on playback)${m.lidarrStatusDetail ? " · " + m.lidarrStatusDetail : ""}`;
+  row.title = `Missing from server library (muted & skipped on playback) · Drag row up or down to reorder${m.lidarrStatusDetail ? " · " + m.lidarrStatusDetail : ""}`;
   const bLidarr = row.querySelector(".miss-lidarr-btn");
   if (bLidarr) {
     bLidarr.onclick = async e => {
@@ -5039,6 +5702,7 @@ function renderMissingPlaylistRow(playlistId, m, rowNum, origIdx) {
     e.stopPropagation();
     await removePlaylistItem(playlistId, { action: "removeMissing", missingId: m.id, index: origIdx });
   };
+  attachPlaylistRowDrag(row, playlistId, origIdx);
   return row;
 }
 
@@ -5128,7 +5792,7 @@ function openPlaylistModal(pl, opts = {}) {
         <h2 style="margin:0 0 4px;">${esc(pl.name)}</h2>
         ${pl.description ? `<div class="mono" style="font-size:12px;margin-bottom:3px;">${esc(pl.description)}</div>` : ""}
         <div class="mono" style="font-size:11.5px;color:var(--text-3);">
-          ${tracks.length} track${tracks.length === 1 ? "" : "s"}${missingCount > 0 ? ` · <span style="color:var(--amber);">${missingCount} missing (muted &amp; skipped)</span>` : ""}
+          ${tracks.length} track${tracks.length === 1 ? "" : "s"}${missingCount > 0 ? ` · <span style="color:var(--amber);">${missingCount} missing (muted &amp; skipped)</span>` : ""}${items.length > 1 ? ` · Drag any row to reorder` : ""}
         </div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
@@ -5175,7 +5839,7 @@ function openPlaylistModal(pl, opts = {}) {
       </div>
     ` : ""}
 
-    <div class="track-list" id="mTrackList"></div>
+    <div class="mac-track-table has-remove" id="mTrackList"></div>
   `;
 
   document.getElementById("mPlayPl").onclick = () => { if (tracks.length) startQueue(tracks, 0); };
@@ -5257,8 +5921,9 @@ function openPlaylistModal(pl, opts = {}) {
 
   const tl = document.getElementById("mTrackList");
   if (!items.length) {
-    tl.innerHTML = `<div class="card mono" style="text-align:center;padding:26px;color:var(--text-3);">This playlist is empty — click <strong>+ PL</strong> on any track in your library to add songs here.</div>`;
+    tl.innerHTML = `<div class="card mono" style="text-align:center;padding:26px;color:var(--text-3);">This playlist is empty — click <strong>+PL</strong> on any track in your library to add songs here.</div>`;
   } else {
+    tl.appendChild(renderTrackTableHeader());
     let playableIdx = 0;
     let displayIdx = 0;
     for (const item of items) {
@@ -5272,7 +5937,9 @@ function openPlaylistModal(pl, opts = {}) {
         const myPlayIdx = playableIdx++;
         tl.appendChild(renderTrackRow(item.track, () => startQueue(tracks, myPlayIdx), {
           playlistIndex: displayIdx,
+          showAlbum: true,
           useCustomPlay: true,
+          playlistDrag: { playlistId: pl.id, origIdx: item.index },
           removeTitle: "Remove from playlist",
           onRemove: () => removePlaylistItem(pl.id, { action: "removeTrack", index: item.index, trackId: item.track.id })
         }));
@@ -5316,16 +5983,19 @@ function openQueueModal(opts = {}) {
         <button class="btn btn-dim btn-sm" onclick="closeModal()">Close</button>
       </div>
     </div>
-    <div class="track-list" id="mQueueList"></div>
+    <div class="mac-track-table${canRemove ? " has-remove" : ""}" id="mQueueList"></div>
   `;
   const ql = document.getElementById("mQueueList");
   if (!list.length) {
     ql.innerHTML = '<div class="mono">Queue is empty.</div>';
   } else {
+    ql.appendChild(renderTrackTableHeader());
     list.forEach((tr, i) => ql.appendChild(renderTrackRow(tr, () => {
       if (playbackMode === "dj") playDJSlot(i, false, { crossfade: true });
       else playAtIndex(i, { crossfade: true });
     }, {
+      index: i + 1,
+      showAlbum: true,
       isQueueRow: true,
       queueIndex: i,
       onRemove: canRemove ? () => removeFromActiveQueue(i) : null
@@ -5414,6 +6084,7 @@ function clearActiveQueue() {
 }
 
 function closeModal(opts = {}) {
+  closeTrackContextMenu();
   stopPlaylistLidarrPolling();
   activePlaylistModalId = "";
   const hadShareableModal = !!activeModalRoute;
