@@ -507,6 +507,69 @@
     font-size: 10px; font-weight: 900; letter-spacing: 0.9px; color: var(--cyan);
     white-space: nowrap;
   }
+  .pl-picker {
+    position: relative; display: inline-flex; min-width: 210px; max-width: 310px;
+  }
+  .pl-picker-btn {
+    padding: 5px 9px; font-size: 12px; font-weight: 700; min-height: 30px;
+  }
+  .pl-picker-menu {
+    width: 350px; max-width: calc(100vw - 24px); max-height: none; overflow: hidden;
+    padding: 0; gap: 0;
+  }
+  .pl-picker-search-wrap {
+    padding: 7px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface-2);
+  }
+  .pl-picker-search {
+    padding: 6px 9px; font-size: 12px;
+  }
+  .pl-picker-count {
+    padding: 4px 10px; font-size: 10px; color: var(--text-3);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .pl-picker-list {
+    max-height: 300px; overflow-y: auto; padding: 4px;
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .pl-picker-opt {
+    width: 100%; padding: 7px 9px; font-size: 12.5px; gap: 8px;
+  }
+  .pl-picker-opt.hi {
+    background: rgba(255,255,255,0.09);
+    box-shadow: inset 0 0 0 1px rgba(0,229,255,0.34);
+  }
+  .pl-picker-opt.active.hi {
+    background: rgba(20,241,149,0.22);
+    box-shadow: inset 0 0 0 1px rgba(20,241,149,0.45);
+  }
+  .pl-picker-opt-main {
+    display: flex; align-items: center; gap: 6px; min-width: 0; flex: 1;
+  }
+  .pl-picker-opt-check {
+    width: 13px; flex: none; font-size: 11px; color: var(--mint); text-align: center;
+  }
+  .pl-picker-opt-name {
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pl-picker-opt-meta {
+    flex: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px; font-weight: 600; color: var(--text-3);
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .pl-picker-opt-miss {
+    color: var(--amber); font-size: 10px;
+  }
+  .pl-picker-mark {
+    background: rgba(0,229,255,0.24); color: var(--cyan);
+    border-radius: 2px; padding: 0 1px;
+  }
+  .pl-picker-empty {
+    padding: 14px 10px; text-align: center; font-size: 12px; color: var(--text-3);
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+  }
   .track-row.has-pl-idx {
     grid-template-columns: 28px 52px minmax(0, 1fr) auto auto auto;
   }
@@ -1583,9 +1646,20 @@
 
       <div class="focused-pl-bar" id="focusedPlaylistBar">
         <span class="focused-pl-label">FOCUSED PLAYLIST (+PL)</span>
-        <select id="focusedPlaylistSelect" class="search-input" style="width:auto;min-width:190px;max-width:290px;padding:5px 9px;font-size:12px;font-weight:700;" onchange="setFocusedPlaylist(this.value)" title="Select which playlist the +PL button on every track targets">
-          <option value="">No playlists yet</option>
-        </select>
+        <div class="pl-picker" id="focusedPlaylistPicker">
+          <button type="button" class="search-input echo-dd-btn pl-picker-btn" id="focusedPlaylistBtn" onclick="toggleFocusedPlaylistPicker(event)" aria-haspopup="listbox" aria-expanded="false" title="Search &amp; select which playlist the +PL button on every track targets">
+            <span class="echo-dd-lbl" id="focusedPlaylistBtnLabel">No playlists yet</span>
+            <span class="echo-dd-chev"><svg class="ico ico-sm" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg></span>
+          </button>
+          <div class="rating-dd-menu pl-picker-menu hidden" id="focusedPlaylistMenu" onclick="event.stopPropagation()">
+            <div class="pl-picker-search-wrap">
+              <input type="text" id="focusedPlaylistSearch" class="search-input pl-picker-search" placeholder="Search playlists…" autocomplete="off" spellcheck="false" oninput="onFocusedPlaylistSearchInput()" onkeydown="onFocusedPlaylistSearchKeydown(event)" />
+              <button type="button" class="icon-btn hidden" id="focusedPlaylistSearchClear" onclick="clearFocusedPlaylistSearch()" title="Clear search" style="width:24px;height:24px;flex:none;">×</button>
+            </div>
+            <div class="pl-picker-count mono" id="focusedPlaylistPickerCount"></div>
+            <div class="pl-picker-list" id="focusedPlaylistList" role="listbox"></div>
+          </div>
+        </div>
         <span class="mono" id="focusedPlaylistMeta" style="font-size:11px;color:var(--text-3);"></span>
         <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
           <button class="btn btn-dim btn-sm hidden" id="focusedPlaylistOpenBtn" onclick="openFocusedPlaylist()" title="Open the currently focused playlist">Open</button>
@@ -3202,11 +3276,15 @@ function pickRatingDD(prefix, val) {
 }
 document.addEventListener("click", () => {
   document.querySelectorAll(".rating-dd-menu").forEach(m => m.classList.add("hidden"));
+  closeFocusedPlaylistPicker(false);
   closeHeaderMenu();
   closeTrackContextMenu();
 });
 document.addEventListener("keydown", e => {
-  if (e.key === "Escape") closeTrackContextMenu();
+  if (e.key === "Escape") {
+    closeFocusedPlaylistPicker(false);
+    closeTrackContextMenu();
+  }
 });
 
 function setFilterRatingInputs(minRating, avoidMaxRating) {
@@ -4016,15 +4094,18 @@ async function loadLibrary(append) {
       const res = await fetch(`/api/v2/web/playlists`, { headers: HEADERS });
       const data = await res.json();
       if (myGen !== libFetchGen) return;
-      const pls = data.playlists || [];
-      playlistsCache = pls;
+      const allPls = setPlaylistsCache(data.playlists || []);
       serverLidarrConfigured = !!data.lidarrConfigured;
       ensureFocusedPlaylistValid();
       renderFocusedPlaylistBar();
-      const missingTotal = pls.reduce((sum, p) => sum + Number(p.missingCount || 0), 0);
-      document.getElementById("libSummary").textContent = `${pls.length} playlist${pls.length === 1 ? "" : "s"}${missingTotal > 0 ? ` · ${missingTotal} missing track${missingTotal === 1 ? "" : "s"} retained` : ""}`;
+      const rawPlQ = (document.getElementById("libSearch").value || "").trim();
+      const pls = getFilteredPlaylistsList(rawPlQ);
+      const missingTotal = allPls.reduce((sum, p) => sum + Number(p.missingCount || 0), 0);
+      document.getElementById("libSummary").textContent = rawPlQ
+        ? `Showing ${pls.length} of ${allPls.length} playlist${allPls.length === 1 ? "" : "s"} matching "${rawPlQ}"`
+        : `${allPls.length} playlist${allPls.length === 1 ? "" : "s"}${missingTotal > 0 ? ` · ${missingTotal} missing track${missingTotal === 1 ? "" : "s"} retained` : ""}`;
       libHasMore = false;
-      if (!pls.length) {
+      if (!allPls.length) {
         container.innerHTML = `
           <div class="card" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
             <div>
@@ -4036,6 +4117,10 @@ async function loadLibrary(append) {
               <button class="btn btn-mint btn-sm" onclick="openSpotifyImportModal()">Import Spotify Playlist</button>
             </div>
           </div>`;
+        return;
+      }
+      if (!pls.length) {
+        container.innerHTML = `<div class="card mono" style="text-align:center;padding:24px;">No playlists match "${esc(rawPlQ)}".</div>`;
         return;
       }
       const list = document.createElement("div");
@@ -4292,7 +4377,12 @@ function openTrackContextMenu(anchorBtn, tr, opts = {}, triggerPlayFn = null) {
   addSep();
   addLbl("Playlists");
   if (playlistsCache.length) {
-    playlistsCache.slice(0, 10).forEach(pl => {
+    const orderedCtxPls = getFilteredPlaylistsList("").slice().sort((a, b) => {
+      if (a.id === focusedPlaylistId) return -1;
+      if (b.id === focusedPlaylistId) return 1;
+      return 0;
+    });
+    orderedCtxPls.slice(0, 10).forEach(pl => {
       const inPl = (pl.tracks || []).some(t => t.id === tr.id);
       addItem(`${inPl ? "✓ " : "+ "}${pl.name}`, () => toggleTrackInSpecificPlaylist(pl.id, tr), inPl ? "active-pl" : "", pl.id === focusedPlaylistId ? "focused" : "");
     });
@@ -5457,23 +5547,82 @@ async function openTrackPropertiesModal(trackOrId, opts = {}) {
 let playlistsCache = [];
 let serverLidarrConfigured = false;
 let focusedPlaylistId = localStorage.getItem("echo_focused_playlist_id") || "";
+let focusedPlPickerHiIdx = -1;
+let focusedPlPickerItems = [];
 let activePlaylistModalId = "";
 let playlistHideMissing = false;
 let playlistLidarrPollTimer = null;
 let lastPlaylistLidarrStatus = null;
 
+function normPlaylistId(id) {
+  return String(id || "").trim().toLowerCase();
+}
+
+function setPlaylistsCache(list) {
+  const byId = new Map();
+  for (const pl of (list || [])) {
+    if (!pl || !pl.id) continue;
+    const key = normPlaylistId(pl.id);
+    const prev = byId.get(key);
+    if (!prev || (Number(pl.trackCount || 0) + Number(pl.missingCount || 0)) >= (Number(prev.trackCount || 0) + Number(prev.missingCount || 0))) {
+      byId.set(key, pl);
+    }
+  }
+  playlistsCache = Array.from(byId.values());
+  return playlistsCache;
+}
+
+function getFilteredPlaylistsList(rawQuery = "") {
+  const q = String(rawQuery || "").trim().toLowerCase();
+  const cmpName = (a, b) => String(a.name || "").localeCompare(String(b.name || ""), undefined, { sensitivity: "base", numeric: true });
+  if (!q) {
+    return playlistsCache.slice().sort(cmpName);
+  }
+  const scored = [];
+  for (const pl of playlistsCache) {
+    const nameL = String(pl.name || "").toLowerCase();
+    const descL = String(pl.description || "").toLowerCase();
+    let rank = -1;
+    if (nameL === q) rank = 0;
+    else if (nameL.startsWith(q)) rank = 1;
+    else if (nameL.includes(q)) rank = 2;
+    else if (descL.includes(q)) rank = 3;
+    if (rank >= 0) scored.push({ pl, rank });
+  }
+  scored.sort((a, b) => (a.rank - b.rank) || cmpName(a.pl, b.pl));
+  return scored.map(x => x.pl);
+}
+
+function highlightPlaylistMatch(text, query) {
+  const s = String(text || "");
+  const q = String(query || "").trim();
+  if (!q) return esc(s);
+  const idx = s.toLowerCase().indexOf(q.toLowerCase());
+  if (idx < 0) return esc(s);
+  return esc(s.slice(0, idx)) + `<mark class="pl-picker-mark">${esc(s.slice(idx, idx + q.length))}</mark>` + esc(s.slice(idx + q.length));
+}
+
 function getFocusedPlaylist() {
   if (!focusedPlaylistId) return null;
-  return playlistsCache.find(p => p.id === focusedPlaylistId) || null;
+  const target = normPlaylistId(focusedPlaylistId);
+  return playlistsCache.find(p => normPlaylistId(p.id) === target) || null;
 }
 
 function ensureFocusedPlaylistValid() {
-  if (focusedPlaylistId && !playlistsCache.some(p => p.id === focusedPlaylistId)) {
-    focusedPlaylistId = playlistsCache[0]?.id || "";
+  const matched = getFocusedPlaylist();
+  if (matched) {
+    if (focusedPlaylistId !== matched.id) {
+      focusedPlaylistId = matched.id;
+      localStorage.setItem("echo_focused_playlist_id", focusedPlaylistId);
+    }
+    return;
+  }
+  if (playlistsCache.length > 0) {
+    focusedPlaylistId = getFilteredPlaylistsList("")[0]?.id || playlistsCache[0].id;
     localStorage.setItem("echo_focused_playlist_id", focusedPlaylistId);
-  } else if (!focusedPlaylistId && playlistsCache.length > 0) {
-    focusedPlaylistId = playlistsCache[0].id;
-    localStorage.setItem("echo_focused_playlist_id", focusedPlaylistId);
+  } else if (focusedPlaylistId) {
+    focusedPlaylistId = "";
+    localStorage.setItem("echo_focused_playlist_id", "");
   }
 }
 
@@ -5484,7 +5633,9 @@ function isTrackInFocusedPlaylist(trackId) {
 }
 
 function setFocusedPlaylist(id, announce = false) {
-  focusedPlaylistId = String(id || "");
+  const target = normPlaylistId(id);
+  const found = playlistsCache.find(p => normPlaylistId(p.id) === target);
+  focusedPlaylistId = found ? found.id : String(id || "");
   localStorage.setItem("echo_focused_playlist_id", focusedPlaylistId);
   renderFocusedPlaylistBar();
   syncFocusedPlaylistButtons();
@@ -5494,30 +5645,209 @@ function setFocusedPlaylist(id, announce = false) {
   }
 }
 
+function closeFocusedPlaylistPicker(restoreFocus = false) {
+  const menu = document.getElementById("focusedPlaylistMenu");
+  const btn = document.getElementById("focusedPlaylistBtn");
+  if (menu) menu.classList.add("hidden");
+  if (btn) {
+    btn.setAttribute("aria-expanded", "false");
+    if (restoreFocus) btn.focus();
+  }
+}
+
+function toggleFocusedPlaylistPicker(ev) {
+  if (ev) ev.stopPropagation();
+  const menu = document.getElementById("focusedPlaylistMenu");
+  const btn = document.getElementById("focusedPlaylistBtn");
+  const search = document.getElementById("focusedPlaylistSearch");
+  if (!menu) return;
+  const wasHidden = menu.classList.contains("hidden");
+  document.querySelectorAll(".rating-dd-menu").forEach(m => m.classList.add("hidden"));
+  if (wasHidden) {
+    if (search) search.value = "";
+    focusedPlPickerHiIdx = -1;
+    renderFocusedPlaylistPickerList();
+    menu.classList.remove("hidden", "align-right");
+    if (btn) btn.setAttribute("aria-expanded", "true");
+    const rect = menu.getBoundingClientRect();
+    if (rect.right > window.innerWidth - 10) {
+      menu.classList.add("align-right");
+    }
+    if (search) {
+      setTimeout(() => {
+        search.focus();
+        // Scroll currently focused playlist into view inside the list when search is empty
+        const activeOpt = menu.querySelector(".pl-picker-opt.active");
+        if (activeOpt) activeOpt.scrollIntoView({ block: "nearest" });
+      }, 0);
+    }
+  } else {
+    closeFocusedPlaylistPicker(false);
+  }
+}
+
+function onFocusedPlaylistSearchInput() {
+  focusedPlPickerHiIdx = 0;
+  renderFocusedPlaylistPickerList();
+}
+
+function clearFocusedPlaylistSearch() {
+  const search = document.getElementById("focusedPlaylistSearch");
+  if (search) {
+    search.value = "";
+    search.focus();
+  }
+  focusedPlPickerHiIdx = -1;
+  renderFocusedPlaylistPickerList();
+}
+
+function onFocusedPlaylistSearchKeydown(ev) {
+  const search = document.getElementById("focusedPlaylistSearch");
+  const q = (search?.value || "").trim();
+  if (ev.key === "ArrowDown") {
+    ev.preventDefault();
+    if (!focusedPlPickerItems.length) return;
+    focusedPlPickerHiIdx = (focusedPlPickerHiIdx + 1) % focusedPlPickerItems.length;
+    updateFocusedPlaylistPickerHighlight();
+  } else if (ev.key === "ArrowUp") {
+    ev.preventDefault();
+    if (!focusedPlPickerItems.length) return;
+    focusedPlPickerHiIdx = focusedPlPickerHiIdx <= 0 ? focusedPlPickerItems.length - 1 : focusedPlPickerHiIdx - 1;
+    updateFocusedPlaylistPickerHighlight();
+  } else if (ev.key === "Enter") {
+    ev.preventDefault();
+    if (focusedPlPickerItems.length) {
+      const idx = focusedPlPickerHiIdx >= 0 && focusedPlPickerHiIdx < focusedPlPickerItems.length ? focusedPlPickerHiIdx : 0;
+      const picked = focusedPlPickerItems[idx];
+      if (picked) {
+        setFocusedPlaylist(picked.id, true);
+        closeFocusedPlaylistPicker(true);
+      }
+    } else if (q) {
+      closeFocusedPlaylistPicker(false);
+      openCreatePlaylistModal(null, q);
+    }
+  } else if (ev.key === "Escape") {
+    ev.preventDefault();
+    ev.stopPropagation();
+    if (q) {
+      clearFocusedPlaylistSearch();
+    } else {
+      closeFocusedPlaylistPicker(true);
+    }
+  }
+}
+
+function updateFocusedPlaylistPickerHighlight() {
+  const list = document.getElementById("focusedPlaylistList");
+  if (!list) return;
+  const opts = list.querySelectorAll(".pl-picker-opt");
+  opts.forEach((el, i) => {
+    const isHi = i === focusedPlPickerHiIdx;
+    el.classList.toggle("hi", isHi);
+    if (isHi) el.scrollIntoView({ block: "nearest" });
+  });
+}
+
+function renderFocusedPlaylistPickerList() {
+  const list = document.getElementById("focusedPlaylistList");
+  const countEl = document.getElementById("focusedPlaylistPickerCount");
+  const search = document.getElementById("focusedPlaylistSearch");
+  const clearBtn = document.getElementById("focusedPlaylistSearchClear");
+  if (!list) return;
+
+  const q = (search?.value || "").trim();
+  if (clearBtn) clearBtn.classList.toggle("hidden", !q);
+
+  const items = getFilteredPlaylistsList(q);
+  focusedPlPickerItems = items;
+  if (focusedPlPickerHiIdx >= items.length) {
+    focusedPlPickerHiIdx = items.length > 0 ? 0 : -1;
+  }
+
+  if (countEl) {
+    if (!playlistsCache.length) {
+      countEl.textContent = "No playlists yet";
+    } else if (q) {
+      countEl.textContent = `${items.length} of ${playlistsCache.length} playlist${playlistsCache.length === 1 ? "" : "s"}`;
+    } else {
+      countEl.textContent = `${playlistsCache.length} playlist${playlistsCache.length === 1 ? "" : "s"} · A–Z`;
+    }
+  }
+
+  list.innerHTML = "";
+  if (!playlistsCache.length) {
+    const empty = document.createElement("div");
+    empty.className = "pl-picker-empty";
+    empty.innerHTML = `<div>No playlists yet.</div><button type="button" class="btn btn-cyan btn-sm">+ Create Playlist</button>`;
+    empty.querySelector("button").onclick = () => { closeFocusedPlaylistPicker(false); openCreatePlaylistModal(); };
+    list.appendChild(empty);
+    return;
+  }
+
+  if (!items.length) {
+    const empty = document.createElement("div");
+    empty.className = "pl-picker-empty";
+    empty.innerHTML = `<div>No playlists match "${esc(q)}"</div><button type="button" class="btn btn-cyan btn-sm">+ Create "${esc(q)}"</button>`;
+    empty.querySelector("button").onclick = () => { closeFocusedPlaylistPicker(false); openCreatePlaylistModal(null, q); };
+    list.appendChild(empty);
+    return;
+  }
+
+  const curTarget = normPlaylistId(focusedPlaylistId);
+  items.forEach((pl, idx) => {
+    const isActive = normPlaylistId(pl.id) === curTarget;
+    const isHi = idx === focusedPlPickerHiIdx;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "rating-dd-opt pl-picker-opt" + (isActive ? " active" : "") + (isHi ? " hi" : "");
+    btn.setAttribute("role", "option");
+    btn.setAttribute("aria-selected", isActive ? "true" : "false");
+    btn.title = pl.description ? `${pl.name} — ${pl.description}` : pl.name;
+    const missHTML = pl.missingCount > 0 ? `<span class="pl-picker-opt-miss">+${pl.missingCount} miss</span>` : "";
+    btn.innerHTML = `
+      <span class="pl-picker-opt-main">
+        <span class="pl-picker-opt-check">${isActive ? "✓" : ""}</span>
+        <span class="pl-picker-opt-name">${highlightPlaylistMatch(pl.name, q)}</span>
+      </span>
+      <span class="pl-picker-opt-meta"><span>${pl.trackCount}</span>${missHTML}</span>
+    `;
+    btn.onmouseenter = () => {
+      focusedPlPickerHiIdx = idx;
+      list.querySelectorAll(".pl-picker-opt.hi").forEach(el => el.classList.remove("hi"));
+      btn.classList.add("hi");
+    };
+    btn.onclick = (ev) => {
+      ev.stopPropagation();
+      setFocusedPlaylist(pl.id, true);
+      closeFocusedPlaylistPicker(true);
+    };
+    list.appendChild(btn);
+  });
+}
+
 function renderFocusedPlaylistBar() {
-  const sel = document.getElementById("focusedPlaylistSelect");
+  const lbl = document.getElementById("focusedPlaylistBtnLabel");
+  const btn = document.getElementById("focusedPlaylistBtn");
   const meta = document.getElementById("focusedPlaylistMeta");
   const openBtn = document.getElementById("focusedPlaylistOpenBtn");
-  if (!sel) return;
+  const menu = document.getElementById("focusedPlaylistMenu");
+  if (!lbl) return;
 
-  sel.innerHTML = "";
   if (!playlistsCache.length) {
-    const opt = document.createElement("option");
-    opt.value = "";
-    opt.textContent = "No playlists yet";
-    sel.appendChild(opt);
+    lbl.textContent = "No playlists yet";
+    if (btn) btn.title = "Create or import a playlist to enable +PL";
     if (meta) meta.textContent = "Create or import a playlist to enable +PL";
     if (openBtn) openBtn.classList.add("hidden");
   } else {
-    for (const pl of playlistsCache) {
-      const opt = document.createElement("option");
-      opt.value = pl.id;
-      const miss = pl.missingCount > 0 ? ` (+${pl.missingCount} missing)` : "";
-      opt.textContent = `${pl.name} (${pl.trackCount}${miss})`;
-      if (pl.id === focusedPlaylistId) opt.selected = true;
-      sel.appendChild(opt);
-    }
     const cur = getFocusedPlaylist();
+    if (cur) {
+      const miss = cur.missingCount > 0 ? ` (+${cur.missingCount} missing)` : "";
+      lbl.textContent = `${cur.name} (${cur.trackCount}${miss})`;
+      if (btn) btn.title = `Focused (+PL): ${cur.name} — click to search & switch playlists`;
+    } else {
+      lbl.textContent = "Select playlist…";
+    }
     if (meta) {
       meta.textContent = cur
         ? `${cur.trackCount} track${cur.trackCount === 1 ? "" : "s"}${cur.missingCount > 0 ? ` · ${cur.missingCount} missing` : ""}`
@@ -5525,7 +5855,9 @@ function renderFocusedPlaylistBar() {
     }
     if (openBtn) openBtn.classList.toggle("hidden", !cur);
   }
-  if (typeof sel._syncCustomDD === "function") sel._syncCustomDD();
+  if (menu && !menu.classList.contains("hidden")) {
+    renderFocusedPlaylistPickerList();
+  }
 }
 
 function syncFocusedPlaylistButtons() {
@@ -5549,7 +5881,7 @@ async function loadPlaylistsCache(silent = true) {
     const res = await fetch("/api/v2/web/playlists", { headers: HEADERS });
     if (!res.ok) return playlistsCache;
     const data = await res.json();
-    playlistsCache = data.playlists || [];
+    setPlaylistsCache(data.playlists || []);
     serverLidarrConfigured = !!data.lidarrConfigured;
     ensureFocusedPlaylistValid();
     renderFocusedPlaylistBar();
@@ -5563,7 +5895,8 @@ async function loadPlaylistsCache(silent = true) {
 
 function upsertPlaylistInCache(pl) {
   if (!pl || !pl.id) return;
-  const idx = playlistsCache.findIndex(p => p.id === pl.id);
+  const target = normPlaylistId(pl.id);
+  const idx = playlistsCache.findIndex(p => normPlaylistId(p.id) === target);
   if (idx >= 0) playlistsCache[idx] = pl;
   else playlistsCache.push(pl);
   ensureFocusedPlaylistValid();
@@ -5611,7 +5944,7 @@ async function toggleTrackInFocusedPlaylist(tr) {
   }
 }
 
-function openCreatePlaylistModal(pendingTrack = null) {
+function openCreatePlaylistModal(pendingTrack = null, prefillName = "") {
   stopPlaylistLidarrPolling();
   activePlaylistModalId = "";
   const body = document.getElementById("modalBody");
@@ -5698,7 +6031,8 @@ function openCreatePlaylistModal(pendingTrack = null) {
   nameInput.onkeydown = e => { if (e.key === "Enter") submit(); };
   descInput.onkeydown = e => { if (e.key === "Enter") submit(); };
   document.getElementById("modalBackdrop").classList.remove("hidden");
-  setTimeout(() => nameInput.focus(), 40);
+  if (prefillName) nameInput.value = prefillName;
+  setTimeout(() => { nameInput.focus(); if (prefillName) nameInput.select(); }, 40);
 }
 
 async function deletePlaylistById(pl) {
