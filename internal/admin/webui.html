@@ -940,26 +940,192 @@
   .progress-track { width: 100%; height: 6px; background: var(--surface-2); border-radius: 3px; overflow: hidden; margin-top: 6px; }
   .progress-fill { height: 100%; background: linear-gradient(90deg, var(--mint), var(--cyan)); width: 0%; transition: width 0.3s; }
 
-  /* Sticky Bottom Hi-Fi Player Bar */
+  /* Sticky Bottom Hi-Fi Player Bar (Mirrors Mac App PlayerBarView) */
   .player-bar {
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
-    background: var(--player-bg); backdrop-filter: blur(16px);
-    border-top: 1px solid var(--border-strong);
-    padding: 7px 16px;
+    background: var(--player-bg); backdrop-filter: blur(18px);
+    border-top: 1.5px solid rgba(20, 241, 149, 0.55);
+    padding: 0 18px;
+    height: 82px;
+    display: flex; align-items: center;
   }
   .player-inner {
-    max-width: 1760px; margin: 0 auto;
-    display: grid; grid-template-columns: minmax(190px, 1fr) minmax(260px, 1.5fr) minmax(160px, 0.75fr);
-    align-items: center; gap: 12px;
+    width: 100%; max-width: 1840px; margin: 0 auto;
+    display: grid; grid-template-columns: minmax(270px, 1fr) minmax(300px, 500px) minmax(260px, 1fr);
+    align-items: center; gap: 18px;
   }
-  @media (max-width: 820px) { .player-inner { grid-template-columns: 1fr; gap: 6px; } }
-  .np-info { display: flex; align-items: center; gap: 9px; min-width: 0; }
-  .np-art { width: 48px; height: 48px; border-radius: 5px; object-fit: cover; background: var(--surface-2); flex-shrink: 0; }
-  .transport { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  .transport-btns { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center; }
-  .scrub-row { display: flex; align-items: center; gap: 7px; width: 100%; }
-  input[type=range] { accent-color: var(--mint); cursor: pointer; }
-  .vol-row { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
+  @media (max-width: 1060px) {
+    .player-bar { height: auto; padding: 8px 12px; }
+    .player-inner { grid-template-columns: 1fr; gap: 8px; }
+    .mac-controls-right { justify-content: center; flex-wrap: wrap; }
+  }
+  .mac-np-left { display: flex; align-items: center; gap: 12px; min-width: 0; max-width: 390px; }
+  .np-art-btn {
+    padding: 0; border: none; background: transparent; cursor: pointer;
+    flex-shrink: 0; border-radius: 8px; overflow: hidden;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.45); transition: transform 0.14s;
+  }
+  .np-art-btn:hover { transform: scale(1.04); }
+  .np-art { width: 52px; height: 52px; border-radius: 8px; object-fit: cover; background: var(--surface-2); display: block; }
+  .mac-np-meta { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .mac-np-top { display: flex; align-items: center; gap: 7px; min-width: 0; }
+  .mac-np-title {
+    font-size: 13.5px; font-weight: 800; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    background: none; border: none; padding: 0; cursor: pointer; text-align: left;
+  }
+  .mac-np-title:hover { color: var(--mint); }
+  .mac-fmt-badge {
+    font-size: 9.5px; font-weight: 800; font-family: ui-monospace, monospace;
+    padding: 2px 6px; border-radius: 4px; flex-shrink: 0; white-space: nowrap;
+    background: rgba(255,255,255,0.08); color: var(--text-2);
+    border: 1px solid rgba(255,255,255,0.14);
+  }
+  .mac-fmt-badge.hires {
+    background: rgba(245, 166, 35, 0.16); color: #F5B841;
+    border-color: rgba(245, 166, 35, 0.45);
+  }
+  .mac-fmt-badge.lossless {
+    background: rgba(0, 229, 255, 0.13); color: var(--cyan);
+    border-color: rgba(0, 229, 255, 0.35);
+  }
+  .mac-np-sub {
+    display: flex; align-items: center; gap: 5px; min-width: 0;
+    font-size: 11px; color: var(--text-2); white-space: nowrap; overflow: hidden;
+  }
+  .mac-np-sub .artist-links-inline {
+    min-width: 0; max-width: 115px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .mac-link-btn {
+    background: none; border: none; padding: 0; color: inherit; font: inherit;
+    cursor: pointer; min-width: 0; max-width: 105px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .mac-link-btn:hover { color: var(--mint); text-decoration: underline; }
+  .mac-link-btn.album-lnk { color: var(--text-3); max-width: 96px; }
+  .mac-link-btn.album-lnk:hover { color: var(--cyan); }
+  .mac-playcount {
+    display: inline-flex; align-items: center; gap: 2px; flex-shrink: 0;
+    font-size: 10.5px; font-weight: 800; font-family: ui-monospace, monospace; color: var(--text);
+  }
+  .mac-playcount .tri { color: var(--mint); font-size: 8.5px; }
+  .pop-meter { display: inline-flex; align-items: flex-end; gap: 1.5px; height: 10px; flex-shrink: 0; }
+  .pop-meter i { display: block; width: 2px; border-radius: 1px; background: rgba(255,255,255,0.18); }
+  .pop-meter i.lit { background: #F5A623; }
+  .mac-np-stars .star-btn { font-size: 11px; padding: 0 0.5px; }
+  .mac-np-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .mac-subtle-ico {
+    background: none; border: none; color: var(--text-3); cursor: pointer;
+    padding: 4px; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center;
+    transition: color 0.14s, background 0.14s;
+  }
+  .mac-subtle-ico:hover { color: var(--text); background: rgba(255,255,255,0.07); }
+  .mac-subtle-ico.active { color: var(--mint); }
+
+  /* Center Mac Transport & Scrubber */
+  .transport { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%; max-width: 500px; margin: 0 auto; }
+  .transport-btns { display: flex; align-items: center; gap: 18px; justify-content: center; }
+  .mac-tbtn {
+    background: none; border: none; color: var(--text-2); cursor: pointer;
+    padding: 4px; display: inline-flex; align-items: center; justify-content: center;
+    position: relative; transition: color 0.14s, transform 0.1s;
+  }
+  .mac-tbtn:hover { color: var(--text); }
+  .mac-tbtn:active { transform: scale(0.92); }
+  .mac-tbtn.primary-skip { color: var(--text); }
+  .mac-tbtn.active { color: var(--mint); }
+  .mac-tbtn .rep-one {
+    position: absolute; top: -1px; right: -3px; font-size: 8px; font-weight: 900;
+    font-family: ui-monospace, monospace; color: var(--mint);
+  }
+  .mac-play-box {
+    width: 38px; height: 34px; border-radius: 6px;
+    background: linear-gradient(180deg, rgba(20, 241, 149, 0.14), rgba(20, 241, 149, 0.08));
+    border: 1.25px solid rgba(20, 241, 149, 0.85);
+    color: var(--mint);
+    box-shadow: 0 0 12px rgba(20, 241, 149, 0.28);
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: transform 0.12s, box-shadow 0.15s, background 0.15s;
+  }
+  .mac-play-box:hover { background: rgba(20, 241, 149, 0.22); box-shadow: 0 0 16px rgba(20, 241, 149, 0.42); }
+  .mac-play-box:active { transform: scale(0.94); }
+  .mac-play-box.idle { border-color: var(--border-strong); color: var(--text-3); background: var(--surface-2); box-shadow: none; }
+  .scrub-row { display: flex; align-items: center; gap: 8px; width: 100%; }
+  .scrub-time { font-family: ui-monospace, monospace; font-size: 10.5px; color: var(--text-3); width: 40px; flex-shrink: 0; user-select: none; }
+  .scrub-time.left { text-align: right; }
+  .scrub-time.right { text-align: left; cursor: pointer; }
+  .scrub-time.right:hover { color: var(--text); }
+  input[type=range].mac-slider { -webkit-appearance: none; appearance: none; background: transparent; cursor: pointer; height: 16px; }
+  input[type=range].mac-slider::-webkit-slider-runnable-track {
+    height: 3.5px; border-radius: 999px;
+    background: linear-gradient(to right, var(--mint) 0%, var(--mint) var(--pct, 0%), rgba(255,255,255,0.22) var(--pct, 0%), rgba(255,255,255,0.22) 100%);
+  }
+  input[type=range].mac-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 13px; height: 13px; border-radius: 50%;
+    background: #A9B1BC; border: 1px solid rgba(255,255,255,0.35); margin-top: -4.75px;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.6); transition: transform 0.1s, background 0.1s;
+  }
+  input[type=range].mac-slider:hover::-webkit-slider-thumb { background: #E5EAF0; transform: scale(1.1); }
+  input[type=range].mac-slider::-moz-range-track { height: 3.5px; border-radius: 999px; background: rgba(255,255,255,0.22); }
+  input[type=range].mac-slider::-moz-range-progress { height: 3.5px; border-radius: 999px; background: var(--mint); }
+  input[type=range].mac-slider::-moz-range-thumb { width: 13px; height: 13px; border-radius: 50%; background: #A9B1BC; border: 1px solid rgba(255,255,255,0.35); }
+
+  /* Right Mac Compact Pills + Output + Volume */
+  .mac-controls-right { display: flex; align-items: center; justify-content: flex-end; gap: 7px; flex-shrink: 0; }
+  .mac-pill {
+    height: 26px; padding: 0 8px; border-radius: 4px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    color: var(--text-2); font-size: 9.5px; font-weight: 900; font-family: ui-monospace, monospace;
+    display: inline-flex; align-items: center; gap: 4px; cursor: pointer; white-space: nowrap; transition: all 0.14s;
+  }
+  .mac-pill:hover { border-color: rgba(255,255,255,0.32); color: var(--text); }
+  .mac-pill.party-pill { background: rgba(255, 46, 151, 0.2); border-color: rgba(255, 46, 151, 0.65); color: var(--magenta); }
+  .mac-pill.xf-on { background: rgba(245, 166, 35, 0.18); border-color: rgba(245, 166, 35, 0.6); color: #FFB347; }
+  .mac-pill.xf-active { background: rgba(20, 241, 149, 0.24); border-color: var(--mint); color: var(--mint); }
+  .mac-pill.mini-pill { border-color: rgba(20, 241, 149, 0.42); }
+  .mac-pill.mini-pill.on { background: rgba(20, 241, 149, 0.2); border-color: var(--mint); color: var(--mint); }
+  .mac-pill.out-on { background: rgba(20, 241, 149, 0.18); border-color: rgba(20, 241, 149, 0.65); color: var(--mint); }
+  .mac-pill .out-dot { width: 4.5px; height: 4.5px; border-radius: 50%; background: var(--mint); }
+  .vol-row { display: flex; align-items: center; gap: 5px; }
+
+  .footer-popover {
+    position: fixed; bottom: 90px; right: 18px; z-index: 65;
+    width: 310px; max-width: calc(100vw - 24px);
+    background: var(--surface); border: 1px solid var(--border-strong);
+    border-radius: 10px; padding: 14px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.68);
+  }
+  .footer-popover.left-anchored { right: auto; left: 18px; }
+  .xf-presets { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; margin-top: 8px; }
+  .xf-preset-btn {
+    padding: 5px 0; border-radius: 4px; border: 1px solid var(--border);
+    background: var(--surface-2); color: var(--text-2);
+    font-size: 10.5px; font-weight: 800; font-family: ui-monospace, monospace; cursor: pointer;
+  }
+  .xf-preset-btn.active { background: rgba(255,179,71,0.22); border-color: rgba(255,179,71,0.65); color: #FFB347; }
+  .mini-deck {
+    position: fixed; bottom: 92px; right: 18px; z-index: 62;
+    width: 330px; max-width: calc(100vw - 24px);
+    background: #080B12; border: 1.5px solid rgba(20, 241, 149, 0.6);
+    border-radius: 8px; padding: 10px 12px;
+    box-shadow: 0 18px 46px rgba(0, 0, 0, 0.72), 0 0 18px rgba(20, 241, 149, 0.14);
+  }
+  .mini-deck-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+  .mini-deck-title { font-size: 10px; font-weight: 900; font-family: ui-monospace, monospace; letter-spacing: 1px; color: var(--mint); }
+  .mini-lcd {
+    background: #030508; border: 1px solid rgba(20, 241, 149, 0.28); border-radius: 5px;
+    padding: 7px 9px; display: flex; align-items: center; gap: 9px; margin-bottom: 8px;
+  }
+  .mini-lcd canvas { width: 92px; height: 32px; display: block; flex-shrink: 0; }
+  .mini-lcd-info { min-width: 0; flex: 1; }
+  .mini-lcd-track { font-size: 11.5px; font-weight: 800; color: var(--mint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, monospace; }
+  .mini-lcd-time { font-size: 10px; color: var(--cyan); font-family: ui-monospace, monospace; margin-top: 2px; }
+  .mini-deck-btns { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+  .url-row-box {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;
+    padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  }
+  .url-link-code { font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--cyan); word-break: break-all; text-decoration: none; font-weight: 700; }
+  .url-link-code:hover { text-decoration: underline; }
 
   /* Modal */
   .modal-backdrop {
@@ -1457,6 +1623,7 @@
           <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
             <button class="btn btn-amber" id="djPlayToggleBtn" onclick="toggleDJBroadcast()"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg> Go On Air</button>
             <button class="btn btn-cyan" id="djStreamToggleBtn" onclick="toggleDJLiveStream()" title="Listen via continuous live 192 kbps MP3 radio stream (/stream/dj.mp3) — ideal for remote/mobile &amp; synchronized listeners"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg> Live Stream</button>
+            <button class="btn btn-dim btn-sm" id="djShareURLBtn" onclick="openRadioShareModal()" title="Share URL-only Radio DJ Streaming Player, direct MP3 stream &amp; QR code">Radio Stream URL</button>
             <button class="btn btn-dim btn-sm" onclick="copyDJStreamURL()" title="Copy live /stream/dj.mp3 radio stream URL for VLC, Sonos, WiiM, or car apps">Copy Stream URL</button>
             <a class="btn btn-dim btn-sm" href="/stream/dj.m3u" download="my-echo-dj-radio.m3u" style="text-decoration:none;" title="Download .m3u internet radio playlist">M3U</a>
             <button class="btn btn-dim" id="djCastBtn" onclick="openDLNACastModal('dj')" title="Cast Live DJ Radio to DLNA speakers, AVRs &amp; TVs"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 16.1A5 5 0 0 1 5.9 20M2 12.05A9 9 0 0 1 9.95 20M2 8V6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6"/><line x1="2" y1="20" x2="2.01" y2="20"/></svg> Cast / DLNA</button>
@@ -1906,66 +2073,106 @@
 
       <!-- SUB-TAB: REMOTE ACCESS -->
       <div id="stab-remote" class="settings-pane hidden">
-        <div class="card" style="border-color:rgba(0,229,255,0.32);">
+        <div class="card" style="border-color:rgba(0,229,255,0.38);">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
-            <div class="card-title" style="margin:0;color:var(--cyan);">REMOTE ACCESS · CLOUDFLARE TUNNEL &amp; UPnP ROUTING</div>
-            <button class="btn btn-dim btn-sm" onclick="refreshRemoteStatus()">Refresh Status</button>
+            <div class="card-title" style="margin:0;color:var(--cyan);">CLOUDFLARE NAT REMOTE ACCESS · ONE DOMAIN FOR ALL URLS</div>
+            <div style="display:flex;gap:6px;align-items:center;">
+              <span class="badge dim" id="cfStatusBadge">OFF</span>
+              <button class="btn btn-dim btn-sm" onclick="refreshRemoteStatus()">Refresh Status</button>
+            </div>
           </div>
           <div style="display:flex;flex-direction:column;gap:11px;">
-            <div style="padding:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;gap:8px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <label style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;cursor:pointer;">
-                  <input type="checkbox" id="setCFEnabled" />
-                  Cloudflare Tunnel (HTTPS · Zero Open Ports)
-                </label>
-                <span class="badge dim" id="cfStatusBadge">OFF</span>
-              </div>
+            <div style="padding:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;gap:9px;">
+              <label style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;cursor:pointer;">
+                <input type="checkbox" id="setCFEnabled" />
+                Enable Cloudflare Tunnel (NAT traversal · Zero open router ports · Automatic HTTPS)
+              </label>
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                 <div>
                   <div class="stat-k" style="margin-bottom:3px;">Tunnel Mode</div>
                   <select id="setCFMode" class="search-input" onchange="onCFModeChange()">
-                    <option value="quick">Quick Tunnel (instant trycloudflare.com)</option>
-                    <option value="token">Named Tunnel (custom domain token)</option>
+                    <option value="token">Named Tunnel (One Custom Domain)</option>
+                    <option value="quick">Quick Tunnel (Single trycloudflare.com)</option>
                   </select>
                 </div>
-                <div style="display:flex;flex-direction:column;justify-content:flex-end;gap:4px;">
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="setCFExposeDJ" checked /> Expose DJ Radio &amp; Web App</label>
-                  <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;"><input type="checkbox" id="setCFExposeParty" checked /> Expose Party Mode (HTTPS)</label>
+                <div id="cfDomainWrap">
+                  <div class="stat-k" style="margin-bottom:3px;">Single Public Domain</div>
+                  <input id="setCFPublicDomain" class="search-input" placeholder="echo.yourdomain.com" />
                 </div>
               </div>
-              <div id="cfTokenWrap" class="hidden">
+              <div id="cfTokenWrap">
                 <div class="stat-k" style="margin-bottom:3px;">Cloudflare Tunnel Token <span id="cfTokenMask" class="mono"></span></div>
                 <input id="setCFToken" class="search-input" type="password" placeholder="eyJ... (leave blank to keep saved token)" />
-              </div>
-              <div id="cfLiveURLs" class="mono" style="font-size:11.5px;display:flex;flex-direction:column;gap:4px;"></div>
-            </div>
-
-            <div style="padding:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;gap:8px;">
-              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-                <label style="display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;cursor:pointer;">
-                  <input type="checkbox" id="setUPnPEnabled" />
-                  UPnP-IGD / NAT-PMP Auto Port-Forwarding
-                </label>
-                <div style="display:flex;align-items:center;gap:6px;">
-                  <span class="badge dim" id="upnpStatusBadge">OFF</span>
-                  <button class="btn btn-dim btn-sm" onclick="syncUPnPNow()">Sync Ports</button>
+                <div class="mono" style="font-size:10.5px;margin-top:4px;color:var(--text-3);">
+                  In Cloudflare Zero Trust → Tunnels → Public Hostname: route your ONE domain to <strong style="color:var(--mint);">http://127.0.0.1:__ECHO_API_PORT__</strong>. User login, public Party Mode, Player URL &amp; URL-only Radio DJ player all share this single domain.
                 </div>
               </div>
-              <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="setUPnPParty" checked /> Open Party Mode Port</label>
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="setUPnPDJ" /> Open DJ Radio / Web UI Port</label>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:8px;">
-                <div><div class="stat-k" style="margin-bottom:3px;">Party Ext Port</div><input id="setUPnPExtParty" class="search-input" type="number" min="0" max="65535" placeholder="53333" /></div>
-                <div><div class="stat-k" style="margin-bottom:3px;">DJ Ext Port</div><input id="setUPnPExtDJ" class="search-input" type="number" min="0" max="65535" placeholder="48721" /></div>
-                <div><div class="stat-k" style="margin-bottom:3px;">Router IP (optional)</div><input id="setUPnPGW" class="search-input" placeholder="Auto-discover" /></div>
-              </div>
-              <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;color:var(--mint);">
-                <input type="checkbox" id="setRequirePINRemote" checked />
-                Require 6-digit Pairing PIN login for all remote (WAN/Tunnel) visitors
-              </label>
-              <div id="upnpLiveSummary" class="mono" style="font-size:11.5px;"></div>
+              <div id="cfLiveStatusLine" class="mono" style="font-size:11.5px;"></div>
             </div>
+
+            <div style="padding:10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;display:flex;flex-direction:column;gap:9px;">
+              <div class="stat-k" style="color:var(--mint);">SINGLE-DOMAIN ACCESS POLICIES &amp; GENERATED URLS</div>
+              <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:12px;">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="setAllowUserLogin" checked /> User-Based Login (/login)</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="setAllowPINLogin" checked /> Admin PIN Fallback</label>
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;color:var(--mint);"><input type="checkbox" id="setRequirePINRemote" checked /> Require Login on Root / Admin</label>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;">
+                <div>
+                  <div class="stat-k" style="margin-bottom:3px;">Player via URL (/player)</div>
+                  <select id="setPlayerURLAccess" class="search-input">
+                    <option value="token">URL-Only Secret Link</option>
+                    <option value="public">Public Open URL</option>
+                    <option value="login">User Login Required</option>
+                    <option value="off">Disabled Remotely</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="stat-k" style="margin-bottom:3px;">Radio DJ Streaming Player (/radio)</div>
+                  <select id="setRadioDJURLAccess" class="search-input">
+                    <option value="token">URL-Only Secret Link</option>
+                    <option value="public">Public Open URL</option>
+                    <option value="login">User Login Required</option>
+                    <option value="off">Disabled Remotely</option>
+                  </select>
+                </div>
+                <div>
+                  <div class="stat-k" style="margin-bottom:3px;">Public Party Mode (/party)</div>
+                  <select id="setPublicPartyAccess" class="search-input">
+                    <option value="public">Public Open URL</option>
+                    <option value="token">URL-Only Secret Link</option>
+                    <option value="login">User Login Required</option>
+                    <option value="off">Disabled Remotely</option>
+                  </select>
+                </div>
+              </div>
+              <div id="cfUnifiedURLs" style="display:flex;flex-direction:column;gap:6px;margin-top:2px;"></div>
+            </div>
+
+            <details style="padding:8px 10px;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;">
+              <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--text-2);display:flex;align-items:center;justify-content:space-between;">
+                <span>Legacy Router UPnP-IGD / NAT-PMP (Optional · Not needed with Cloudflare)</span>
+                <span class="badge dim" id="upnpStatusBadge">OFF</span>
+              </summary>
+              <div style="display:flex;flex-direction:column;gap:8px;margin-top:9px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                  <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;">
+                    <input type="checkbox" id="setUPnPEnabled" /> Enable UPnP-IGD / NAT-PMP Auto Port-Forwarding
+                  </label>
+                  <button class="btn btn-dim btn-sm" onclick="syncUPnPNow()">Sync Ports</button>
+                </div>
+                <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:12px;">
+                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="setUPnPParty" checked /> Open Party Port</label>
+                  <label style="display:flex;align-items:center;gap:6px;cursor:pointer;"><input type="checkbox" id="setUPnPDJ" /> Open API/Web Port</label>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:8px;">
+                  <div><div class="stat-k" style="margin-bottom:3px;">Party Ext Port</div><input id="setUPnPExtParty" class="search-input" type="number" min="0" max="65535" placeholder="53333" /></div>
+                  <div><div class="stat-k" style="margin-bottom:3px;">DJ Ext Port</div><input id="setUPnPExtDJ" class="search-input" type="number" min="0" max="65535" placeholder="48721" /></div>
+                  <div><div class="stat-k" style="margin-bottom:3px;">Router IP</div><input id="setUPnPGW" class="search-input" placeholder="Auto-discover" /></div>
+                </div>
+                <div id="upnpLiveSummary" class="mono" style="font-size:11px;"></div>
+              </div>
+            </details>
           </div>
         </div>
       </div>
@@ -2389,39 +2596,129 @@
   <div class="modal-card" id="modalBody"></div>
 </div>
 
-<!-- STICKY BOTTOM HI-FI PLAYER BAR -->
+<!-- FLOATING FOOTER POPOVER (XF, Queue, Output, Playlist Add) -->
+<div id="footerPopover" class="footer-popover hidden"></div>
+
+<!-- FLOATING WINAMP-STYLE MINI PLAYER DECK -->
+<div id="miniPlayerDeck" class="mini-deck hidden">
+  <div class="mini-deck-top">
+    <span class="mini-deck-title">MY ECHO · MINI DECK</span>
+    <button type="button" class="mac-subtle-ico" onclick="toggleMiniPlayer(false)" title="Close Mini Deck" style="padding:2px;">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="mini-lcd">
+    <canvas id="miniSpecCanvas" width="92" height="32"></canvas>
+    <div class="mini-lcd-info">
+      <div class="mini-lcd-track" id="miniTrackText">NOT PLAYING</div>
+      <div class="mini-lcd-time" id="miniTimeText">0:00 / 0:00</div>
+    </div>
+  </div>
+  <div class="mini-deck-btns">
+    <div style="display:flex;gap:6px;align-items:center;">
+      <button type="button" class="mac-pill" onclick="prevTrack()" title="Previous">⏮</button>
+      <button type="button" class="mac-pill out-on" id="miniPlayBtn" onclick="togglePlay()" title="Play/Pause">▶</button>
+      <button type="button" class="mac-pill" onclick="nextTrack()" title="Next">⏭</button>
+    </div>
+    <span class="mono" id="miniFmtText" style="font-size:10px;color:#F5B841;"></span>
+  </div>
+</div>
+
+<!-- STICKY BOTTOM HI-FI PLAYER BAR (Mac App PlayerBarView Mirror) -->
 <footer class="player-bar">
   <div class="player-inner">
-    <div class="np-info">
-      <img id="npArt" class="np-art" src="/icon.png" alt="" />
-      <div style="min-width:0;">
-        <div class="track-name" id="npTitle">Ready to play</div>
-        <div class="track-artist" id="npArtist">Pick any album, track, or start DJ Radio</div>
+    <div class="mac-np-left">
+      <button type="button" class="np-art-btn" onclick="openCurrentTrackAlbum()" title="Open current album &amp; artwork">
+        <img id="npArt" class="np-art" src="/icon.png" alt="" />
+      </button>
+      <div class="mac-np-meta">
+        <div class="mac-np-top">
+          <button type="button" class="mac-np-title" id="npTitle" onclick="openCurrentTrackAlbum()" title="Open album">Not Playing</button>
+          <span class="mac-fmt-badge hidden" id="npBadge"></span>
+        </div>
+        <div class="mac-np-sub" id="npSubRow">
+          <span class="artist-links-inline" id="npArtist">Pick any album, track, or start DJ Radio</span>
+          <span id="npAlbumSep" class="hidden">·</span>
+          <button type="button" class="mac-link-btn album-lnk hidden" id="npAlbumLink" onclick="openCurrentTrackAlbum()"></button>
+          <span id="npPlaySep" class="hidden">·</span>
+          <span class="mac-playcount hidden" id="npPlayCount" title="User play count"><span class="tri">▶</span><span id="npPlayCountNum">0</span></span>
+          <span id="npPopSep" class="hidden">·</span>
+          <span class="pop-meter hidden" id="npPopMeter" title="Track popularity"></span>
+          <span id="npStarSep" class="hidden">·</span>
+          <span class="mac-np-stars hidden" id="npStarsWrap"></span>
+        </div>
       </div>
-      <span class="badge hidden" id="npBadge"></span>
+      <div class="mac-np-actions hidden" id="npQuickActions">
+        <button type="button" class="mac-subtle-ico" id="npAddPlBtn" onclick="toggleFooterPopover('playlist', this)" title="Add current track to a playlist">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        </button>
+        <button type="button" class="mac-subtle-ico" id="npAddDJBtn" onclick="addCurrentTrackToDJ()" title="Queue current track in AI Radio DJ">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9 10a3 3 0 0 1 5.12-2.12L15 9"/><path d="M15 14a3 3 0 0 1-5.12 2.12L9 15"/></svg>
+        </button>
+      </div>
     </div>
 
     <div class="transport">
       <div class="transport-btns">
-        <button class="icon-btn" id="prevBtn" onclick="prevTrack()" title="Previous track"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="19 20 9 12 19 4 19 20" fill="currentColor"/><line x1="5" y1="19" x2="5" y2="5"/></svg></button>
-        <button class="btn btn-mint" id="playPauseBtn" onclick="togglePlay()"><svg class="ico" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg> Play</button>
-        <button class="icon-btn" id="nextBtn" onclick="nextTrack()" title="Next track"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 4 15 12 5 20 5 4" fill="currentColor"/><line x1="19" y1="5" x2="19" y2="19"/></svg></button>
-        <button class="icon-btn" id="shuffleBtn" onclick="toggleShuffle()" title="Toggle shuffle"><svg class="ico ico-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg></button>
-        <button class="btn btn-dim btn-sm" id="queueBtn" onclick="openQueueModal()">Queue (<span id="queueLen">0</span>)</button>
+        <button type="button" class="mac-tbtn" id="shuffleBtn" onclick="toggleShuffle()" title="Toggle shuffle">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+        </button>
+        <button type="button" class="mac-tbtn primary-skip" id="prevBtn" onclick="prevTrack()" title="Previous track (or restart)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="5" width="2.6" height="14" rx="1"/><polygon points="20 5 9 12 20 19 20 5"/></svg>
+        </button>
+        <button type="button" class="mac-play-box idle" id="playPauseBtn" onclick="togglePlay()" title="Play / Pause">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+        </button>
+        <button type="button" class="mac-tbtn primary-skip" id="nextBtn" onclick="nextTrack()" title="Next track">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="4 5 15 12 4 19 4 5"/><rect x="17.4" y="5" width="2.6" height="14" rx="1"/></svg>
+        </button>
+        <button type="button" class="mac-tbtn" id="repeatBtn" onclick="cycleRepeatMode()" title="Cycle repeat mode (Off → All → One)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+          <span class="rep-one hidden" id="repeatOneBadge">1</span>
+        </button>
       </div>
       <div class="scrub-row">
-        <span class="mono" id="curTime">0:00</span>
-        <input id="scrubSlider" type="range" min="0" max="100" value="0" style="flex:1;" oninput="seekToPct(this.value)" />
-        <span class="mono" id="totTime" title="Time remaining">-0:00</span>
+        <span class="scrub-time left" id="curTime">0:00</span>
+        <input id="scrubSlider" class="mac-slider" type="range" min="0" max="100" step="0.1" value="0" style="flex:1;" oninput="seekToPct(this.value)" />
+        <span class="scrub-time right" id="totTime" onclick="toggleRemainingTimeMode()" title="Click to toggle total / remaining time">0:00</span>
       </div>
     </div>
 
-    <div class="vol-row">
-      <span class="mono" id="volLabel">VOL</span>
-      <input id="volSlider" type="range" min="0" max="1" step="0.02" value="0.85" style="width:110px;" oninput="setVolume(this.value)" />
+    <div class="mac-controls-right">
+      <button type="button" class="mac-pill party-pill hidden" id="footerPartyPill" onclick="switchTab('party')" title="Party Mode is LIVE — open Party Mode">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>
+        PARTY
+      </button>
+
+      <button type="button" class="mac-pill" id="footerXFPill" onclick="toggleFooterPopover('xf', this)" title="Playback Crossfade settings">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polyline points="2 12 6 12 9 4 14 20 17 12 22 12"/></svg>
+        <span id="footerXFLabel">XF</span>
+      </button>
+
+      <button type="button" class="mac-pill mini-pill" id="footerMiniPill" onclick="toggleMiniPlayer()" title="Toggle compact floating Mini Player deck with live spectrum analyzer">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        MINI
+      </button>
+
+      <button type="button" class="mac-pill" id="queueBtn" onclick="toggleFooterPopover('queue', this)" title="Open Play Queue popover">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="12" r="1.2" fill="currentColor"/><circle cx="4" cy="18" r="1.2" fill="currentColor"/></svg>
+        <span id="queueLen">0</span>
+      </button>
+
+      <button type="button" class="mac-pill out-on" id="footerOutputPill" onclick="toggleFooterPopover('output', this)" title="Audio Output &amp; DLNA Casting">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><circle cx="12" cy="14" r="4"/><line x1="12" y1="6" x2="12.01" y2="6"/></svg>
+        <span class="out-dot" id="footerOutDot"></span>
+      </button>
+
+      <div class="vol-row">
+        <button type="button" class="mac-subtle-ico" id="footerMuteBtn" onclick="toggleMute()" title="Mute / Unmute" style="padding:3px;">
+          <svg id="footerVolSvg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        </button>
+        <input id="volSlider" class="mac-slider" type="range" min="0" max="1" step="0.02" value="0.85" style="width:88px;" oninput="setVolume(this.value)" />
+      </div>
     </div>
   </div>
-  <!-- Dual Decks for true DJ Crossfading + Dedicated Broadcast DJ Voice Deck -->
+  <!-- Dual Decks for true DJ & Normal Equal-Power Crossfading + Dedicated Broadcast DJ Voice Deck -->
   <audio id="deckA" preload="auto"></audio>
   <audio id="deckB" preload="auto"></audio>
   <audio id="djVoiceEl" preload="auto"></audio>
@@ -2502,6 +2799,7 @@ deckB.volume = 0;
 djVoice.volume = Math.min(1, masterVolume * 1.05);
 
 let audioCtx = null;
+let audioAnalyser = null;
 let webAudioReady = false;
 const deckGainMap = new WeakMap();
 function initWebAudio() {
@@ -2519,7 +2817,11 @@ function initWebAudio() {
     limiter.ratio.value = 12;
     limiter.attack.value = 0.003;
     limiter.release.value = 0.12;
-    limiter.connect(audioCtx.destination);
+    audioAnalyser = audioCtx.createAnalyser();
+    audioAnalyser.fftSize = 64;
+    audioAnalyser.smoothingTimeConstant = 0.76;
+    limiter.connect(audioAnalyser);
+    audioAnalyser.connect(audioCtx.destination);
 
     [deckA, deckB, djVoice].forEach(el => {
       const src = audioCtx.createMediaElementSource(el);
@@ -6122,15 +6424,512 @@ function stopAllAudio() {
   updateDJTeleprompterUI(null);
 }
 
+// Mac App Footer Player Bar State & Helpers
+let repeatMode = localStorage.getItem("echo_repeat_mode") || "off";
+let isMuted = false;
+let showRemainingTime = false;
+let xfEnabled = localStorage.getItem("echo_xf_enabled") === "1";
+let xfDurationSec = Math.max(1, Math.min(12, parseInt(localStorage.getItem("echo_xf_sec") || "6", 10) || 6));
+let normalCrossfading = false;
+let normalCrossfadeTimer = null;
+let activeFooterPopover = null;
+let miniPlayerOpen = false;
+let miniAnimFrame = null;
+let selectedOutputSinkId = "";
+let trackPlayReportedId = null;
+
+function setSliderFill(el, pct) {
+  if (!el) return;
+  const clamped = Math.max(0, Math.min(100, Number(pct) || 0));
+  el.style.setProperty("--pct", clamped.toFixed(1) + "%");
+}
+
+function renderPlayPauseButton(playing) {
+  const btn = document.getElementById("playPauseBtn");
+  const hasTrack = !!(currentTrackObj || playQueue.length || djState?.slots?.length || isStreamLockedMode());
+  if (btn) {
+    btn.classList.toggle("idle", !hasTrack);
+    if (isStreamLockedMode()) {
+      btn.innerHTML = djLiveStreamActive
+        ? `<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>`
+        : `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="margin-left:1.5px;"><polygon points="6 4 20 12 6 20 6 4"/></svg>`;
+    } else {
+      btn.innerHTML = playing
+        ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4.5" height="16" rx="1"/><rect x="13.5" y="4" width="4.5" height="16" rx="1"/></svg>`
+        : `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="margin-left:1.5px;"><polygon points="6 4 20 12 6 20 6 4"/></svg>`;
+    }
+  }
+  const miniBtn = document.getElementById("miniPlayBtn");
+  if (miniBtn) miniBtn.textContent = playing ? "❚❚" : "▶";
+}
+
+function renderPopularityBars(pop) {
+  const score = Number(pop || 0);
+  if (!score || score <= 0) return "";
+  const litCount = Math.max(1, Math.min(5, Math.ceil((score / 100) * 5)));
+  const heights = [4, 5.5, 7, 8.5, 10];
+  return heights.map((h, i) => `<i class="${i < litCount ? "lit" : ""}" style="height:${h}px;"></i>`).join("");
+}
+
+function renderRepeatButton() {
+  const btn = document.getElementById("repeatBtn");
+  const badge = document.getElementById("repeatOneBadge");
+  if (btn) {
+    btn.classList.toggle("active", repeatMode !== "off");
+    btn.title = `Repeat: ${repeatMode === "one" ? "Repeat One" : (repeatMode === "all" ? "Repeat All" : "Off")} (click to cycle)`;
+  }
+  if (badge) badge.classList.toggle("hidden", repeatMode !== "one");
+}
+
+function cycleRepeatMode() {
+  if (isStreamLockedMode()) return;
+  repeatMode = repeatMode === "off" ? "all" : (repeatMode === "all" ? "one" : "off");
+  try { localStorage.setItem("echo_repeat_mode", repeatMode); } catch (e) {}
+  renderRepeatButton();
+  showToast(repeatMode === "off" ? "Repeat Off" : (repeatMode === "all" ? "Repeat All" : "Repeat One"));
+}
+
+function renderCrossfadePill() {
+  const pill = document.getElementById("footerXFPill");
+  const lbl = document.getElementById("footerXFLabel");
+  if (!pill || !lbl) return;
+  lbl.textContent = xfEnabled ? `XF ${xfDurationSec}s` : "XF";
+  pill.classList.toggle("xf-on", xfEnabled && !normalCrossfading);
+  pill.classList.toggle("xf-active", normalCrossfading);
+}
+
+function setCrossfadeConfig(enabled, secs) {
+  xfEnabled = !!enabled;
+  if (typeof secs === "number" && isFinite(secs)) {
+    xfDurationSec = Math.max(1, Math.min(12, Math.round(secs)));
+  }
+  try {
+    localStorage.setItem("echo_xf_enabled", xfEnabled ? "1" : "0");
+    localStorage.setItem("echo_xf_sec", String(xfDurationSec));
+  } catch (e) {}
+  renderCrossfadePill();
+  if (activeFooterPopover === "xf") renderFooterPopoverContent("xf");
+}
+
+function toggleRemainingTimeMode() {
+  showRemainingTime = !showRemainingTime;
+  updateScrubberTimeLabels(activeDeck.currentTime || 0, activeDeck.duration || currentTrackObj?.duration || 0);
+}
+
+function updateScrubberTimeLabels(curSec, durSec) {
+  const c = isFinite(curSec) && curSec > 0 ? curSec : 0;
+  const d = isFinite(durSec) && durSec > 0 ? durSec : 0;
+  const curEl = document.getElementById("curTime");
+  const totEl = document.getElementById("totTime");
+  if (curEl) curEl.textContent = fmtDur(c);
+  if (totEl) totEl.textContent = showRemainingTime ? ("-" + fmtDur(Math.max(0, d - c))) : fmtDur(d);
+  const miniT = document.getElementById("miniTimeText");
+  if (miniT) miniT.textContent = `${fmtDur(c)} / ${fmtDur(d)}`;
+}
+
+function updateVolumeIcon() {
+  const svg = document.getElementById("footerVolSvg");
+  if (!svg) return;
+  const v = isMuted ? 0 : masterVolume;
+  if (v <= 0.01) {
+    svg.innerHTML = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>`;
+  } else if (v < 0.45) {
+    svg.innerHTML = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>`;
+  } else {
+    svg.innerHTML = `<polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" fill="currentColor"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>`;
+  }
+}
+
+function toggleMute() {
+  isMuted = !isMuted;
+  const eff = isMuted ? 0 : masterVolume;
+  const slider = document.getElementById("volSlider");
+  if (slider) {
+    slider.value = String(eff);
+    setSliderFill(slider, eff * 100);
+  }
+  setDeckVolume(activeDeck, isMuted ? 0 : effectiveTrackVol(currentTrackObj, !!djSpeakingBreak));
+  setDeckVolume(djVoice, isMuted ? 0 : Math.min(webAudioReady ? 1.4 : 1.0, masterVolume * 1.05));
+  updateVolumeIcon();
+}
+
+function openCurrentTrackAlbum() {
+  if (!currentTrackObj) return;
+  const key = (currentTrackObj.albumKey || (currentTrackObj.album || "").toLowerCase()).trim();
+  if (!key) return;
+  if (typeof openAlbumByKey === "function") {
+    openAlbumByKey(key, currentTrackObj.album || "Unknown Album");
+  }
+}
+
+async function addCurrentTrackToDJ() {
+  if (!currentTrackObj) return;
+  if (!IS_ADMIN) { showToast("Admin account required to add tracks to live DJ queue"); return; }
+  const res = await fetch("/api/v2/dj/queue/add", {
+    method: "POST",
+    headers: { ...HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ trackId: currentTrackObj.id })
+  });
+  if (res.ok) {
+    showToast(`Added "${currentTrackObj.title}" to AI Radio DJ queue`);
+    refreshDJState();
+  }
+}
+
+function closeFooterPopover() {
+  activeFooterPopover = null;
+  document.getElementById("footerPopover")?.classList.add("hidden");
+  document.getElementById("queueBtn")?.classList.remove("out-on");
+}
+
+function toggleFooterPopover(kind) {
+  if (activeFooterPopover === kind) {
+    closeFooterPopover();
+    return;
+  }
+  activeFooterPopover = kind;
+  const pop = document.getElementById("footerPopover");
+  if (!pop) return;
+  pop.classList.toggle("left-anchored", kind === "playlist");
+  pop.classList.remove("hidden");
+  document.getElementById("queueBtn")?.classList.toggle("out-on", kind === "queue");
+  renderFooterPopoverContent(kind);
+}
+
+async function renderFooterPopoverContent(kind) {
+  const pop = document.getElementById("footerPopover");
+  if (!pop) return;
+
+  if (kind === "xf") {
+    pop.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:13px;font-weight:800;display:flex;align-items:center;gap:6px;color:${xfEnabled ? "#FFB347" : "var(--text)"};">
+          <span>⚡</span> Web Playback Crossfade
+        </div>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;cursor:pointer;">
+          <input type="checkbox" ${xfEnabled ? "checked" : ""} onchange="setCrossfadeConfig(this.checked, xfDurationSec)" />
+          ${xfEnabled ? "ON" : "OFF"}
+        </label>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:4px;">
+        <span style="color:var(--text-2);">Fade Duration</span>
+        <span class="mono" style="font-weight:800;color:${xfEnabled ? "#FFB347" : "var(--text-3)"};">${xfDurationSec} sec</span>
+      </div>
+      <input type="range" class="mac-slider" min="1" max="12" step="1" value="${xfDurationSec}" style="width:100%;--pct:${((xfDurationSec-1)/11)*100}%;" ${xfEnabled ? "" : "disabled"} oninput="setCrossfadeConfig(true, parseInt(this.value,10))" />
+      <div class="xf-presets">
+        ${[2,4,6,8,12].map(s => `<button type="button" class="xf-preset-btn ${xfEnabled && xfDurationSec === s ? "active" : ""}" onclick="setCrossfadeConfig(true, ${s})">${s}s</button>`).join("")}
+      </div>
+      <div style="font-size:10.5px;color:var(--text-3);margin-top:9px;line-height:1.4;">
+        Smooth equal-power dual-deck blend between queued tracks during web playback.
+      </div>
+    `;
+    return;
+  }
+
+  if (kind === "queue") {
+    const isDJ = playbackMode === "dj" && djState?.slots?.length;
+    const count = isDJ ? djState.slots.length : playQueue.length;
+    let listHTML = "";
+    if (!count) {
+      listHTML = `<div class="mono" style="padding:18px;text-align:center;font-size:11.5px;">Queue is empty</div>`;
+    } else if (isDJ) {
+      listHTML = djState.slots.slice(0, 40).map((slot, i) => {
+        const cur = i === (djState.currentIndex || 0);
+        return `<div class="np-q-item ${cur ? "playing" : ""}" onclick="playDJSlot(${i}, false);closeFooterPopover()">
+          <img src="${artURL(slot.track.artworkHash)}" />
+          <div style="min-width:0;flex:1;">
+            <div style="font-size:12px;font-weight:${cur ? 800 : 600};color:${cur ? "var(--mint)" : "var(--text)"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(slot.track.title)}</div>
+            <div style="font-size:10.5px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(slot.track.artist)}</div>
+          </div>
+          <span class="mono" style="font-size:10px;">${fmtDur(slot.track.duration)}</span>
+        </div>`;
+      }).join("");
+    } else {
+      listHTML = playQueue.slice(0, 60).map((t, i) => {
+        const cur = i === playIndex;
+        return `<div class="np-q-item ${cur ? "playing" : ""}" onclick="playAtIndex(${i})">
+          <img src="${artURL(t.artworkHash)}" />
+          <div style="min-width:0;flex:1;">
+            <div style="font-size:12px;font-weight:${cur ? 800 : 600};color:${cur ? "var(--mint)" : "var(--text)"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.title)}</div>
+            <div style="font-size:10.5px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(t.artist)} · ${esc(t.album)}</div>
+          </div>
+          <button type="button" class="mac-subtle-ico" onclick="event.stopPropagation();removeFromNormalQueue(${i})" title="Remove">×</button>
+        </div>`;
+      }).join("");
+    }
+    pop.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:13.5px;font-weight:800;">${isDJ ? "AI DJ Rundown" : "Play Queue"}</div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="mono" style="font-size:11px;">${count} tracks</span>
+          ${count && !isDJ ? `<button type="button" class="btn btn-dim btn-sm" style="padding:2px 7px;font-size:10px;" onclick="clearActiveQueue();renderFooterPopoverContent('queue')">Clear</button>` : ""}
+        </div>
+      </div>
+      <div style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;">${listHTML}</div>
+    `;
+    return;
+  }
+
+  if (kind === "output") {
+    let browserDevs = [];
+    if (navigator.mediaDevices && typeof navigator.mediaDevices.enumerateDevices === "function" && typeof deckA.setSinkId === "function") {
+      try {
+        const all = await navigator.mediaDevices.enumerateDevices();
+        browserDevs = all.filter(d => d.kind === "audiooutput" && d.deviceId);
+      } catch (e) {}
+    }
+    const dlnaList = IS_ADMIN ? (remoteStatusCache?.dlna?.renderers || []) : [];
+    pop.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="font-size:13.5px;font-weight:800;color:var(--mint);">Audio Output</div>
+        ${IS_ADMIN ? `<button type="button" class="btn btn-dim btn-sm" style="padding:2px 8px;font-size:10.5px;" onclick="closeFooterPopover();openDLNACastModal('dj')">DLNA Cast</button>` : ""}
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px;max-height:260px;overflow-y:auto;">
+        <button type="button" class="np-q-item ${!selectedOutputSinkId ? "playing" : ""}" style="width:100%;border:1px solid ${!selectedOutputSinkId ? "rgba(20,241,149,0.5)" : "var(--border)"};background:var(--surface-2);cursor:pointer;text-align:left;" onclick="selectBrowserOutputDevice('')">
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:700;color:${!selectedOutputSinkId ? "var(--mint)" : "var(--text)"};">System Default (Browser)</div>
+            <div style="font-size:10px;color:var(--text-3);">Follows OS audio output</div>
+          </div>
+          ${!selectedOutputSinkId ? '<span style="color:var(--mint);font-weight:900;">✓</span>' : ""}
+        </button>
+        ${browserDevs.filter(d => d.deviceId !== "default").map(d => {
+          const sel = selectedOutputSinkId === d.deviceId;
+          const safeId = esc(d.deviceId).replace(/'/g, "\\'");
+          return `<button type="button" class="np-q-item ${sel ? "playing" : ""}" style="width:100%;border:1px solid ${sel ? "rgba(20,241,149,0.5)" : "var(--border)"};background:var(--surface-2);cursor:pointer;text-align:left;" onclick="selectBrowserOutputDevice('${safeId}')">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:700;color:${sel ? "var(--mint)" : "var(--text)"};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(d.label || "Audio Output")}</div>
+              <div style="font-size:10px;color:var(--text-3);">Browser Output Device</div>
+            </div>
+            ${sel ? '<span style="color:var(--mint);font-weight:900;">✓</span>' : ""}
+          </button>`;
+        }).join("")}
+        ${dlnaList.length ? `<div class="stat-k" style="margin-top:6px;">LAN DLNA SPEAKERS</div>` + dlnaList.map(r => {
+          const safeID = esc(r.id).replace(/'/g, "\\'");
+          return `<div class="np-q-item" style="border:1px solid var(--border);background:var(--surface-2);">
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(r.name)}</div>
+              <div style="font-size:10px;color:var(--text-3);">${r.activeChannel ? "Casting " + esc(r.activeChannel.toUpperCase()) : "DLNA Speaker"}</div>
+            </div>
+            <button type="button" class="btn btn-amber btn-sm" style="padding:2px 7px;font-size:10px;" onclick="castToDLNA('${safeID}','dj')">Cast</button>
+          </div>`;
+        }).join("") : ""}
+      </div>
+    `;
+    return;
+  }
+
+  if (kind === "playlist") {
+    if (!currentTrackObj) { closeFooterPopover(); return; }
+    pop.innerHTML = `<div class="mono" style="font-size:11.5px;">Loading playlists…</div>`;
+    try {
+      const res = await fetch("/api/v2/web/playlists", { headers: HEADERS });
+      const data = await res.json();
+      const pls = data.playlists || [];
+      pop.innerHTML = `
+        <div style="font-size:13px;font-weight:800;margin-bottom:8px;">Add "${esc(currentTrackObj.title)}"</div>
+        <div style="display:flex;flex-direction:column;gap:5px;max-height:210px;overflow-y:auto;margin-bottom:9px;">
+          ${pls.map(p => `<button type="button" class="np-q-item" style="width:100%;border:1px solid var(--border);background:var(--surface-2);cursor:pointer;text-align:left;" onclick="quickAddCurrentTrackToPlaylist('${esc(p.id).replace(/'/g, "\\'")}','')">
+            <div style="flex:1;min-width:0;font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}</div>
+            <span class="mono" style="font-size:10px;">${p.trackCount ?? (p.tracks?.length || 0)}</span>
+          </button>`).join("") || `<div class="mono" style="font-size:11px;">No playlists yet — create one below.</div>`}
+        </div>
+        <div style="display:flex;gap:6px;">
+          <input id="quickNewPlName" class="search-input" placeholder="New playlist name…" style="font-size:12px;padding:6px 8px;" />
+          <button type="button" class="btn btn-mint btn-sm" onclick="quickAddCurrentTrackToPlaylist('', document.getElementById('quickNewPlName').value.trim())">Create</button>
+        </div>
+      `;
+    } catch (e) {
+      pop.innerHTML = `<div class="mono" style="color:var(--coral);">Failed to load playlists</div>`;
+    }
+  }
+}
+
+async function quickAddCurrentTrackToPlaylist(playlistId, playlistName) {
+  if (!currentTrackObj) return;
+  try {
+    if (playlistId) {
+      const res = await fetch("/api/v2/web/playlists/update", {
+        method: "POST",
+        headers: { ...HEADERS, "Content-Type": "application/json" },
+        body: JSON.stringify({ id: playlistId, addTrackIds: [currentTrackObj.id] })
+      });
+      if (res.ok) {
+        showToast("Added to playlist");
+        closeFooterPopover();
+        if (typeof loadPlaylistsCache === "function") loadPlaylistsCache(true);
+      }
+    } else {
+      const res = await fetch("/api/v2/web/playlists/create", {
+        method: "POST",
+        headers: { ...HEADERS, "Content-Type": "application/json" },
+        body: JSON.stringify({ name: playlistName || "Web Favorites", trackIds: [currentTrackObj.id] })
+      });
+      if (res.ok) {
+        showToast(`Created "${playlistName || "Web Favorites"}"`);
+        closeFooterPopover();
+        if (typeof loadPlaylistsCache === "function") loadPlaylistsCache(true);
+      }
+    }
+  } catch (e) { showToast("Could not update playlist"); }
+}
+
+async function selectBrowserOutputDevice(sinkId) {
+  selectedOutputSinkId = sinkId || "";
+  for (const el of [deckA, deckB, djVoice]) {
+    if (typeof el.setSinkId === "function") {
+      try { await el.setSinkId(selectedOutputSinkId); } catch (e) {}
+    }
+  }
+  showToast(selectedOutputSinkId ? "Switched browser audio output" : "Using System Default audio output");
+  closeFooterPopover();
+}
+
+function removeFromNormalQueue(idx) {
+  if (idx < 0 || idx >= playQueue.length) return;
+  playQueue.splice(idx, 1);
+  if (idx < playIndex) playIndex--;
+  else if (idx === playIndex && playIndex >= playQueue.length) playIndex = playQueue.length - 1;
+  updateQueueCount();
+  renderSidebarQueue();
+  if (activeFooterPopover === "queue") renderFooterPopoverContent("queue");
+}
+
+function toggleMiniPlayer(forceState) {
+  miniPlayerOpen = typeof forceState === "boolean" ? forceState : !miniPlayerOpen;
+  document.getElementById("miniPlayerDeck")?.classList.toggle("hidden", !miniPlayerOpen);
+  document.getElementById("footerMiniPill")?.classList.toggle("on", miniPlayerOpen);
+  if (miniPlayerOpen) startMiniSpectrumLoop();
+  else if (miniAnimFrame) { cancelAnimationFrame(miniAnimFrame); miniAnimFrame = null; }
+}
+
+function startMiniSpectrumLoop() {
+  if (miniAnimFrame) cancelAnimationFrame(miniAnimFrame);
+  const canvas = document.getElementById("miniSpecCanvas");
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const bins = new Uint8Array(audioAnalyser ? audioAnalyser.frequencyBinCount : 16);
+  const draw = () => {
+    if (!miniPlayerOpen) return;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const playing = !activeDeck.paused && !!activeDeck.src && activeDeck.src !== SILENT_WAV_URI;
+    if (audioAnalyser && playing) audioAnalyser.getByteFrequencyData(bins);
+    else bins.fill(0);
+    const barCount = 14;
+    const gap = 2;
+    const bw = (canvas.width - (barCount - 1) * gap) / barCount;
+    for (let i = 0; i < barCount; i++) {
+      const val = playing ? (audioAnalyser ? bins[Math.min(bins.length - 1, i + 1)] / 255 : (0.2 + Math.abs(Math.sin(Date.now() / 220 + i)) * 0.6)) : 0.06;
+      const h = Math.max(2, Math.round(val * (canvas.height - 2)));
+      ctx.fillStyle = val > 0.72 ? "#FFB347" : (val > 0.45 ? "#00E5FF" : "#14F195");
+      ctx.fillRect(i * (bw + gap), canvas.height - h, bw, h);
+    }
+    miniAnimFrame = requestAnimationFrame(draw);
+  };
+  miniAnimFrame = requestAnimationFrame(draw);
+}
+
+document.addEventListener("pointerdown", (ev) => {
+  if (!activeFooterPopover) return;
+  const pop = document.getElementById("footerPopover");
+  if (pop && pop.contains(ev.target)) return;
+  if (ev.target.closest && ev.target.closest("#footerXFPill, #queueBtn, #footerOutputPill, #npAddPlBtn")) return;
+  closeFooterPopover();
+});
+
+function triggerNormalCrossfadeToNext() {
+  if (normalCrossfading || playbackMode !== "normal" || !playQueue.length) return;
+  let nextIdx = -1;
+  if (repeatMode === "one") nextIdx = playIndex;
+  else if (isShuffled) nextIdx = Math.floor(Math.random() * playQueue.length);
+  else if (playIndex + 1 < playQueue.length) nextIdx = playIndex + 1;
+  else if (repeatMode === "all") nextIdx = 0;
+  if (nextIdx < 0 || nextIdx >= playQueue.length) return;
+
+  const nextTr = playQueue[nextIdx];
+  const fadeMs = Math.max(1000, xfDurationSec * 1000);
+  normalCrossfading = true;
+  renderCrossfadePill();
+
+  const outgoing = activeDeck;
+  const incoming = standbyDeck;
+  incoming.dataset.trackId = nextTr.id;
+  incoming.dataset.transcoded = "0";
+  setDeckVolume(incoming, 0.001);
+  incoming.src = streamURL(nextTr.id, false);
+
+  activeDeck = incoming;
+  standbyDeck = outgoing;
+  playIndex = nextIdx;
+  trackPlayReportedId = null;
+
+  incoming.play().then(() => {
+    updateNowPlayingDisplay(nextTr);
+    rampAudioVolume(incoming, effectiveTrackVol(nextTr, false), fadeMs);
+    rampAudioVolume(outgoing, 0, fadeMs);
+    clearTimeout(normalCrossfadeTimer);
+    normalCrossfadeTimer = setTimeout(() => {
+      outgoing.pause();
+      outgoing.removeAttribute("src");
+      normalCrossfading = false;
+      renderCrossfadePill();
+    }, fadeMs + 120);
+  }).catch(() => {
+    normalCrossfading = false;
+    renderCrossfadePill();
+    playAtIndex(nextIdx);
+  });
+}
+
 function updateNowPlayingDisplay(tr) {
   currentTrackObj = tr;
   const art = artURL(tr.artworkHash);
   document.getElementById("npArt").src = art;
   document.getElementById("npTitle").textContent = tr.title;
-  document.getElementById("npArtist").innerHTML = `${renderArtistLinksHTML(tr.artist)}${tr.album ? ` · <a href="${albumHref(tr.albumKey || (tr.album || "").toLowerCase())}" class="album-link" onclick="event.preventDefault();openAlbumByKey('${esc(tr.albumKey || (tr.album || "").toLowerCase()).replace(/'/g, "\\'")}','${esc(tr.album).replace(/'/g, "\\'")}')">${esc(tr.album)}</a>` : ""}`;
+  document.getElementById("npArtist").innerHTML = renderArtistLinksHTML(tr.artist);
+
+  const albLink = document.getElementById("npAlbumLink");
+  const albSep = document.getElementById("npAlbumSep");
+  if (tr.album) {
+    albLink.textContent = tr.album;
+    albLink.classList.remove("hidden");
+    albSep.classList.remove("hidden");
+  } else {
+    albLink.classList.add("hidden");
+    albSep.classList.add("hidden");
+  }
+
+  const pc = Number(tr.userPlayCount || 0);
+  document.getElementById("npPlayCountNum").textContent = String(pc);
+  document.getElementById("npPlayCount").classList.toggle("hidden", pc <= 0);
+  document.getElementById("npPlaySep").classList.toggle("hidden", pc <= 0);
+
+  const popHTML = renderPopularityBars(tr.onlinePopularity);
+  const popEl = document.getElementById("npPopMeter");
+  popEl.innerHTML = popHTML;
+  popEl.classList.toggle("hidden", !popHTML);
+  document.getElementById("npPopSep").classList.toggle("hidden", !popHTML);
+
+  const starsEl = document.getElementById("npStarsWrap");
+  starsEl.innerHTML = hasPerm("library") ? renderStarsHTML(tr.userRating, "track", tr.id) : "";
+  starsEl.classList.toggle("hidden", !hasPerm("library"));
+  document.getElementById("npStarSep").classList.toggle("hidden", !hasPerm("library"));
+  document.getElementById("npQuickActions").classList.toggle("hidden", !hasPerm("library"));
+
   const b = document.getElementById("npBadge");
   const q = [tr.format, tr.formatDetail].filter(Boolean).join(" ");
-  if (q) { b.textContent = q; b.classList.remove("hidden"); b.classList.toggle("hires", !!tr.isHiRes); } else b.classList.add("hidden");
+  if (q) {
+    b.textContent = q;
+    b.classList.remove("hidden", "hires", "lossless");
+    if (tr.isHiRes) b.classList.add("hires");
+    else if (/^(FLAC|ALAC|WAV|AIFF|DSF|DFF)/i.test(tr.format || "")) b.classList.add("lossless");
+  } else b.classList.add("hidden");
+
+  const miniT = document.getElementById("miniTrackText");
+  if (miniT) miniT.textContent = `${tr.artist || ""} — ${tr.title || ""}`;
+  const miniF = document.getElementById("miniFmtText");
+  if (miniF) miniF.textContent = q || "";
+  updateScrubberTimeLabels(activeDeck.currentTime || 0, tr.duration || 0);
+  renderPlayPauseButton(!activeDeck.paused && !!activeDeck.src);
 
   // Sidebar update
   document.getElementById("sideArt").src = art;
@@ -6460,6 +7259,7 @@ function updateTransportStreamLock() {
   document.getElementById("prevBtn")?.classList.toggle("hidden", locked);
   document.getElementById("nextBtn")?.classList.toggle("hidden", locked);
   document.getElementById("shuffleBtn")?.classList.toggle("hidden", locked);
+  document.getElementById("repeatBtn")?.classList.toggle("hidden", locked);
   document.getElementById("queueBtn")?.classList.toggle("hidden", locked);
   const scrub = document.getElementById("scrubSlider");
   if (scrub) {
@@ -6467,10 +7267,7 @@ function updateTransportStreamLock() {
     scrub.style.pointerEvents = locked ? "none" : "";
     scrub.title = locked ? "Live radio stream — seeking disabled" : "";
   }
-  const pb = document.getElementById("playPauseBtn");
-  if (pb && locked) {
-    pb.innerHTML = djLiveStreamActive ? (ico("stop") + " Stop") : (ico("play") + " Play");
-  }
+  renderPlayPauseButton(djLiveStreamActive || (!activeDeck.paused && !!activeDeck.src));
 }
 
 function togglePlay() {
@@ -6523,6 +7320,7 @@ function nextTrack() {
   if (!playQueue.length) return;
   if (isShuffled) playAtIndex(Math.floor(Math.random() * playQueue.length));
   else if (playIndex + 1 < playQueue.length) playAtIndex(playIndex + 1);
+  else if (repeatMode === "all") playAtIndex(0);
 }
 function prevTrack() {
   if (isStreamLockedMode()) return;
@@ -6579,8 +7377,11 @@ function effectiveTrackVol(tr, ducked = false) {
 }
 function setVolume(v) {
   masterVolume = parseFloat(v);
-  setDeckVolume(activeDeck, effectiveTrackVol(currentTrackObj, !!djSpeakingBreak));
-  setDeckVolume(djVoice, Math.min(webAudioReady ? 1.4 : 1.0, masterVolume * 1.05));
+  isMuted = masterVolume <= 0.001;
+  setSliderFill(document.getElementById("volSlider"), masterVolume * 100);
+  updateVolumeIcon();
+  setDeckVolume(activeDeck, isMuted ? 0 : effectiveTrackVol(currentTrackObj, !!djSpeakingBreak));
+  setDeckVolume(djVoice, isMuted ? 0 : Math.min(webAudioReady ? 1.4 : 1.0, masterVolume * 1.05));
 }
 
 // Smooth Volume Ramp Helper using interval timer (works reliably even in background tabs & cancels prior ramps!)
@@ -6677,7 +7478,7 @@ function attachDeckListeners(deck) {
     consecutiveTrackErrors = 0;
     lastPlaybackProgressTs = Date.now();
     lastPlaybackProgressSec = deck.currentTime || 0;
-    document.getElementById("playPauseBtn").innerHTML = ico("pause") + " Pause";
+    renderPlayPauseButton(true);
     document.getElementById("resumeBanner").classList.add("hidden");
     pendingRestoreResume = null;
     updateMediaSessionMetadata(currentTrackObj);
@@ -6687,7 +7488,7 @@ function attachDeckListeners(deck) {
   deck.addEventListener("pause", () => {
     if (deck !== activeDeck) return;
     if (!djSpeakingBreak || djVoice.paused) {
-      document.getElementById("playPauseBtn").innerHTML = ico("play") + " Play";
+      renderPlayPauseButton(false);
     }
     syncPlayingRows();
     savePersistentState(true);
@@ -6709,6 +7510,8 @@ function attachDeckListeners(deck) {
     if (playbackMode === "dj" && djActive) {
       djTransitionLock = false;
       triggerDJTransitionToNext();
+    } else if (repeatMode === "one" && playIndex >= 0 && playIndex < playQueue.length) {
+      playAtIndex(playIndex);
     } else {
       nextTrack();
     }
@@ -6719,13 +7522,35 @@ function attachDeckListeners(deck) {
       lastPlaybackProgressTs = Date.now();
       lastPlaybackProgressSec = deck.currentTime || 0;
     }
-    document.getElementById("curTime").textContent = fmtDur(deck.currentTime);
-    const remSec = isFinite(deck.duration) && deck.duration > 0 ? Math.max(0, deck.duration - deck.currentTime) : 0;
-    document.getElementById("totTime").textContent = "-" + fmtDur(remSec);
+    const dur = isFinite(deck.duration) && deck.duration > 0 ? deck.duration : (currentTrackObj?.duration || 0);
+    updateScrubberTimeLabels(deck.currentTime, dur);
     if (isFinite(deck.duration) && deck.duration > 0) {
-      document.getElementById("scrubSlider").value = (deck.currentTime / deck.duration) * 100;
+      const pct = (deck.currentTime / deck.duration) * 100;
+      const scrub = document.getElementById("scrubSlider");
+      scrub.value = pct;
+      setSliderFill(scrub, pct);
+      if (hasPerm("library") && currentTrackObj && trackPlayReportedId !== currentTrackObj.id && (deck.currentTime >= 15 || deck.currentTime >= deck.duration * 0.35)) {
+        trackPlayReportedId = currentTrackObj.id;
+        fetch("/api/v2/web/played", {
+          method: "POST",
+          headers: { ...HEADERS, "Content-Type": "application/json" },
+          body: JSON.stringify({ trackId: currentTrackObj.id })
+        }).then(r => r.json()).then(d => {
+          if (d && d.ok && currentTrackObj && currentTrackObj.id === trackPlayReportedId) {
+            currentTrackObj.userPlayCount = d.userPlayCount;
+            document.getElementById("npPlayCountNum").textContent = String(d.userPlayCount);
+            document.getElementById("npPlayCount").classList.remove("hidden");
+            document.getElementById("npPlaySep").classList.remove("hidden");
+          }
+        }).catch(() => {});
+      }
       if (playbackMode === "dj" && djActive && !djTransitionLock) {
         checkDJTransitionTriggers(deck.currentTime, deck.duration);
+      } else if (playbackMode === "normal" && xfEnabled && !normalCrossfading && !userPaused && deck.duration > xfDurationSec + 3) {
+        const rem = deck.duration - deck.currentTime;
+        if (rem <= xfDurationSec && (repeatMode !== "off" || isShuffled || playIndex + 1 < playQueue.length)) {
+          triggerNormalCrossfadeToNext();
+        }
       }
       savePersistentState(false);
     }
@@ -6801,13 +7626,13 @@ setInterval(() => {
 djVoice.addEventListener("play", () => {
   if (djVoice._plingTimers) { djVoice._plingTimers.forEach(t => clearTimeout(t)); djVoice._plingTimers = null; }
   if (djSpeakingBreak) {
-    document.getElementById("playPauseBtn").innerHTML = ico("pause") + " Pause";
+    renderPlayPauseButton(true);
     syncPlayingRows();
   }
 });
 djVoice.addEventListener("pause", () => {
   if (activeDeck.paused) {
-    document.getElementById("playPauseBtn").innerHTML = ico("play") + " Play";
+    renderPlayPauseButton(false);
     syncPlayingRows();
   }
   if (djSpeakingBreak && !userPaused && !djVoice.ended && djVoice.src) {
@@ -8135,6 +8960,7 @@ async function refreshParty() {
     const navDot = document.getElementById("partyNavDot");
     navBtn.classList.toggle("party-live", partyLive);
     navDot.className = partyLive ? "dot magenta" : "dot dim";
+    document.getElementById("footerPartyPill")?.classList.toggle("hidden", !partyLive);
 
     document.getElementById("partyHeadline").textContent = partyLive
       ? `LIVE · ${env.status.playlistName} (${env.state?.upNextCount || 0} up next)`
@@ -8539,11 +9365,15 @@ async function loadSettingsForm() {
     }
     const rem = s.remote || {};
     document.getElementById("setCFEnabled").checked = !!rem.cloudflareEnabled;
-    document.getElementById("setCFMode").value = rem.cloudflareMode || "quick";
+    document.getElementById("setCFMode").value = rem.cloudflareMode || "token";
+    document.getElementById("setCFPublicDomain").value = rem.cloudflarePublicDomain || "";
     document.getElementById("setCFToken").value = "";
     document.getElementById("cfTokenMask").textContent = rem.hasCloudflareToken ? `(saved: ${rem.cloudflareTokenMask})` : "";
-    document.getElementById("setCFExposeDJ").checked = rem.cloudflareExposeDJ !== false;
-    document.getElementById("setCFExposeParty").checked = rem.cloudflareExposeParty !== false;
+    document.getElementById("setPublicPartyAccess").value = rem.publicPartyAccess || "public";
+    document.getElementById("setPlayerURLAccess").value = rem.playerURLAccess || "token";
+    document.getElementById("setRadioDJURLAccess").value = rem.radioDJURLAccess || "token";
+    document.getElementById("setAllowUserLogin").checked = rem.allowUserLogin !== false;
+    document.getElementById("setAllowPINLogin").checked = rem.allowPINLogin !== false;
     onCFModeChange();
 
     document.getElementById("setUPnPEnabled").checked = !!rem.upnpEnabled;
@@ -8562,8 +9392,97 @@ async function loadSettingsForm() {
 }
 
 function onCFModeChange() {
-  const mode = document.getElementById("setCFMode")?.value || "quick";
+  const mode = document.getElementById("setCFMode")?.value || "token";
   document.getElementById("cfTokenWrap")?.classList.toggle("hidden", mode !== "token");
+  document.getElementById("cfDomainWrap")?.classList.toggle("hidden", mode !== "token");
+}
+
+function renderUnifiedURLRow(label, accentColor, urlStr, rotateTarget = "") {
+  if (!urlStr) return "";
+  const safeU = esc(urlStr).replace(/'/g, "\\'");
+  const safeLbl = esc(label).replace(/'/g, "\\'");
+  return `<div class="url-row-box">
+    <div style="min-width:0;flex:1;">
+      <div class="stat-k" style="color:${accentColor};margin-bottom:2px;">${esc(label)}</div>
+      <a class="url-link-code" href="${esc(urlStr)}" target="_blank">${esc(urlStr)}</a>
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+      <button type="button" class="btn btn-dim btn-sm" style="padding:3px 7px;font-size:10.5px;" onclick="copyText('${safeU}')">Copy</button>
+      <a class="btn btn-dim btn-sm" style="padding:3px 7px;font-size:10.5px;text-decoration:none;" href="${esc(urlStr)}" target="_blank">Open</a>
+      <button type="button" class="btn btn-dim btn-sm" style="padding:3px 7px;font-size:10.5px;" onclick="openQRModal('${safeLbl}','${safeU}')">QR</button>
+      ${rotateTarget ? `<button type="button" class="btn btn-dim btn-sm" style="padding:3px 7px;font-size:10.5px;" onclick="rotateRemoteToken('${rotateTarget}')" title="Generate a brand-new secret link (invalidates previous link)">Rotate</button>` : ""}
+    </div>
+  </div>`;
+}
+
+function openQRModal(title, urlStr) {
+  const body = document.getElementById("modalBody");
+  const safeU = esc(urlStr).replace(/'/g, "\\'");
+  body.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:2px;color:var(--cyan);">SCAN QR · REMOTE ACCESS</div>
+        <h2 style="margin:0;">${esc(title)}</h2>
+      </div>
+      <button class="btn btn-dim btn-sm" onclick="closeModal()">Close</button>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:12px;">
+      <img src="/api/party/qr.png?url=${encodeURIComponent(urlStr)}" alt="QR Code" style="width:240px;height:240px;border-radius:10px;background:#fff;padding:8px;" />
+      <a href="${esc(urlStr)}" target="_blank" class="url-link-code" style="text-align:center;">${esc(urlStr)}</a>
+      <button class="btn btn-mint btn-sm" onclick="copyText('${safeU}')">Copy URL</button>
+    </div>
+  `;
+  document.getElementById("modalBackdrop").classList.remove("hidden");
+}
+
+async function openRadioShareModal() {
+  await refreshRemoteStatus();
+  const urls = remoteStatusCache?.urls || {};
+  const set = (urls.public && Object.keys(urls.public).length) ? urls.public : (urls.lan || {});
+  const isPub = !!(urls.public && Object.keys(urls.public).length);
+  const playerURL = set.radioPlayer || (window.location.origin + "/radio");
+  const streamURLStr = set.radioStream || (window.location.origin + "/stream/dj.mp3");
+  const m3uURL = set.radioM3U || (window.location.origin + "/stream/dj.m3u");
+  const body = document.getElementById("modalBody");
+  body.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap;">
+      <div>
+        <div class="card-title" style="margin-bottom:3px;color:var(--amber);">URL-ONLY RADIO DJ STREAMING PLAYER</div>
+        <h2 style="margin:0;">Share Live AI Radio DJ ${isPub ? "· Cloudflare HTTPS" : "· LAN"}</h2>
+      </div>
+      <div style="display:flex;gap:6px;">
+        ${IS_ADMIN ? `<button class="btn btn-dim btn-sm" onclick="closeModal();switchTab('settings')">Remote Settings</button>` : ""}
+        <button class="btn btn-dim btn-sm" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+      <img src="/api/party/qr.png?url=${encodeURIComponent(playerURL)}" alt="Radio QR" style="width:140px;height:140px;border-radius:10px;background:#fff;padding:6px;flex-shrink:0;" />
+      <div style="flex:1;min-width:220px;display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:12.5px;color:var(--text-2);line-height:1.45;">
+          Open this URL on any phone, browser, or car to get a dedicated, zero-login <strong>Live AI Radio DJ Streaming Player</strong> with synchronized artwork, live teleprompter &amp; lock-screen controls.
+        </div>
+        ${renderUnifiedURLRow("Web Radio DJ Player (Browser / Phone / Car)", "var(--amber)", playerURL, IS_ADMIN ? "radio" : "")}
+        ${renderUnifiedURLRow("Direct MP3 Stream (VLC / Sonos / WiiM / Radio Apps)", "var(--cyan)", streamURLStr)}
+        ${renderUnifiedURLRow("Playlist File (.M3U)", "var(--mint)", m3uURL)}
+      </div>
+    </div>
+  `;
+  document.getElementById("modalBackdrop").classList.remove("hidden");
+}
+
+async function rotateRemoteToken(target) {
+  if (!confirm(`Generate a new secret URL token for ${target}? The previous link will stop working immediately.`)) return;
+  const res = await fetch("/api/v2/remote/tokens/rotate", {
+    method: "POST",
+    headers: { ...HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ target })
+  });
+  if (res.ok) {
+    showToast(`Rotated ${target} secret URL token`);
+    await refreshRemoteStatus();
+  } else {
+    showToast("Failed to rotate token");
+  }
 }
 
 let remoteStatusCache = null;
@@ -8574,11 +9493,10 @@ async function refreshRemoteStatus() {
     const d = await res.json();
     remoteStatusCache = d;
 
-    // Cloudflare Tunnel status
     const cf = d.tunnel || {};
     const cfB = document.getElementById("cfStatusBadge");
     if (cfB) {
-      if (cf.running && (cf.publicDJURL || cf.publicPartyURL || cf.mode === "token")) {
+      if (cf.running && (cf.publicBaseURL || cf.mode === "token")) {
         cfB.textContent = "LIVE HTTPS";
         cfB.className = "badge mint";
       } else if (cf.running) {
@@ -8592,18 +9510,38 @@ async function refreshRemoteStatus() {
         cfB.className = "badge dim";
       }
     }
-    const cfURLs = document.getElementById("cfLiveURLs");
-    if (cfURLs) {
-      const lines = [];
-      if (cf.publicDJURL) lines.push(`<div>DJ Radio HTTPS: <a href="${esc(cf.publicDJURL)}" target="_blank" style="color:var(--cyan);font-weight:700;">${esc(cf.publicDJURL)}</a> <button class="btn btn-dim btn-sm" style="padding:1px 6px;font-size:10px;" onclick="copyText('${esc(cf.publicDJURL)}')">Copy</button></div>`);
-      if (cf.publicPartyURL) lines.push(`<div>Party Mode HTTPS: <a href="${esc(cf.publicPartyURL)}" target="_blank" style="color:var(--magenta);font-weight:700;">${esc(cf.publicPartyURL)}</a> <button class="btn btn-dim btn-sm" style="padding:1px 6px;font-size:10px;" onclick="copyText('${esc(cf.publicPartyURL)}')">Copy</button></div>`);
-      if (cf.lastError) lines.push(`<div style="color:var(--coral);">${esc(cf.lastError)}</div>`);
-      if (!lines.length && cf.running && cf.mode === "token") lines.push(`<div style="color:var(--mint);">Named Cloudflare Tunnel active — routed to your configured Cloudflare domain.</div>`);
-      cfURLs.innerHTML = lines.join("");
+    const cfLine = document.getElementById("cfLiveStatusLine");
+    if (cfLine) {
+      const parts = [];
+      if (cf.publicBaseURL) {
+        parts.push(`<span style="color:var(--mint);">Active Domain:</span> <strong style="color:var(--cyan);">${esc(cf.publicBaseURL)}</strong>`);
+      } else if (cf.running && cf.mode === "token") {
+        parts.push(`<span style="color:var(--amber);">Tunnel connected — enter your Single Public Domain above to generate copyable links.</span>`);
+      }
+      if (cf.lastError) parts.push(`<div style="color:var(--coral);margin-top:3px;">${esc(cf.lastError)}</div>`);
+      cfLine.innerHTML = parts.join(" ");
     }
-    // Auto-poll while Cloudflare Quick Tunnel is still negotiating its public URLs
+    const uWrap = document.getElementById("cfUnifiedURLs");
+    if (uWrap && d.urls) {
+      const urls = d.urls || {};
+      const hasPub = !!(urls.public && Object.keys(urls.public).length);
+      const set = hasPub ? urls.public : (urls.lan || {});
+      const rem = d.remoteConfig || {};
+      const rows = [];
+      if (!hasPub) {
+        rows.push(`<div class="mono" style="font-size:11px;color:var(--amber);">Showing LAN preview URLs — enable Cloudflare Tunnel (or set your Public Domain) to switch all URLs to your single HTTPS domain.</div>`);
+      }
+      if (set.login) rows.push(renderUnifiedURLRow("User-Based Login URL (Full App / Admin)", "var(--mint)", set.login));
+      if (set.player) rows.push(renderUnifiedURLRow(`Player via URL (${rem.playerURLAccess === "token" ? "URL-Only Secret Link" : rem.playerURLAccess})`, "var(--cyan)", set.player, rem.playerURLAccess === "token" ? "player" : ""));
+      if (set.radioPlayer) {
+        rows.push(renderUnifiedURLRow(`Radio DJ Streaming Player (${rem.radioDJURLAccess === "token" ? "URL-Only Secret Link" : rem.radioDJURLAccess})`, "var(--amber)", set.radioPlayer, rem.radioDJURLAccess === "token" ? "radio" : ""));
+        rows.push(renderUnifiedURLRow("Radio DJ Direct MP3 Stream (VLC · Sonos · Car)", "var(--amber)", set.radioStream));
+      }
+      if (set.party) rows.push(renderUnifiedURLRow(`Public Party Mode (${rem.publicPartyAccess === "token" ? "URL-Only Secret Link" : rem.publicPartyAccess})`, "var(--magenta)", set.party, rem.publicPartyAccess === "token" ? "party" : ""));
+      uWrap.innerHTML = rows.join("");
+    }
     if (window._cfPollTimer) { clearTimeout(window._cfPollTimer); window._cfPollTimer = null; }
-    if (cf.enabled && cf.mode !== "token" && !cf.publicDJURL && !cf.publicPartyURL && !cf.lastError) {
+    if (cf.enabled && cf.mode !== "token" && !cf.publicBaseURL && !cf.lastError) {
       window._cfPollTimer = setTimeout(() => { refreshRemoteStatus(); }, 2500);
     }
 
@@ -8801,8 +9739,12 @@ async function saveServerSettings() {
     remote: {
       cloudflareEnabled: document.getElementById("setCFEnabled").checked,
       cloudflareMode: document.getElementById("setCFMode").value,
-      cloudflareExposeDJ: document.getElementById("setCFExposeDJ").checked,
-      cloudflareExposeParty: document.getElementById("setCFExposeParty").checked,
+      cloudflarePublicDomain: document.getElementById("setCFPublicDomain").value.trim(),
+      publicPartyAccess: document.getElementById("setPublicPartyAccess").value,
+      playerURLAccess: document.getElementById("setPlayerURLAccess").value,
+      radioDJURLAccess: document.getElementById("setRadioDJURLAccess").value,
+      allowUserLogin: document.getElementById("setAllowUserLogin").checked,
+      allowPINLogin: document.getElementById("setAllowPINLogin").checked,
       upnpEnabled: document.getElementById("setUPnPEnabled").checked,
       upnpExposeParty: document.getElementById("setUPnPParty").checked,
       upnpExposeDJ: document.getElementById("setUPnPDJ").checked,
@@ -9389,6 +10331,11 @@ async function toggleRequireLoginOnLAN(val) {
 // Boot
 applyTheme(currentTheme, true);
 applyUserPermissionsUI();
+renderRepeatButton();
+renderCrossfadePill();
+renderPlayPauseButton(false);
+setSliderFill(document.getElementById("volSlider"), masterVolume * 100);
+updateVolumeIcon();
 if (!hasPerm(currentTab)) switchTab(firstAllowedTab(), false, { skipURL: true });
 {
   const initialHash = (location.hash || "").trim();
