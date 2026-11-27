@@ -6,11 +6,13 @@ import (
 	"io"
 	mathrand "math/rand"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/baardove/my-echo-server/internal/config"
 	"github.com/baardove/my-echo-server/internal/db"
 	qrcode "github.com/skip2/go-qrcode"
 )
@@ -1140,6 +1142,16 @@ func (s *Server) handlePartyQR(w http.ResponseWriter, r *http.Request) {
 	targetURL := fmt.Sprintf("http://%s:%d", s.cfg.EffectiveAdvertiseHost(), s.cfg.PartyHTTPPort)
 	if st.JoinURL != nil && *st.JoinURL != "" {
 		targetURL = *st.JoinURL
+	}
+	if strings.ToLower(strings.TrimSpace(r.URL.Query().Get("mode"))) != "lan" {
+		if pubBase := s.activePublicBaseURL(r); pubBase != "" {
+			switch s.cfg.Remote.PublicPartyAccess {
+			case config.RemoteAccessPublic:
+				targetURL = pubBase + "/party"
+			case config.RemoteAccessToken:
+				targetURL = pubBase + "/party/" + url.PathEscape(s.cfg.Remote.PartyShareToken)
+			}
+		}
 	}
 	if custom := strings.TrimSpace(r.URL.Query().Get("url")); custom != "" {
 		targetURL = custom

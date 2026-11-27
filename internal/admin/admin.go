@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 
 	"github.com/baardove/my-echo-server/internal/config"
@@ -24,9 +25,13 @@ var appIconPNG []byte
 //go:embed webui.html
 var webUIHTML []byte
 
+//go:embed radio_player.html
+var radioPlayerHTML []byte
+
 const (
-	SessionCookieName   = "echo_session"
-	LoggedOutCookieName = "echo_logged_out"
+	SessionCookieName     = "echo_session"
+	LoggedOutCookieName   = "echo_logged_out"
+	PartyAccessCookieName = "echo_party_access"
 )
 
 // IsExplicitlyLoggedOut reports whether the browser explicitly clicked Sign Out.
@@ -76,6 +81,40 @@ func GuestClaims(isLAN bool) SessionClaims {
 		CanEditProfiles: false,
 		IsLAN:           isLAN,
 	}
+}
+
+func PlayerClaims(isLAN bool) SessionClaims {
+	return SessionClaims{
+		UserID:          "player",
+		Username:        "player",
+		DisplayName:     "Player Link",
+		Role:            "player",
+		AllowLibrary:    true,
+		AllowDJ:         true,
+		AllowParty:      false,
+		CanEditProfiles: false,
+		IsLAN:           isLAN,
+	}
+}
+
+func SignPartyAccessCookie(cfg *config.Config) string {
+	mac := hmac.New(sha256.New, []byte(cfg.Remote.SessionSecret+":party:"+cfg.Remote.PartyShareToken))
+	mac.Write([]byte("party-access-v1"))
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+func HasValidPartyAccessCookie(r *http.Request, cfg *config.Config) bool {
+	c, err := r.Cookie(PartyAccessCookieName)
+	if err != nil || c == nil || c.Value == "" {
+		return false
+	}
+	want := SignPartyAccessCookie(cfg)
+	return hmac.Equal([]byte(c.Value), []byte(want))
+}
+
+func SignPlayerCookie(cfg *config.Config) string {
+	claims := PlayerClaims(false)
+	return SignSessionCookie(claims, cfg.PairingPIN+":"+cfg.Remote.PlayerShareToken)
 }
 
 func ClaimsFromUser(u *config.UserAccount, isLAN, hasUsers bool) SessionClaims {
@@ -163,6 +202,15 @@ func ParseSessionCookie(r *http.Request, cfg *config.Config) (SessionClaims, boo
 	if len(parts) != 2 {
 		return SessionClaims{}, false
 	}
+	// Check scoped Player URL session first (bound to current PlayerShareToken so rotation revokes immediately)
+	if (cfg.Remote.PlayerURLAccess == config.RemoteAccessToken || cfg.Remote.PlayerURLAccess == config.RemoteAccessPublic) &&
+		strings.TrimSpace(cfg.Remote.PlayerShareToken) != "" {
+		pmac := hmac.New(sha256.New, []byte("my-echo-session-v2:"+cfg.PairingPIN+":"+cfg.Remote.PlayerShareToken))
+		pmac.Write([]byte(parts[0]))
+		if hmac.Equal([]byte(parts[1]), []byte(hex.EncodeToString(pmac.Sum(nil)))) {
+			return PlayerClaims(isLAN), true
+		}
+	}
 	mac := hmac.New(sha256.New, []byte("my-echo-session-v2:"+cfg.PairingPIN))
 	mac.Write([]byte(parts[0]))
 	wantSig := hex.EncodeToString(mac.Sum(nil))
@@ -247,6 +295,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "public, max-age=86400")
 		_, _ = w.Write(appIconPNG)
 		return
+	case "/login", "/login/":
+		h.RenderLoginPage(w, r, strings.TrimSpace(r.URL.Query().Get("u")), sanitizeNextPath(r.URL.Query().Get("next")))
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, "/u/") {
+		uname := strings.Trim(strings.TrimPrefix(r.URL.Path, "/u/"), "/")
+		if uname != "" && !strings.Contains(uname, "/") {
+			h.RenderLoginPage(w, r, uname, "/")
+			return
+		}
 	}
 
 	isLAN := IsLANRequest(r)
@@ -255,9 +313,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Explicit ?login=1 lets a LAN user switch accounts cleanly
 	if r.URL.Query().Get("login") == "1" {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("Cache-Control", "no-store")
-		_, _ = w.Write([]byte(renderRemoteLoginHTML(h.cfg.ServerName, hasUsers)))
+		h.RenderLoginPage(w, r, strings.TrimSpace(r.URL.Query().Get("u")), sanitizeNextPath(r.URL.Query().Get("next")))
 		return
 	}
 
@@ -265,14 +321,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		explicitlyLoggedOut := IsExplicitlyLoggedOut(r)
 		if !isLAN {
 			if h.cfg.Remote.RequirePINOnRemote || hasUsers || explicitlyLoggedOut {
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				w.Header().Set("Cache-Control", "no-store")
-				_, _ = w.Write([]byte(renderRemoteLoginHTML(h.cfg.ServerName, hasUsers)))
+				h.RenderLoginPage(w, r, "", sanitizeNextPath(r.URL.RequestURI()))
 				return
 			}
-			// Open remote mode (no users configured & RequirePINOnRemote unchecked):
-			// issue a signed listener-only guest session cookie so DJ Radio (using global Gemini key),
-			// Library, and Party Mode work cleanly without ever leaking Admin PIN or Settings!
+			// Open remote mode (no users configured & RequirePINOnRemote unchecked)
 			claims = GuestClaims(false)
 			isHTTPS := r.TLS != nil || strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 			http.SetCookie(w, &http.Cookie{
@@ -286,15 +338,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			})
 		} else {
 			if (h.cfg.AuthRequireLoginOnLAN && hasUsers) || explicitlyLoggedOut {
-				w.Header().Set("Content-Type", "text/html; charset=utf-8")
-				w.Header().Set("Cache-Control", "no-store")
-				_, _ = w.Write([]byte(renderRemoteLoginHTML(h.cfg.ServerName, hasUsers)))
+				h.RenderLoginPage(w, r, "", "/")
 				return
 			}
 			claims = AdminClaims(true, hasUsers)
 		}
 	}
 
+	h.RenderWebAppWithClaims(w, r, claims)
+}
+
+// RenderWebAppWithClaims serves the embedded Web UI HTML bound to the given SessionClaims.
+func (h *Handler) RenderWebAppWithClaims(w http.ResponseWriter, r *http.Request, claims SessionClaims) {
+	isLAN := IsLANRequest(r)
 	// Only embed raw Admin Pairing PIN into HTML for LAN admins; remote & non-admin users authenticate via HttpOnly cookie.
 	pinForHTML := ""
 	if isLAN && claims.Role == "admin" {
@@ -317,18 +373,90 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(replacer.Replace(html)))
 }
 
+// RenderRadioPlayer serves the dedicated zero-clutter URL-only Radio DJ Streaming Player.
+func (h *Handler) RenderRadioPlayer(w http.ResponseWriter, r *http.Request, shareToken string) {
+	station := strings.TrimSpace(h.cfg.DJ.RadioStationName)
+	if station == "" {
+		station = "Echo FM"
+	}
+	streamURL := "/stream/dj.mp3"
+	m3uURL := "/stream/dj.m3u"
+	metaURL := "/api/public/radio/now"
+	artBase := "/api/public/radio/artwork/"
+	if tok := strings.TrimSpace(shareToken); tok != "" {
+		escTok := url.PathEscape(tok)
+		streamURL = "/stream/dj/" + escTok + ".mp3"
+		m3uURL = "/stream/dj/" + escTok + ".m3u"
+		metaURL = "/api/public/radio/" + escTok + "/now"
+		artBase = "/api/public/radio/" + escTok + "/artwork/"
+	}
+
+	replacer := strings.NewReplacer(
+		"__RADIO_SERVER_NAME__", htmlEscape(h.cfg.ServerName),
+		"__RADIO_STATION_NAME__", htmlEscape(station),
+		"__RADIO_STREAM_URL__", htmlEscape(streamURL),
+		"__RADIO_M3U_URL__", htmlEscape(m3uURL),
+		"__RADIO_META_URL__", htmlEscape(metaURL),
+		"__RADIO_ART_BASE__", htmlEscape(artBase),
+	)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write([]byte(replacer.Replace(string(radioPlayerHTML))))
+}
+
+// RenderLoginPage renders the sign-in screen supporting optional prefilled username and safe post-login redirect.
+func (h *Handler) RenderLoginPage(w http.ResponseWriter, r *http.Request, prefillUser, nextURL string) {
+	hasUsers := len(h.cfg.Users) > 0 || prefillUser != ""
+	if nextURL == "" {
+		nextURL = "/"
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = w.Write([]byte(renderRemoteLoginHTMLWithOpts(h.cfg.ServerName, hasUsers, prefillUser, nextURL, h.cfg.Remote.AllowUserLogin, h.cfg.Remote.AllowPINLogin)))
+}
+
+func sanitizeNextPath(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || !strings.HasPrefix(raw, "/") || strings.HasPrefix(raw, "//") || strings.HasPrefix(raw, "/login") {
+		return "/"
+	}
+	return raw
+}
+
 func renderRemoteLoginHTML(serverName string, hasUsers bool) string {
+	return renderRemoteLoginHTMLWithOpts(serverName, hasUsers, "", "/", true, true)
+}
+
+func renderRemoteLoginHTMLWithOpts(serverName string, hasUsers bool, prefillUser, nextURL string, allowUser, allowPIN bool) string {
+	if !allowUser && !allowPIN {
+		allowUser, allowPIN = true, true
+	}
 	userBlock := ""
 	subText := "Enter your 6-digit My Echo Pairing PIN to sign in."
-	if hasUsers {
-		subText = "Sign in with your user account (or Admin Pairing PIN)."
-		userBlock = `
-    <div id="userFields">
-      <input id="username" type="text" autocomplete="username" placeholder="Username" autofocus style="margin-bottom:8px;letter-spacing:0;text-align:left;font-size:15px;font-family:inherit;" />
-      <input id="password" type="password" autocomplete="current-password" placeholder="Password" style="letter-spacing:1px;text-align:left;font-size:15px;font-family:inherit;" />
-    </div>
+	if hasUsers && allowUser {
+		subText = "Sign in with your user account" + func() string {
+			if allowPIN {
+				return " (or Admin Pairing PIN)."
+			}
+			return "."
+		}()
+		pinPart := ""
+		if allowPIN {
+			pinPart = `
     <div class="divider"><span>OR ADMIN PIN</span></div>
     <input id="pin" type="password" inputmode="numeric" autocomplete="one-time-code" placeholder="6-digit Admin PIN" />`
+		}
+		userFocus := "autofocus"
+		passFocus := ""
+		if prefillUser != "" {
+			userFocus = ""
+			passFocus = "autofocus"
+		}
+		userBlock = fmt.Sprintf(`
+    <div id="userFields">
+      <input id="username" type="text" autocomplete="username" value="%s" placeholder="Username" %s style="margin-bottom:8px;letter-spacing:0;text-align:left;font-size:15px;font-family:inherit;" />
+      <input id="password" type="password" autocomplete="current-password" placeholder="Password" %s style="letter-spacing:1px;text-align:left;font-size:15px;font-family:inherit;" />
+    </div>%s`, htmlEscape(prefillUser), userFocus, passFocus, pinPart)
 	} else {
 		userBlock = `
     <input id="pin" type="password" inputmode="numeric" autocomplete="one-time-code" placeholder="••••••" autofocus required />`
@@ -365,6 +493,7 @@ func renderRemoteLoginHTML(serverName string, hasUsers bool) string {
     <div class="err" id="err"></div>
   </form>
   <script>
+    const NEXT_URL = %q;
     async function doLogin(e) {
       e.preventDefault();
       const err = document.getElementById("err");
@@ -383,13 +512,13 @@ func renderRemoteLoginHTML(serverName string, hasUsers bool) string {
         body: JSON.stringify(body)
       });
       const d = await res.json().catch(() => ({}));
-      if (res.ok && d.ok) { location.href = "/"; return false; }
+      if (res.ok && d.ok) { location.href = NEXT_URL || "/"; return false; }
       err.textContent = d.error || "Sign in failed";
       return false;
     }
   </script>
 </body>
-</html>`, htmlEscape(serverName), htmlEscape(serverName), htmlEscape(subText), userBlock)
+</html>`, htmlEscape(serverName), htmlEscape(serverName), htmlEscape(subText), userBlock, nextURL)
 }
 
 func htmlEscape(s string) string {

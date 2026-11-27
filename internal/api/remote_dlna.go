@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -173,10 +174,16 @@ func (s *Server) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
 		AllowParty      bool   `json:"allowParty"`
 		CanEditProfiles bool   `json:"canEditProfiles"`
 		CreatedAt       string `json:"createdAt"`
+		LoginURL        string `json:"loginURL,omitempty"`
 	}
+	pubBase := s.activePublicBaseURL(r)
 	serialize := func() []publicUser {
 		out := make([]publicUser, 0, len(s.cfg.Users))
 		for _, u := range s.cfg.Users {
+			loginURL := ""
+			if pubBase != "" {
+				loginURL = pubBase + "/u/" + url.PathEscape(u.Username)
+			}
 			out = append(out, publicUser{
 				ID:              u.ID,
 				Username:        u.Username,
@@ -187,6 +194,7 @@ func (s *Server) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
 				AllowParty:      u.AllowParty,
 				CanEditProfiles: u.CanEditProfiles,
 				CreatedAt:       u.CreatedAt,
+				LoginURL:        loginURL,
 			})
 		}
 		return out
@@ -346,24 +354,34 @@ func (s *Server) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRemoteStatus(w http.ResponseWriter, r *http.Request) {
+	claims := s.sessionFromRequest(r)
 	out := map[string]any{
 		"ok": true,
 		"remoteConfig": map[string]any{
-			"cloudflareEnabled":     s.cfg.Remote.CloudflareEnabled,
-			"cloudflareMode":        s.cfg.Remote.CloudflareMode,
-			"hasCloudflareToken":    strings.TrimSpace(s.cfg.Remote.CloudflareToken) != "",
-			"cloudflareTokenMask":   maskSecret(s.cfg.Remote.CloudflareToken),
-			"cloudflareExposeDJ":    s.cfg.Remote.CloudflareExposeDJ,
-			"cloudflareExposeParty": s.cfg.Remote.CloudflareExposeParty,
-			"upnpEnabled":           s.cfg.Remote.UPnPEnabled,
-			"upnpExposeParty":       s.cfg.Remote.UPnPExposeParty,
-			"upnpExposeDJ":          s.cfg.Remote.UPnPExposeDJ,
-			"upnpExternalParty":     s.cfg.Remote.UPnPExternalParty,
-			"upnpExternalDJ":        s.cfg.Remote.UPnPExternalDJ,
-			"upnpGatewayOverride":   s.cfg.Remote.UPnPGatewayOverride,
-			"requirePINOnRemote":    s.cfg.Remote.RequirePINOnRemote,
+			"cloudflareEnabled":      s.cfg.Remote.CloudflareEnabled,
+			"cloudflareMode":         s.cfg.Remote.CloudflareMode,
+			"cloudflarePublicDomain": s.cfg.Remote.CloudflarePublicDomain,
+			"hasCloudflareToken":     strings.TrimSpace(s.cfg.Remote.CloudflareToken) != "",
+			"cloudflareTokenMask":    maskSecret(s.cfg.Remote.CloudflareToken),
+			"publicPartyAccess":      s.cfg.Remote.PublicPartyAccess,
+			"playerURLAccess":        s.cfg.Remote.PlayerURLAccess,
+			"radioDJURLAccess":       s.cfg.Remote.RadioDJURLAccess,
+			"allowUserLogin":         s.cfg.Remote.AllowUserLogin,
+			"allowPINLogin":          s.cfg.Remote.AllowPINLogin,
+			"cloudflareExposeDJ":     s.cfg.Remote.CloudflareExposeDJ,
+			"cloudflareExposeParty":  s.cfg.Remote.CloudflareExposeParty,
+			"upnpEnabled":            s.cfg.Remote.UPnPEnabled,
+			"upnpExposeParty":        s.cfg.Remote.UPnPExposeParty,
+			"upnpExposeDJ":           s.cfg.Remote.UPnPExposeDJ,
+			"upnpExternalParty":      s.cfg.Remote.UPnPExternalParty,
+			"upnpExternalDJ":         s.cfg.Remote.UPnPExternalDJ,
+			"upnpGatewayOverride":    s.cfg.Remote.UPnPGatewayOverride,
+			"requirePINOnRemote":     s.cfg.Remote.RequirePINOnRemote,
 		},
 		"dlnaConfig": s.cfg.DLNA,
+	}
+	if claims.Role == "admin" {
+		out["urls"] = s.buildRemoteURLs(r)
 	}
 	if s.broadcast != nil {
 		out["broadcast"] = s.broadcast.Stats()

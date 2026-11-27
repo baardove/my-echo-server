@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#07090F" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<title>__RADIO_STATION_NAME__ · Live AI Radio DJ</title>
+<link rel="icon" type="image/png" href="/icon.png" />
+<link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+<style>
+  :root {
+    --bg: #07090F;
+    --surface: rgba(15, 20, 32, 0.86);
+    --surface-2: rgba(22, 29, 46, 0.92);
+    --border: rgba(255, 255, 255, 0.1);
+    --border-accent: rgba(255, 179, 71, 0.4);
+    --text: #F5F7FA;
+    --text-2: rgba(235, 241, 255, 0.68);
+    --mint: #14F195;
+    --cyan: #00E5FF;
+    --amber: #FFB347;
+    --coral: #FF5560;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  .ambient-bg {
+    position: fixed;
+    inset: -40px;
+    z-index: 0;
+    background-size: cover;
+    background-position: center;
+    filter: blur(68px) saturate(1.45) brightness(0.32);
+    transform: scale(1.12);
+    transition: background-image 0.9s ease;
+    pointer-events: none;
+  }
+  .ambient-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    background: radial-gradient(circle at 50% 18%, rgba(255,179,71,0.12), rgba(7,9,15,0.88) 66%);
+    pointer-events: none;
+  }
+  .wrap {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: max(20px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+  .player-card {
+    width: 100%;
+    max-width: 440px;
+    background: var(--surface);
+    backdrop-filter: blur(26px);
+    -webkit-backdrop-filter: blur(26px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .station-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .station-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+  .station-brand img {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+  .station-name {
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .station-sub {
+    font-size: 11px;
+    color: var(--text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .live-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text-2);
+    flex-shrink: 0;
+  }
+  .live-pill.on-air {
+    border-color: rgba(20, 241, 149, 0.45);
+    background: rgba(20, 241, 149, 0.14);
+    color: var(--mint);
+  }
+  .live-pill.speaking {
+    border-color: rgba(255, 179, 71, 0.55);
+    background: rgba(255, 179, 71, 0.18);
+    color: var(--amber);
+  }
+  .live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .live-pill.on-air .live-dot,
+  .live-pill.speaking .live-dot {
+    animation: pulse 1.6s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.8); }
+  }
+
+  .art-stage {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 18px 40px rgba(0,0,0,0.45);
+  }
+  .art-stage img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: opacity 0.35s ease, transform 0.6s ease;
+  }
+  .art-stage.playing img {
+    transform: scale(1.015);
+  }
+  .eq-overlay {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: rgba(7, 9, 15, 0.78);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.12);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .eq-bars {
+    display: inline-flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 12px;
+  }
+  .eq-bars i {
+    display: block;
+    width: 2.5px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--mint);
+  }
+  .eq-bars.active i:nth-child(1) { animation: eq 0.8s ease-in-out infinite; }
+  .eq-bars.active i:nth-child(2) { animation: eq 0.6s ease-in-out 0.15s infinite; }
+  .eq-bars.active i:nth-child(3) { animation: eq 0.9s ease-in-out 0.3s infinite; }
+  .eq-bars.speaking i { background: var(--amber); }
+  @keyframes eq {
+    0%, 100% { height: 3px; }
+    50% { height: 12px; }
+  }
+
+  .track-meta {
+    text-align: center;
+    padding: 0 4px;
+  }
+  .track-title {
+    font-size: 20px;
+    font-weight: 900;
+    line-height: 1.2;
+    margin: 0;
+  }
+  .track-artist {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--cyan);
+    margin-top: 4px;
+  }
+  .track-album {
+    font-size: 12px;
+    color: var(--text-2);
+    margin-top: 3px;
+  }
+
+  .dj-script-box {
+    background: rgba(255, 179, 71, 0.1);
+    border: 1px solid rgba(255, 179, 71, 0.35);
+    border-radius: 12px;
+    padding: 10px 12px;
+    display: none;
+  }
+  .dj-script-box.visible { display: block; }
+  .dj-script-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 4px;
+  }
+  .dj-script-text {
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--text);
+  }
+
+  .controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+  }
+  .play-btn {
+    width: 68px;
+    height: 68px;
+    border-radius: 50%;
+    border: none;
+    background: linear-gradient(135deg, var(--mint), var(--cyan));
+    color: #04130C;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 10px 28px rgba(20, 241, 149, 0.35);
+    transition: transform 0.14s ease, box-shadow 0.2s ease;
+  }
+  .play-btn:hover { transform: scale(1.05); }
+  .play-btn:active { transform: scale(0.96); }
+  .play-btn svg { width: 28px; height: 28px; }
+  .status-line {
+    font-size: 12px;
+    color: var(--text-2);
+    min-height: 16px;
+    text-align: center;
+  }
+  .vol-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 6px;
+  }
+  .icon-btn {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.12); }
+  input[type=range] {
+    flex: 1;
+    accent-color: var(--mint);
+    cursor: pointer;
+  }
+
+  .upnext {
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+  .section-k {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.7px;
+    text-transform: uppercase;
+    color: var(--text-2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .upnext-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 6px 8px;
+    border-radius: 9px;
+    background: rgba(255,255,255,0.035);
+  }
+  .upnext-row img {
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.06);
+  }
+  .upnext-info { min-width: 0; flex: 1; }
+  .upnext-t {
+    font-size: 12.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .upnext-a {
+    font-size: 11px;
+    color: var(--text-2);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .stream-tools {
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .pill-btn {
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .pill-btn:hover { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.22); }
+  .toast {
+    position: fixed;
+    bottom: 22px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 30;
+    background: #101624;
+    color: var(--mint);
+    border: 1px solid var(--mint);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 800;
+    box-shadow: 0 12px 30px rgba(0,0,0,0.55);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="ambient-bg" id="ambientBg"></div>
+<div class="ambient-overlay"></div>
+
+<div class="wrap">
+  <div class="player-card">
+    <div class="station-bar">
+      <div class="station-brand">
+        <img src="/icon.png" alt="My Echo" />
+        <div style="min-width:0;">
+          <div class="station-name" id="stationName">__RADIO_STATION_NAME__</div>
+          <div class="station-sub" id="stationSub">__RADIO_SERVER_NAME__ · Live AI Radio DJ</div>
+        </div>
+      </div>
+      <div class="live-pill" id="livePill"><span class="live-dot"></span><span id="livePillText">STANDBY</span></div>
+    </div>
+
+    <div class="art-stage" id="artStage">
+      <img id="coverArt" src="/icon.png" alt="Now Playing Artwork" />
+      <div class="eq-overlay">
+        <span class="eq-bars" id="eqBars"><i></i><i></i><i></i></span>
+        <span id="eqLabel">Tap Play to Tune In</span>
+      </div>
+    </div>
+
+    <div class="track-meta">
+      <h1 class="track-title" id="trackTitle">__RADIO_STATION_NAME__</h1>
+      <div class="track-artist" id="trackArtist">Live AI Radio DJ Stream</div>
+      <div class="track-album" id="trackAlbum">Press Play to start continuous broadcast</div>
+    </div>
+
+    <div class="dj-script-box" id="djScriptBox">
+      <div class="dj-script-head">
+        <span id="djScriptBadge">DJ ON MIC</span>
+        <span id="djVoiceTag">AI Host</span>
+      </div>
+      <div class="dj-script-text" id="djScriptText"></div>
+    </div>
+
+    <div class="controls">
+      <button class="play-btn" id="playBtn" type="button" aria-label="Play or pause live radio stream">
+        <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20 6 4"/></svg>
+      </button>
+      <div class="status-line" id="statusLine">Ready · 192 kbps live stream</div>
+      <div class="vol-row">
+        <button class="icon-btn" id="muteBtn" type="button" title="Mute / Unmute" aria-label="Mute or unmute">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+        </button>
+        <input id="volSlider" type="range" min="0" max="1" step="0.02" value="0.9" aria-label="Volume" />
+      </div>
+    </div>
+
+    <div class="upnext" id="upNextSection" style="display:none;">
+      <div class="section-k">
+        <span>UP NEXT ON AIR</span>
+        <span id="listenerCount"></span>
+      </div>
+      <div id="upNextList" style="display:flex;flex-direction:column;gap:6px;"></div>
+    </div>
+
+    <div class="stream-tools">
+      <span class="section-k" style="margin:0;">EXTERNAL PLAYER</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="pill-btn" type="button" id="copyStreamBtn">Copy Stream URL</button>
+        <a class="pill-btn" id="m3uLink" href="__RADIO_M3U_URL__" download="echo-radio-dj.m3u">Open .M3U</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<audio id="radioAudio" preload="none" playsinline></audio>
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+  const STREAM_URL = "__RADIO_STREAM_URL__";
+  const META_URL = "__RADIO_META_URL__";
+  const ART_BASE = "__RADIO_ART_BASE__";
+
+  const audio = document.getElementById("radioAudio");
+  const playBtn = document.getElementById("playBtn");
+  const playIcon = document.getElementById("playIcon");
+  const statusLine = document.getElementById("statusLine");
+  const volSlider = document.getElementById("volSlider");
+  const muteBtn = document.getElementById("muteBtn");
+  const eqBars = document.getElementById("eqBars");
+  const eqLabel = document.getElementById("eqLabel");
+  const artStage = document.getElementById("artStage");
+  const coverArt = document.getElementById("coverArt");
+  const ambientBg = document.getElementById("ambientBg");
+
+  let wantPlaying = false;
+  let reconnectTimer = null;
+  let reconnectDelay = 1500;
+  let lastMeta = null;
+  let lastArtHash = "";
+
+  const savedVol = parseFloat(localStorage.getItem("echo_radio_vol") || "0.9");
+  audio.volume = isFinite(savedVol) ? Math.max(0, Math.min(1, savedVol)) : 0.9;
+  volSlider.value = String(audio.volume);
+
+  function showToast(msg) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(t._tm);
+    t._tm = setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  function artUrl(hash) {
+    if (!hash) return "/icon.png";
+    return ART_BASE + encodeURIComponent(hash);
+  }
+
+  function updatePlayButton() {
+    if (wantPlaying) {
+      playIcon.innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+    } else {
+      playIcon.innerHTML = '<polygon points="6 4 20 12 6 20 6 4"/>';
+    }
+  }
+
+  function connectStream(isReconnect = false) {
+    clearTimeout(reconnectTimer);
+    const sep = STREAM_URL.includes("?") ? "&" : "?";
+    const liveSrc = STREAM_URL + sep + "live=" + Date.now();
+    statusLine.textContent = isReconnect ? "Reconnecting to live broadcast…" : "Connecting to live broadcast…";
+    eqLabel.textContent = isReconnect ? "Reconnecting…" : "Buffering…";
+    audio.src = liveSrc;
+    const p = audio.play();
+    if (p && typeof p.catch === "function") {
+      p.catch(() => {
+        if (!wantPlaying) return;
+        statusLine.textContent = "Tap Play to start audio";
+        wantPlaying = false;
+        updatePlayButton();
+      });
+    }
+  }
+
+  function stopStream() {
+    wantPlaying = false;
+    clearTimeout(reconnectTimer);
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.load();
+    updatePlayButton();
+    eqBars.classList.remove("active", "speaking");
+    artStage.classList.remove("playing");
+    eqLabel.textContent = "Paused";
+    statusLine.textContent = "Paused · Tap Play to resume live radio";
+    if ("mediaSession" in navigator) {
+      try { navigator.mediaSession.playbackState = "paused"; } catch (_) {}
+    }
+  }
+
+  function togglePlay() {
+    if (wantPlaying) {
+      stopStream();
+      return;
+    }
+    wantPlaying = true;
+    reconnectDelay = 1500;
+    updatePlayButton();
+    connectStream(false);
+  }
+
+  playBtn.addEventListener("click", togglePlay);
+
+  volSlider.addEventListener("input", () => {
+    const v = parseFloat(volSlider.value);
+    audio.muted = false;
+    audio.volume = isFinite(v) ? Math.max(0, Math.min(1, v)) : 0.9;
+    try { localStorage.setItem("echo_radio_vol", String(audio.volume)); } catch (_) {}
+  });
+
+  muteBtn.addEventListener("click", () => {
+    audio.muted = !audio.muted;
+    showToast(audio.muted ? "Muted" : "Unmuted");
+  });
+
+  audio.addEventListener("playing", () => {
+    reconnectDelay = 1500;
+    artStage.classList.add("playing");
+    eqBars.classList.add("active");
+    eqLabel.textContent = lastMeta?.isSpeaking ? "DJ On Mic" : "Live Radio";
+    statusLine.textContent = "Live · 192 kbps broadcast";
+    if ("mediaSession" in navigator) {
+      try { navigator.mediaSession.playbackState = "playing"; } catch (_) {}
+    }
+    pollMetadata();
+  });
+
+  audio.addEventListener("waiting", () => {
+    if (wantPlaying) {
+      eqLabel.textContent = "Buffering…";
+      statusLine.textContent = "Buffering live stream…";
+    }
+  });
+
+  function scheduleReconnect() {
+    if (!wantPlaying) return;
+    clearTimeout(reconnectTimer);
+    statusLine.textContent = "Stream interrupted · reconnecting…";
+    reconnectTimer = setTimeout(() => {
+      if (wantPlaying) connectStream(true);
+    }, reconnectDelay);
+    reconnectDelay = Math.min(reconnectDelay * 1.5, 10000);
+  }
+
+  audio.addEventListener("error", scheduleReconnect);
+  audio.addEventListener("ended", scheduleReconnect);
+  audio.addEventListener("stalled", () => {
+    if (!wantPlaying) return;
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(() => {
+      if (wantPlaying && audio.readyState < 3) connectStream(true);
+    }, 6000);
+  });
+
+  document.getElementById("copyStreamBtn").addEventListener("click", () => {
+    const abs = new URL(STREAM_URL, window.location.origin).href;
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(abs).then(() => showToast("Stream URL copied!"));
+    } else {
+      showToast(abs);
+    }
+  });
+
+  if ("mediaSession" in navigator) {
+    try {
+      navigator.mediaSession.setActionHandler("play", () => { if (!wantPlaying) togglePlay(); });
+      navigator.mediaSession.setActionHandler("pause", () => { if (wantPlaying) stopStream(); });
+      navigator.mediaSession.setActionHandler("stop", () => { stopStream(); });
+    } catch (_) {}
+  }
+
+  function esc(s) {
+    return String(s || "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+
+  function renderMeta(d) {
+    lastMeta = d;
+    if (d.stationName) {
+      document.getElementById("stationName").textContent = d.stationName;
+      document.title = (d.currentTrack?.title ? d.currentTrack.title + " · " : "") + d.stationName;
+    }
+    const subParts = [d.profileName || d.serverName, d.voiceName ? "Host: " + d.voiceName : ""].filter(Boolean);
+    document.getElementById("stationSub").textContent = subParts.join(" · ") || "Live AI Radio DJ";
+
+    const pill = document.getElementById("livePill");
+    const pillText = document.getElementById("livePillText");
+    if (d.isSpeaking) {
+      pill.className = "live-pill speaking";
+      pillText.textContent = "MIC LIVE";
+      eqBars.classList.add("speaking");
+      if (wantPlaying) eqLabel.textContent = "DJ On Mic";
+    } else if (d.isLive || wantPlaying) {
+      pill.className = "live-pill on-air";
+      pillText.textContent = "ON AIR";
+      eqBars.classList.remove("speaking");
+      if (wantPlaying && !audio.paused) eqLabel.textContent = "Live Radio";
+    } else {
+      pill.className = "live-pill";
+      pillText.textContent = "STANDBY";
+      eqBars.classList.remove("speaking");
+    }
+
+    const tr = d.currentTrack;
+    if (tr && tr.title) {
+      document.getElementById("trackTitle").textContent = tr.title;
+      document.getElementById("trackArtist").textContent = tr.artist || "Unknown Artist";
+      const albParts = [tr.album, tr.year ? String(tr.year) : ""].filter(Boolean);
+      document.getElementById("trackAlbum").textContent = albParts.join(" · ");
+      const hash = tr.artworkHash || "";
+      if (hash !== lastArtHash) {
+        lastArtHash = hash;
+        const url = artUrl(hash);
+        coverArt.src = url;
+        ambientBg.style.backgroundImage = `url("${url}")`;
+      }
+      if ("mediaSession" in navigator && typeof MediaMetadata !== "undefined") {
+        try {
+          const absArt = new URL(artUrl(hash), window.location.origin).href;
+          navigator.mediaSession.metadata = new MediaMetadata({
+            title: tr.title,
+            artist: tr.artist || d.stationName || "Echo Radio DJ",
+            album: d.stationName || tr.album || "Live AI Radio DJ",
+            artwork: [{ src: absArt, sizes: "512x512", type: "image/jpeg" }]
+          });
+        } catch (_) {}
+      }
+    }
+
+    const scriptBox = document.getElementById("djScriptBox");
+    if (d.djScript && d.djScript.trim()) {
+      scriptBox.classList.add("visible");
+      document.getElementById("djScriptBadge").textContent = d.isSpeaking
+        ? ("DJ ON MIC · " + (d.breakKind || "LIVE").toUpperCase())
+        : "LAST DJ NOTE";
+      document.getElementById("djVoiceTag").textContent = d.voiceName ? ("Host " + d.voiceName) : "AI Radio DJ";
+      document.getElementById("djScriptText").textContent = d.djScript;
+    } else {
+      scriptBox.classList.remove("visible");
+    }
+
+    const listenersEl = document.getElementById("listenerCount");
+    if (listenersEl) {
+      listenersEl.textContent = d.listeners > 0 ? (d.listeners + (d.listeners === 1 ? " LISTENER" : " LISTENERS")) : "";
+    }
+
+    const upWrap = document.getElementById("upNextSection");
+    const upList = document.getElementById("upNextList");
+    if (Array.isArray(d.upNext) && d.upNext.length > 0) {
+      upWrap.style.display = "flex";
+      upList.innerHTML = d.upNext.map(item => `
+        <div class="upnext-row">
+          <img src="${esc(artUrl(item.artworkHash))}" alt="" loading="lazy" />
+          <div class="upnext-info">
+            <div class="upnext-t">${esc(item.title)}</div>
+            <div class="upnext-a">${esc(item.artist)}${item.album ? " · " + esc(item.album) : ""}</div>
+          </div>
+        </div>
+      `).join("");
+    } else {
+      upWrap.style.display = "none";
+    }
+  }
+
+  async function pollMetadata() {
+    try {
+      const res = await fetch(META_URL, { cache: "no-store" });
+      if (!res.ok) return;
+      const d = await res.json();
+      renderMeta(d);
+    } catch (_) {}
+  }
+
+  pollMetadata();
+  setInterval(pollMetadata, 4000);
+})();
+</script>
+</body>
+</html>

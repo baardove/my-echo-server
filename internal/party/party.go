@@ -869,6 +869,11 @@ func (e *Engine) handleWebUI(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	e.ServeGuestUI(w, r)
+}
+
+// ServeGuestUI writes the embedded Party Mode Guest Web UI HTML directly (used both on :53333 and single-domain /party).
+func (e *Engine) ServeGuestUI(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")
 	_, _ = w.Write(guestWebUIHTML)

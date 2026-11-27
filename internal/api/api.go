@@ -128,11 +128,21 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/v2/auth/login", s.handleAuthLogin)
 	mux.HandleFunc("/api/v2/auth/logout", s.handleAuthLogout)
 	mux.HandleFunc("/api/v2/auth/me", s.requireAuth(s.handleAuthMe))
+	// Single-domain URL-only Radio DJ streaming player & live streams
+	mux.HandleFunc("/radio", s.handleRadioPlayerPage)
+	mux.HandleFunc("/radio/", s.handleRadioPlayerPage)
+	mux.HandleFunc("/api/public/radio/", s.handlePublicRadioAPI)
 	if s.broadcast != nil {
-		mux.HandleFunc("/stream/dj.mp3", s.broadcast.ServeDJStream)
-		mux.HandleFunc("/stream/dj.m3u", s.handleDJStreamM3U)
+		mux.HandleFunc("/stream/dj.mp3", s.handleDJStreamRoute)
+		mux.HandleFunc("/stream/dj.m3u", s.handleDJStreamRoute)
+		mux.HandleFunc("/stream/dj/", s.handleDJStreamRoute)
 		mux.HandleFunc("/stream/party.mp3", s.broadcast.ServePartyStream)
 	}
+	// Single-domain Player via URL (/player and /player/<token>) & Party Mode (/party and /party/<token>)
+	mux.HandleFunc("/player", s.handlePlayerPage)
+	mux.HandleFunc("/player/", s.handlePlayerPage)
+	mux.HandleFunc("/party", s.handlePartyPage)
+	mux.HandleFunc("/party/", s.handlePartyPage)
 	if s.dlna != nil {
 		mux.HandleFunc("/dlna/device.xml", s.dlna.ServeDeviceXML)
 		mux.HandleFunc("/dlna/cds.xml", s.dlna.ServeCDSXML)
@@ -142,6 +152,9 @@ func (s *Server) Handler() http.Handler {
 		mux.Handle("/icon.png", s.adminUI)
 		mux.Handle("/favicon.ico", s.adminUI)
 		mux.Handle("/apple-touch-icon.png", s.adminUI)
+		mux.Handle("/login", s.adminUI)
+		mux.Handle("/login/", s.adminUI)
+		mux.Handle("/u/", s.adminUI)
 	}
 
 	// Full Dark-Neon Web App (Browse, Play, Party Mode & Server Control)
@@ -218,18 +231,20 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/v2/web/playlists/lidarr/status", s.requirePerm("library", s.handleWebPlaylistLidarrStatus))
 	mux.HandleFunc("/api/v2/web/facets", s.requirePerm("library", s.handleWebFacets))
 	mux.HandleFunc("/api/v2/web/rate", s.requirePerm("library", s.handleWebRate))
+	mux.HandleFunc("/api/v2/web/played", s.requirePerm("library", s.handleWebPlayed))
 	mux.HandleFunc("/api/v2/web/random-queue", s.requirePerm("library", s.handleWebRandomQueue))
 
-	// Remote Access (Cloudflare Tunnel + UPnP-IGD/NAT-PMP) & DLNA Casting endpoints
+	// Remote Access (Cloudflare Tunnel + Share Tokens + Legacy UPnP) & DLNA Casting endpoints
 	mux.HandleFunc("/api/v2/remote/status", s.requireAuth(s.handleRemoteStatus))
+	mux.HandleFunc("/api/v2/remote/tokens/rotate", s.requireAdmin(s.handleRemoteRotateToken))
 	mux.HandleFunc("/api/v2/remote/upnp/sync", s.requireAdmin(s.handleRemoteUPnPSync))
 	mux.HandleFunc("/api/v2/remote/tunnel/restart", s.requireAdmin(s.handleRemoteTunnelRestart))
 	mux.HandleFunc("/api/v2/dlna/discover", s.requireAuth(s.handleDLNADiscover))
 	mux.HandleFunc("/api/v2/dlna/cast", s.requireAuth(s.handleDLNACast))
 	mux.HandleFunc("/api/v2/dlna/stop", s.requireAuth(s.handleDLNAStop))
 
-	// Expose Party host & renderer routes on main API port as well for single-endpoint Apple TV / Mac control
-	mux.Handle("/api/party/", partyHandler)
+	// Expose Party host & guest routes on main API port under the single Cloudflare domain
+	mux.Handle("/api/party/", s.requirePartyAccess(partyHandler))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -981,19 +996,25 @@ func (s *Server) handleAdminSettings(w http.ResponseWriter, r *http.Request) {
 				CustomPrompt     *string  `json:"customPrompt"`
 			} `json:"dj"`
 			Remote *struct {
-				CloudflareEnabled     *bool   `json:"cloudflareEnabled"`
-				CloudflareMode        *string `json:"cloudflareMode"`
-				CloudflareToken       *string `json:"cloudflareToken"`
-				ClearCloudflareToken  *bool   `json:"clearCloudflareToken"`
-				CloudflareExposeDJ    *bool   `json:"cloudflareExposeDJ"`
-				CloudflareExposeParty *bool   `json:"cloudflareExposeParty"`
-				UPnPEnabled           *bool   `json:"upnpEnabled"`
-				UPnPExposeParty       *bool   `json:"upnpExposeParty"`
-				UPnPExposeDJ          *bool   `json:"upnpExposeDJ"`
-				UPnPExternalParty     *int    `json:"upnpExternalParty"`
-				UPnPExternalDJ        *int    `json:"upnpExternalDJ"`
-				UPnPGatewayOverride   *string `json:"upnpGatewayOverride"`
-				RequirePINOnRemote    *bool   `json:"requirePINOnRemote"`
+				CloudflareEnabled      *bool   `json:"cloudflareEnabled"`
+				CloudflareMode         *string `json:"cloudflareMode"`
+				CloudflarePublicDomain *string `json:"cloudflarePublicDomain"`
+				CloudflareToken        *string `json:"cloudflareToken"`
+				ClearCloudflareToken   *bool   `json:"clearCloudflareToken"`
+				PublicPartyAccess      *string `json:"publicPartyAccess"`
+				PlayerURLAccess        *string `json:"playerURLAccess"`
+				RadioDJURLAccess       *string `json:"radioDJURLAccess"`
+				AllowUserLogin         *bool   `json:"allowUserLogin"`
+				AllowPINLogin          *bool   `json:"allowPINLogin"`
+				CloudflareExposeDJ     *bool   `json:"cloudflareExposeDJ"`
+				CloudflareExposeParty  *bool   `json:"cloudflareExposeParty"`
+				UPnPEnabled            *bool   `json:"upnpEnabled"`
+				UPnPExposeParty        *bool   `json:"upnpExposeParty"`
+				UPnPExposeDJ           *bool   `json:"upnpExposeDJ"`
+				UPnPExternalParty      *int    `json:"upnpExternalParty"`
+				UPnPExternalDJ         *int    `json:"upnpExternalDJ"`
+				UPnPGatewayOverride    *string `json:"upnpGatewayOverride"`
+				RequirePINOnRemote     *bool   `json:"requirePINOnRemote"`
 			} `json:"remote"`
 			DLNA *struct {
 				Enabled      *bool   `json:"enabled"`
@@ -1131,10 +1152,28 @@ func (s *Server) handleAdminSettings(w http.ResponseWriter, r *http.Request) {
 			if req.Remote.CloudflareMode != nil && strings.TrimSpace(*req.Remote.CloudflareMode) != "" {
 				s.cfg.Remote.CloudflareMode = strings.ToLower(strings.TrimSpace(*req.Remote.CloudflareMode))
 			}
+			if req.Remote.CloudflarePublicDomain != nil {
+				s.cfg.Remote.CloudflarePublicDomain = strings.TrimRight(strings.TrimSpace(*req.Remote.CloudflarePublicDomain), "/")
+			}
 			if req.Remote.ClearCloudflareToken != nil && *req.Remote.ClearCloudflareToken {
 				s.cfg.Remote.CloudflareToken = ""
 			} else if req.Remote.CloudflareToken != nil && strings.TrimSpace(*req.Remote.CloudflareToken) != "" {
 				s.cfg.Remote.CloudflareToken = strings.TrimSpace(*req.Remote.CloudflareToken)
+			}
+			if req.Remote.PublicPartyAccess != nil {
+				s.cfg.Remote.PublicPartyAccess = *req.Remote.PublicPartyAccess
+			}
+			if req.Remote.PlayerURLAccess != nil {
+				s.cfg.Remote.PlayerURLAccess = *req.Remote.PlayerURLAccess
+			}
+			if req.Remote.RadioDJURLAccess != nil {
+				s.cfg.Remote.RadioDJURLAccess = *req.Remote.RadioDJURLAccess
+			}
+			if req.Remote.AllowUserLogin != nil {
+				s.cfg.Remote.AllowUserLogin = *req.Remote.AllowUserLogin
+			}
+			if req.Remote.AllowPINLogin != nil {
+				s.cfg.Remote.AllowPINLogin = *req.Remote.AllowPINLogin
 			}
 			if req.Remote.CloudflareExposeDJ != nil {
 				s.cfg.Remote.CloudflareExposeDJ = *req.Remote.CloudflareExposeDJ
@@ -1163,6 +1202,7 @@ func (s *Server) handleAdminSettings(w http.ResponseWriter, r *http.Request) {
 			if req.Remote.RequirePINOnRemote != nil {
 				s.cfg.Remote.RequirePINOnRemote = *req.Remote.RequirePINOnRemote
 			}
+			config.NormalizeRemoteConfig(&s.cfg.Remote)
 		}
 		if req.DLNA != nil {
 			if req.DLNA.Enabled != nil {
@@ -1230,14 +1270,20 @@ func (s *Server) handleAdminSettings(w http.ResponseWriter, r *http.Request) {
 			"customPrompt":      djCfg.CustomPrompt,
 		},
 		"remote": map[string]any{
-			"cloudflareEnabled":     s.cfg.Remote.CloudflareEnabled,
-			"cloudflareMode":        s.cfg.Remote.CloudflareMode,
-			"hasCloudflareToken":    strings.TrimSpace(s.cfg.Remote.CloudflareToken) != "",
-			"cloudflareTokenMask":   maskSecret(s.cfg.Remote.CloudflareToken),
-			"cloudflareExposeDJ":    s.cfg.Remote.CloudflareExposeDJ,
-			"cloudflareExposeParty": s.cfg.Remote.CloudflareExposeParty,
-			"upnpEnabled":           s.cfg.Remote.UPnPEnabled,
-			"upnpExposeParty":       s.cfg.Remote.UPnPExposeParty,
+			"cloudflareEnabled":      s.cfg.Remote.CloudflareEnabled,
+			"cloudflareMode":         s.cfg.Remote.CloudflareMode,
+			"cloudflarePublicDomain": s.cfg.Remote.CloudflarePublicDomain,
+			"hasCloudflareToken":     strings.TrimSpace(s.cfg.Remote.CloudflareToken) != "",
+			"cloudflareTokenMask":    maskSecret(s.cfg.Remote.CloudflareToken),
+			"publicPartyAccess":      s.cfg.Remote.PublicPartyAccess,
+			"playerURLAccess":        s.cfg.Remote.PlayerURLAccess,
+			"radioDJURLAccess":       s.cfg.Remote.RadioDJURLAccess,
+			"allowUserLogin":         s.cfg.Remote.AllowUserLogin,
+			"allowPINLogin":          s.cfg.Remote.AllowPINLogin,
+			"cloudflareExposeDJ":     s.cfg.Remote.CloudflareExposeDJ,
+			"cloudflareExposeParty":  s.cfg.Remote.CloudflareExposeParty,
+			"upnpEnabled":            s.cfg.Remote.UPnPEnabled,
+			"upnpExposeParty":        s.cfg.Remote.UPnPExposeParty,
 			"upnpExposeDJ":          s.cfg.Remote.UPnPExposeDJ,
 			"upnpExternalParty":     s.cfg.Remote.UPnPExternalParty,
 			"upnpExternalDJ":        s.cfg.Remote.UPnPExternalDJ,

@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -202,23 +203,50 @@ func DefaultDJConfig() DJConfig {
 	}
 }
 
-// RemoteConfig holds remote access settings (Cloudflare Tunnel + UPnP-IGD/NAT-PMP router auto-port-forwarding).
+// RemoteAccessMode controls how a remote URL surface is exposed through the single Cloudflare domain.
+const (
+	RemoteAccessOff    = "off"
+	RemoteAccessLogin  = "login"
+	RemoteAccessToken  = "token"
+	RemoteAccessPublic = "public"
+)
+
+// RemoteConfig holds remote access settings centered on Cloudflare Tunnel (one domain for all remote access)
+// plus optional legacy UPnP-IGD/NAT-PMP router auto-port-forwarding.
 type RemoteConfig struct {
-	// Cloudflare Tunnel (zero open router ports, automatic trusted HTTPS)
-	CloudflareEnabled     bool   `json:"cloudflareEnabled"`
-	CloudflareMode        string `json:"cloudflareMode"` // "quick" (trycloudflare.com) | "token" (named tunnel)
-	CloudflareToken       string `json:"cloudflareToken,omitempty"`
+	// Cloudflare Tunnel (zero open router ports, automatic trusted HTTPS, ONE domain for all remote access)
+	CloudflareEnabled      bool   `json:"cloudflareEnabled"`
+	CloudflareMode         string `json:"cloudflareMode"`                   // "token" (custom domain) | "quick" (single trycloudflare.com)
+	CloudflareToken        string `json:"cloudflareToken,omitempty"`        // Cloudflare Zero Trust Tunnel Token
+	CloudflarePublicDomain string `json:"cloudflarePublicDomain,omitempty"` // Single domain for all remote URLs, e.g. "echo.example.com"
+
+	// Unified single-domain URL access modes ("off" | "login" | "token" | "public")
+	PublicPartyAccess string `json:"publicPartyAccess"` // /party or /party/<token>
+	PlayerURLAccess   string `json:"playerURLAccess"`   // /player or /player/<token>
+	RadioDJURLAccess  string `json:"radioDJURLAccess"`  // /radio or /radio/<token> + /stream/dj/<token>.mp3
+	AllowUserLogin    bool   `json:"allowUserLogin"`    // /login with username + password
+	AllowPINLogin     bool   `json:"allowPINLogin"`     // Allow 6-digit Pairing PIN fallback on /login
+
+	// Unguessable URL-only share tokens (rotatable anytime from Settings)
+	PlayerShareToken  string `json:"playerShareToken,omitempty"`
+	RadioDJShareToken string `json:"radioDJShareToken,omitempty"`
+	PartyShareToken   string `json:"partyShareToken,omitempty"`
+
+	// Persistent HMAC signing secret for URL-token sessions
+	SessionSecret string `json:"sessionSecret,omitempty"`
+
+	// Legacy fields kept for backwards compatibility
 	CloudflareExposeDJ    bool   `json:"cloudflareExposeDJ"`
 	CloudflareExposeParty bool   `json:"cloudflareExposeParty"`
 
-	// UPnP-IGD / NAT-PMP Router Auto-Port-Forwarding (off by default, guarded by remote PIN auth)
-	UPnPEnabled          bool   `json:"upnpEnabled"`
-	UPnPExposeParty      bool   `json:"upnpExposeParty"`
-	UPnPExposeDJ         bool   `json:"upnpExposeDJ"`
-	UPnPExternalParty    int    `json:"upnpExternalParty"` // 0 = same as PartyHTTPPort
-	UPnPExternalDJ       int    `json:"upnpExternalDJ"`    // 0 = same as APIPort
-	UPnPGatewayOverride  string `json:"upnpGatewayOverride,omitempty"`
-	RequirePINOnRemote   bool   `json:"requirePINOnRemote"` // Always true by default for WAN security
+	// UPnP-IGD / NAT-PMP Router Auto-Port-Forwarding (off by default, secondary to Cloudflare)
+	UPnPEnabled         bool   `json:"upnpEnabled"`
+	UPnPExposeParty     bool   `json:"upnpExposeParty"`
+	UPnPExposeDJ        bool   `json:"upnpExposeDJ"`
+	UPnPExternalParty   int    `json:"upnpExternalParty"` // 0 = same as PartyHTTPPort
+	UPnPExternalDJ      int    `json:"upnpExternalDJ"`    // 0 = same as APIPort
+	UPnPGatewayOverride string `json:"upnpGatewayOverride,omitempty"`
+	RequirePINOnRemote  bool   `json:"requirePINOnRemote"` // Always true by default for WAN security
 }
 
 // DLNAConfig holds DLNA / UPnP MediaServer advertisement & LAN speaker/AVR casting settings.
@@ -229,13 +257,98 @@ type DLNAConfig struct {
 
 func DefaultRemoteConfig() RemoteConfig {
 	return RemoteConfig{
-		CloudflareMode:        "quick",
+		CloudflareMode:        "token",
+		PublicPartyAccess:     RemoteAccessPublic,
+		PlayerURLAccess:       RemoteAccessToken,
+		RadioDJURLAccess:      RemoteAccessToken,
+		AllowUserLogin:        true,
+		AllowPINLogin:         true,
 		CloudflareExposeDJ:    true,
 		CloudflareExposeParty: true,
 		UPnPExposeParty:       true,
 		UPnPExposeDJ:          false,
 		RequirePINOnRemote:    true,
 	}
+}
+
+// NormalizedPublicBaseURL returns "https://<domain>" (with no trailing slash) if a custom public domain is configured.
+func (r *RemoteConfig) NormalizedPublicBaseURL() string {
+	raw := strings.TrimSpace(r.CloudflarePublicDomain)
+	if raw == "" {
+		return ""
+	}
+	if !strings.HasPrefix(raw, "http://") && !strings.HasPrefix(raw, "https://") {
+		raw = "https://" + raw
+	}
+	return strings.TrimRight(raw, "/")
+}
+
+// NormalizeRemoteConfig ensures all single-domain remote access fields, access modes, and secret tokens are valid.
+func NormalizeRemoteConfig(r *RemoteConfig) {
+	if r == nil {
+		return
+	}
+	r.CloudflareMode = strings.ToLower(strings.TrimSpace(r.CloudflareMode))
+	if r.CloudflareMode != "quick" && r.CloudflareMode != "token" {
+		if strings.TrimSpace(r.CloudflareToken) != "" || strings.TrimSpace(r.CloudflarePublicDomain) != "" {
+			r.CloudflareMode = "token"
+		} else {
+			r.CloudflareMode = "quick"
+		}
+	}
+	r.CloudflarePublicDomain = strings.TrimRight(strings.TrimSpace(r.CloudflarePublicDomain), "/")
+	r.PublicPartyAccess = normalizeAccessMode(r.PublicPartyAccess, RemoteAccessPublic)
+	r.PlayerURLAccess = normalizeAccessMode(r.PlayerURLAccess, RemoteAccessToken)
+	r.RadioDJURLAccess = normalizeAccessMode(r.RadioDJURLAccess, RemoteAccessToken)
+	if !r.AllowUserLogin && !r.AllowPINLogin {
+		r.AllowUserLogin = true
+		r.AllowPINLogin = true
+	}
+	if strings.TrimSpace(r.SessionSecret) == "" {
+		r.SessionSecret = GenerateSecretHex(32)
+	}
+	if strings.TrimSpace(r.PlayerShareToken) == "" {
+		r.PlayerShareToken = GenerateURLToken(18)
+	}
+	if strings.TrimSpace(r.RadioDJShareToken) == "" {
+		r.RadioDJShareToken = GenerateURLToken(18)
+	}
+	if strings.TrimSpace(r.PartyShareToken) == "" {
+		r.PartyShareToken = GenerateURLToken(18)
+	}
+}
+
+func normalizeAccessMode(v, fallback string) string {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case RemoteAccessOff, RemoteAccessLogin, RemoteAccessToken, RemoteAccessPublic:
+		return strings.ToLower(strings.TrimSpace(v))
+	default:
+		return fallback
+	}
+}
+
+// GenerateURLToken returns a URL-safe random token (no padding, clean path segment).
+func GenerateURLToken(numBytes int) string {
+	if numBytes < 12 {
+		numBytes = 18
+	}
+	b := make([]byte, numBytes)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("echo%d", time.Now().UnixNano())
+	}
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+// GenerateSecretHex returns a cryptographically random hex string.
+func GenerateSecretHex(numBytes int) string {
+	if numBytes < 16 {
+		numBytes = 32
+	}
+	b := make([]byte, numBytes)
+	if _, err := rand.Read(b); err != nil {
+		return fmt.Sprintf("%x", time.Now().UnixNano())
+	}
+	return hex.EncodeToString(b)
 }
 
 func DefaultDLNAConfig() DLNAConfig {
@@ -401,7 +514,18 @@ func Load() (*Config, error) {
 	if v := strings.TrimSpace(os.Getenv("ECHO_DJ_VOICE")); v != "" {
 		cfg.DJ.VoiceName = v
 	}
+	if v := strings.TrimSpace(os.Getenv("ECHO_PUBLIC_DOMAIN")); v != "" {
+		cfg.Remote.CloudflarePublicDomain = v
+	}
+	if v := strings.TrimSpace(os.Getenv("ECHO_CF_TUNNEL_TOKEN")); v != "" {
+		cfg.Remote.CloudflareToken = v
+		cfg.Remote.CloudflareMode = "token"
+		if strings.TrimSpace(os.Getenv("ECHO_CF_ENABLED")) != "0" && strings.ToLower(strings.TrimSpace(os.Getenv("ECHO_CF_ENABLED"))) != "false" {
+			cfg.Remote.CloudflareEnabled = true
+		}
+	}
 	NormalizeDJConfig(&cfg.DJ)
+	NormalizeRemoteConfig(&cfg.Remote)
 
 	// Parse libraries from ECHO_LIBRARIES (format: "id:Name:/path[|/Volumes/...],...") or default /music
 	if rawLibs := strings.TrimSpace(os.Getenv("ECHO_LIBRARIES")); rawLibs != "" {

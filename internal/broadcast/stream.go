@@ -41,16 +41,50 @@ type StreamStats struct {
 	PartyStreamURL string `json:"partyStreamURL"`
 }
 
+// RadioTrackInfo holds safe public metadata for one track in the URL-only Radio DJ streaming player.
+type RadioTrackInfo struct {
+	ID          string  `json:"id"`
+	Title       string  `json:"title"`
+	Artist      string  `json:"artist"`
+	Album       string  `json:"album"`
+	Year        *int    `json:"year,omitempty"`
+	Duration    float64 `json:"duration"`
+	ArtworkHash string  `json:"artworkHash,omitempty"`
+	StartedAt   string  `json:"startedAt,omitempty"`
+}
+
+// RadioNowPlaying is the scoped read-only status snapshot consumed by the URL-only Radio DJ streaming player.
+type RadioNowPlaying struct {
+	ServerName   string           `json:"serverName"`
+	StationName  string           `json:"stationName"`
+	ProfileID    string           `json:"profileId,omitempty"`
+	ProfileName  string           `json:"profileName,omitempty"`
+	Persona      string           `json:"persona,omitempty"`
+	VoiceName    string           `json:"voiceName,omitempty"`
+	IsLive       bool             `json:"isLive"`
+	IsSpeaking   bool             `json:"isSpeaking"`
+	BreakKind    string           `json:"breakKind,omitempty"`
+	DJScript     string           `json:"djScript,omitempty"`
+	Listeners    int              `json:"listeners"`
+	CurrentTrack *RadioTrackInfo  `json:"currentTrack,omitempty"`
+	UpNext       []RadioTrackInfo `json:"upNext"`
+	UpdatedAt    string           `json:"updatedAt"`
+}
+
 type channel struct {
 	name string
 	hub  *Hub
 
-	mu         sync.RWMutex
-	clients    map[chan []byte]struct{}
-	running    bool
-	nowPlaying string
-	cancel     context.CancelFunc
-	idleTimer  *time.Timer
+	mu           sync.RWMutex
+	clients      map[chan []byte]struct{}
+	running      bool
+	nowPlaying   string
+	isSpeaking   bool
+	breakKind    string
+	djScript     string
+	currentTrack *RadioTrackInfo
+	cancel       context.CancelFunc
+	idleTimer    *time.Timer
 }
 
 func NewHub(cfg *config.Config, store *db.Store, djEng *dj.Engine, partyEng *party.Engine) *Hub {
@@ -83,6 +117,105 @@ func (h *Hub) Stats() StreamStats {
 		DJStreamURL:    base + "/stream/dj.mp3",
 		PartyStreamURL: base + "/stream/party.mp3",
 	}
+}
+
+// RadioStatus returns safe, synchronized live metadata for the URL-only Radio DJ streaming player.
+func (h *Hub) RadioStatus() RadioNowPlaying {
+	station := strings.TrimSpace(h.cfg.DJ.RadioStationName)
+	if station == "" {
+		station = "Echo FM"
+	}
+
+	h.djChan.mu.RLock()
+	listeners := len(h.djChan.clients)
+	isLive := h.djChan.running && listeners > 0
+	isSpeaking := h.djChan.isSpeaking
+	breakKind := h.djChan.breakKind
+	djScript := h.djChan.djScript
+	var curCopy *RadioTrackInfo
+	if h.djChan.currentTrack != nil {
+		cp := *h.djChan.currentTrack
+		curCopy = &cp
+	}
+	h.djChan.mu.RUnlock()
+
+	out := RadioNowPlaying{
+		ServerName:   h.cfg.ServerName,
+		StationName:  station,
+		Persona:      h.cfg.DJ.Persona,
+		VoiceName:    h.cfg.DJ.VoiceName,
+		IsLive:       isLive,
+		IsSpeaking:   isSpeaking,
+		BreakKind:    breakKind,
+		DJScript:     djScript,
+		Listeners:    listeners,
+		CurrentTrack: curCopy,
+		UpNext:       []RadioTrackInfo{},
+		UpdatedAt:    time.Now().UTC().Format(time.RFC3339),
+	}
+
+	if h.djEng != nil {
+		st := h.djEng.State()
+		if strings.TrimSpace(st.StationName) != "" {
+			out.StationName = st.StationName
+		}
+		out.ProfileID = st.ProfileID
+		out.ProfileName = st.ProfileName
+		if st.Persona != "" {
+			out.Persona = st.Persona
+		}
+		if st.VoiceName != "" {
+			out.VoiceName = st.VoiceName
+		}
+		if len(st.Slots) > 0 {
+			idx := st.CurrentIndex
+			if idx < 0 || idx >= len(st.Slots) {
+				idx = 0
+			}
+			tr := slotToRadioTrack(st.Slots[idx], "")
+			if out.CurrentTrack == nil || out.CurrentTrack.ID != tr.ID {
+				out.CurrentTrack = &tr
+			}
+			for i := idx + 1; i < len(st.Slots) && len(out.UpNext) < 4; i++ {
+				out.UpNext = append(out.UpNext, slotToRadioTrack(st.Slots[i], ""))
+			}
+		}
+	}
+	return out
+}
+
+func slotToRadioTrack(slot dj.DJSlot, startedAt string) RadioTrackInfo {
+	var art string
+	if slot.Track.ArtworkHash != nil {
+		art = *slot.Track.ArtworkHash
+	}
+	return RadioTrackInfo{
+		ID:          slot.Track.ID,
+		Title:       slot.Track.Title,
+		Artist:      slot.Track.Artist,
+		Album:       slot.Track.Album,
+		Year:        slot.Track.Year,
+		Duration:    slot.Track.Duration,
+		ArtworkHash: art,
+		StartedAt:   startedAt,
+	}
+}
+
+// ServeDJM3U returns an .m3u playlist file pointing directly to the live Radio DJ MP3 stream.
+func (h *Hub) ServeDJM3U(w http.ResponseWriter, r *http.Request, streamURL string) {
+	station := h.cfg.DJ.RadioStationName
+	if h.djEng != nil {
+		if st := h.djEng.State(); strings.TrimSpace(st.StationName) != "" {
+			station = st.StationName
+		}
+	}
+	if station == "" {
+		station = "My Echo DJ Radio"
+	}
+	w.Header().Set("Content-Type", "audio/x-mpegurl; charset=utf-8")
+	w.Header().Set("Content-Disposition", `inline; filename="echo-radio-dj.m3u"`)
+	w.Header().Set("Cache-Control", "no-store")
+	_, _ = fmt.Fprintf(w, "#EXTM3U\n#EXTINF:-1,%s · Live AI DJ\n%s\n", station, streamURL)
 }
 
 func (h *Hub) ServeDJStream(w http.ResponseWriter, r *http.Request) {
@@ -252,9 +385,43 @@ func (c *channel) runLoop(ctx context.Context) {
 		}
 
 		c.setNowPlaying(label)
+		if c.name == "dj" && c.hub.djEng != nil {
+			st := c.hub.djEng.State()
+			if slotIdx >= 0 && slotIdx < len(st.Slots) {
+				tr := slotToRadioTrack(st.Slots[slotIdx], time.Now().UTC().Format(time.RFC3339))
+				c.mu.Lock()
+				c.currentTrack = &tr
+				c.mu.Unlock()
+			}
+		}
 		if voicePath != "" && startSec < 1.5 {
 			// Stream the DJ voice break cleanly ahead of the song (only when starting from the beginning)
+			var kind, script string
+			if c.name == "dj" && c.hub.djEng != nil {
+				st := c.hub.djEng.State()
+				if slotIdx >= 0 && slotIdx < len(st.Slots) {
+					sl := st.Slots[slotIdx]
+					if sl.Bridge != nil && sl.Bridge.Status == dj.StatusReady {
+						kind = string(dj.BreakBridge)
+						script = sl.Bridge.Script
+					} else if sl.Intro != nil && sl.Intro.Status == dj.StatusReady {
+						kind = string(dj.BreakIntro)
+						script = sl.Intro.Script
+					}
+				}
+			}
+			c.mu.Lock()
+			c.isSpeaking = true
+			c.breakKind = kind
+			if script != "" {
+				c.djScript = script
+			}
+			c.mu.Unlock()
 			_ = c.streamFileAsMP3(itemCtx, voicePath, 0, 0, nil)
+			c.mu.Lock()
+			c.isSpeaking = false
+			c.breakKind = ""
+			c.mu.Unlock()
 		}
 		if itemCtx.Err() != nil {
 			cancelItem()
