@@ -68,14 +68,14 @@ func (s *Server) buildWebPlaylistDTO(p db.SharedPlaylist, byID map[string]webTra
 
 func (s *Server) loadWebTrackLookup() map[string]webTrackDTO {
 	tracks, _ := s.store.LoadAllTracks()
-	ratingMap := s.loadTrackRatingsMap()
+	statsMap := s.loadTrackStatsMap()
 	analysisMap, _ := s.store.ListTrackAnalysisMap()
 	edGenresByAlb := s.loadAlbumEditorialGenresMap()
 
 	byID := make(map[string]webTrackDTO, len(tracks)*2)
 	for _, tr := range tracks {
 		dto := toWebTrack(tr)
-		enrichTrackDTO(&dto, tr, ratingMap, analysisMap, edGenresByAlb)
+		enrichTrackDTO(&dto, tr, statsMap, analysisMap, edGenresByAlb)
 		byID[dto.ID] = dto
 		byID[tr.TrackKey] = dto
 		if tr.LegacyID != "" {
@@ -136,13 +136,15 @@ func (s *Server) handleWebPlaylistUpdate(w http.ResponseWriter, r *http.Request)
 	}
 	var req struct {
 		ID          string   `json:"id"`
-		Action      string   `json:"action"` // "rename" | "addTrack" | "removeTrack" | "toggleTrack" | "removeMissing" | "clearMissing" | "addTracks"
+		Action      string   `json:"action"` // "rename" | "addTrack" | "removeTrack" | "toggleTrack" | "removeMissing" | "clearMissing" | "addTracks" | "reorder"
 		Name        string   `json:"name"`
 		Description *string  `json:"description"`
 		TrackID     string   `json:"trackId"`
 		TrackIDs    []string `json:"trackIds"`
 		MissingID   string   `json:"missingId"`
 		Index       *int     `json:"index"`
+		FromIndex   *int     `json:"fromIndex"`
+		ToIndex     *int     `json:"toIndex"`
 	}
 	if err := json.NewDecoder(io.LimitReader(r.Body, 262_144)).Decode(&req); err != nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
@@ -259,6 +261,28 @@ func (s *Server) handleWebPlaylistUpdate(w http.ResponseWriter, r *http.Request)
 		}
 		pl.TrackIDs = next
 		pl.MissingTracks = nil
+	case "reorder":
+		if req.FromIndex == nil || req.ToIndex == nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Missing fromIndex or toIndex"})
+			return
+		}
+		from, to := *req.FromIndex, *req.ToIndex
+		n := len(pl.TrackIDs)
+		if from < 0 || from >= n || to < 0 || to >= n {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Reorder index out of range"})
+			return
+		}
+		if from != to {
+			moved := pl.TrackIDs[from]
+			without := make([]string, 0, n-1)
+			without = append(without, pl.TrackIDs[:from]...)
+			without = append(without, pl.TrackIDs[from+1:]...)
+			reordered := make([]string, 0, n)
+			reordered = append(reordered, without[:to]...)
+			reordered = append(reordered, moved)
+			reordered = append(reordered, without[to:]...)
+			pl.TrackIDs = reordered
+		}
 	default:
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "Unknown playlist action: " + req.Action})
 		return

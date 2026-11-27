@@ -35,6 +35,9 @@ type webTrackDTO struct {
 	UserRating       int      `json:"userRating"`
 	UserPlayCount    int      `json:"userPlayCount,omitempty"`
 	OnlinePopularity int      `json:"onlinePopularity,omitempty"`
+	OnlinePlayCount  *int     `json:"onlinePlayCount,omitempty"`
+	OnlineListeners  *int     `json:"onlineListeners,omitempty"`
+	OnlineSource     *string  `json:"onlineSource,omitempty"`
 	BPM              float64  `json:"bpm,omitempty"`
 	VocalStartSec    float64  `json:"vocalStartSec"`
 	VocalEndSec      float64  `json:"vocalEndSec,omitempty"`
@@ -174,7 +177,7 @@ func (s *Server) handleWebTracks(w http.ResponseWriter, r *http.Request) {
 	bpmMin, _ := strconv.ParseFloat(q.Get("bpmMin"), 64)
 	bpmMax, _ := strconv.ParseFloat(q.Get("bpmMax"), 64)
 
-	ratingMap := s.loadTrackRatingsMap()
+	statsMap := s.loadTrackStatsMap()
 	analysisMap, _ := s.store.ListTrackAnalysisMap()
 	edGenresByAlb := s.loadAlbumEditorialGenresMap()
 
@@ -182,7 +185,7 @@ func (s *Server) handleWebTracks(w http.ResponseWriter, r *http.Request) {
 	tokens := parseSimpleTokens(query)
 	for _, tr := range tracks {
 		dto := toWebTrack(tr)
-		enrichTrackDTO(&dto, tr, ratingMap, analysisMap, edGenresByAlb)
+		enrichTrackDTO(&dto, tr, statsMap, analysisMap, edGenresByAlb)
 		if minRating > 0 && dto.UserRating < minRating {
 			continue
 		}
@@ -295,22 +298,17 @@ func (s *Server) handleWebTrackDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ratingMap := s.loadTrackRatingsMap()
 	statsMap := s.loadTrackStatsMap()
 	analysisMap, _ := s.store.ListTrackAnalysisMap()
 	edGenresByAlb := s.loadAlbumEditorialGenresMap()
 
 	dto := toWebTrack(*tr)
-	enrichTrackDTO(&dto, *tr, ratingMap, analysisMap, edGenresByAlb)
+	enrichTrackDTO(&dto, *tr, statsMap, analysisMap, edGenresByAlb)
 
 	var statsPtr *db.SharedTrackStats
 	if st, ok := lookupTrackStats(statsMap, *tr); ok {
 		cp := st
 		statsPtr = &cp
-		dto.UserPlayCount = st.UserPlayCount
-		if st.OnlinePopularity != nil {
-			dto.OnlinePopularity = *st.OnlinePopularity
-		}
 	}
 
 	var analysisPtr *db.TrackAnalysis
@@ -605,7 +603,7 @@ func (s *Server) handleWebAlbumDetail(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	ratingMap := s.loadTrackRatingsMap()
+	statsMap := s.loadTrackStatsMap()
 	analysisMap, _ := s.store.ListTrackAnalysisMap()
 	edGenresByAlb := s.loadAlbumEditorialGenresMap()
 	albRatingMap := s.loadAlbumRatingsMap()
@@ -615,7 +613,7 @@ func (s *Server) handleWebAlbumDetail(w http.ResponseWriter, r *http.Request) {
 	for _, tr := range tracks {
 		dto := toWebTrack(tr)
 		if dto.AlbumKey == key {
-			enrichTrackDTO(&dto, tr, ratingMap, analysisMap, edGenresByAlb)
+			enrichTrackDTO(&dto, tr, statsMap, analysisMap, edGenresByAlb)
 			matched = append(matched, dto)
 			if albSummary == nil {
 				albSummary = &webAlbumDTO{
@@ -789,7 +787,6 @@ func (s *Server) handleWebArtistDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ratingMap := s.loadTrackRatingsMap()
 	statsMap := s.loadTrackStatsMap()
 	albRatingMap := s.loadAlbumRatingsMap()
 	analysisMap, _ := s.store.ListTrackAnalysisMap()
@@ -824,13 +821,7 @@ func (s *Server) handleWebArtistDetail(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		enrichTrackDTO(&dto, tr, ratingMap, analysisMap, edGenresByAlb)
-		if st, ok := lookupTrackStats(statsMap, tr); ok {
-			dto.UserPlayCount = st.UserPlayCount
-			if st.OnlinePopularity != nil {
-				dto.OnlinePopularity = *st.OnlinePopularity
-			}
-		}
+		enrichTrackDTO(&dto, tr, statsMap, analysisMap, edGenresByAlb)
 
 		if canonicalName == "" {
 			if strings.EqualFold(strings.TrimSpace(dto.AlbumArtist), key) {
@@ -1457,8 +1448,19 @@ func lookupTrackRating(ratingMap map[string]int, tr db.TrackRecord) int {
 	return 0
 }
 
-func enrichTrackDTO(dto *webTrackDTO, tr db.TrackRecord, ratingMap map[string]int, analysisMap map[string]db.TrackAnalysis, edGenresByAlb map[string][]string) {
-	dto.UserRating = lookupTrackRating(ratingMap, tr)
+func enrichTrackDTO(dto *webTrackDTO, tr db.TrackRecord, statsMap map[string]db.SharedTrackStats, analysisMap map[string]db.TrackAnalysis, edGenresByAlb map[string][]string) {
+	if st, ok := lookupTrackStats(statsMap, tr); ok {
+		if st.UserRating != nil && *st.UserRating > 0 {
+			dto.UserRating = *st.UserRating
+		}
+		dto.UserPlayCount = st.UserPlayCount
+		if st.OnlinePopularity != nil {
+			dto.OnlinePopularity = *st.OnlinePopularity
+		}
+		dto.OnlinePlayCount = st.OnlinePlayCount
+		dto.OnlineListeners = st.OnlineListeners
+		dto.OnlineSource = st.OnlineSource
+	}
 	seen := make(map[string]bool)
 	addTag := func(t string) {
 		t = strings.TrimSpace(t)
@@ -1544,7 +1546,7 @@ func (s *Server) handleWebRandomQueue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ratingMap := s.loadTrackRatingsMap()
+	statsMap := s.loadTrackStatsMap()
 	analysisMap, _ := s.store.ListTrackAnalysisMap()
 	edGenresByAlb := s.loadAlbumEditorialGenresMap()
 	tokens := parseSimpleTokens(query)
@@ -1552,7 +1554,7 @@ func (s *Server) handleWebRandomQueue(w http.ResponseWriter, r *http.Request) {
 	var pool []webTrackDTO
 	for _, tr := range tracks {
 		dto := toWebTrack(tr)
-		enrichTrackDTO(&dto, tr, ratingMap, analysisMap, edGenresByAlb)
+		enrichTrackDTO(&dto, tr, statsMap, analysisMap, edGenresByAlb)
 		if minRating > 0 && dto.UserRating < minRating {
 			continue
 		}
